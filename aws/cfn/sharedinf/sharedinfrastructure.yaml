@@ -1,0 +1,794 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  vpccidr:
+    Type: String
+    MinLength: 9
+    MaxLength: 18
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid CIDR range in the form x.x.x.x/16
+    Default: 10.99.0.0/16
+  psharedacidr:
+    Type: String
+    MinLength: 9
+    MaxLength: 18
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid CIDR range in the form x.x.x.x/22
+    Default: 10.99.32.0/20
+  psharedbcidr:
+    Type: String
+    MinLength: 9
+    MaxLength: 18
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid CIDR range in the form x.x.x.x/22
+    Default: 10.99.96.0/20
+    #psharedccidr:
+    #  Type: String
+    #  MinLength: 9
+    #  MaxLength: 18
+    #  AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    #  ConstraintDescription: Must be a valid CIDR range in the form x.x.x.x/22
+    #  Default: 10.99.160.0/20
+    #pshareddcidr:
+    #  Type: String
+    #  MinLength: 9
+    #  MaxLength: 18
+    #  AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    #  ConstraintDescription: Must be a valid CIDR range in the form x.x.x.x/22
+    #  Default: 10.99.224.0/20
+  privateacidr:
+    Type: String
+    MinLength: 9
+    MaxLength: 18
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid CIDR range in the form x.x.x.x/22
+    Default: 10.99.0.0/19
+  privatebcidr:
+    Type: String
+    MinLength: 9
+    MaxLength: 18
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid CIDR range in the form x.x.x.x/22
+    Default: 10.99.64.0/19
+  deploynatgw:
+    Type: String
+    AllowedValues:
+      - 'true'
+      - 'false'
+      - 'ha'
+    Default: 'false'
+Conditions:
+  DeployNATA: !Not [!Equals [!Ref deploynatgw, 'false']]
+  DeployNATB: !Equals [!Ref deploynatgw, 'ha']
+  SubnetC: !Equals ['false', 'true']
+  SubnetD: !Equals ['false', 'true']
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref vpccidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-vpcid'
+        - Key: StackName
+          Value: !Ref 'AWS::StackName'
+  IGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-igw'
+        - Key: StackName
+          Value: !Ref 'AWS::StackName'
+  S3SampleBucket:
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${AWS::StackName}-samplebucket-${AWS::AccountId}-${AWS::Region}
+      Tags:
+      - Key: StackName
+        Value: !Ref AWS::StackName
+      - Key: Purpose
+        Value: SampleData
+  S3WorkBucket:
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${AWS::StackName}-workbucket-${AWS::AccountId}-${AWS::Region}
+      Tags:
+      - Key: StackName
+        Value: !Ref AWS::StackName
+      - Key: Purpose
+        Value: Scratch
+  S3LogBucket:
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${AWS::StackName}-logbucket-${AWS::AccountId}-${AWS::Region}
+      Tags:
+        - Key: StackName
+          Value: !Ref AWS::StackName
+        - Key: Purpose
+          Value: Logs
+  S3AppBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      BucketName: !Sub ${AWS::StackName}-appbucket-${AWS::AccountId}-${AWS::Region}
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - '*'
+            AllowedMethods:
+              - GET
+            AllowedOrigins:
+              - '*'
+            Id: rule1
+            MaxAge: 3000
+      AccessControl: PublicRead
+      WebsiteConfiguration:
+        ErrorDocument: 404.html
+        IndexDocument: index.html
+      Tags:
+        - Key: StackName
+          Value: !Ref AWS::StackName
+        - Key: Purpose
+          Value: App
+  BucketPolicyApp:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3AppBucket
+      PolicyDocument:
+        Statement:
+          - Sid: ABC123
+            Action:
+              - s3:GetObject
+            Effect: Allow
+            Resource: !Sub arn:aws:s3:::${S3AppBucket}/*
+            Principal:
+              AWS:
+                - '*'
+  S3LambdaBucket:
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: PublicRead
+      BucketName: !Sub ${AWS::StackName}-lambdabucket-${AWS::AccountId}-${AWS::Region}
+      WebsiteConfiguration:
+        ErrorDocument: 404.html
+        IndexDocument: index.html
+      Tags:
+        - Key: StackName
+          Value: !Ref AWS::StackName
+        - Key: Purpose
+          Value: Lambda
+  BucketPolicyLambda:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3LambdaBucket
+      PolicyDocument:
+        Statement:
+          - Sid: ABC123
+            Action:
+              - s3:GetObject
+            Effect: Allow
+            Resource: !Sub 'arn:aws:s3:::${S3LambdaBucket}/*'
+            Principal:
+              AWS:
+                - '*'
+  SharedLayer:
+    Type: AWS::Lambda::LayerVersion
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Delete
+    Properties:
+      CompatibleRuntimes:
+        - python3.6
+        - python3.7
+      Content:
+        S3Bucket: !Ref S3LambdaBucket
+        S3Key: sharedlibs/96aa410e4c496d40aa40f070cd2453ae.zip
+      Description: Shared libs for python3
+      LayerName: sharedpy3
+      LicenseInfo: Misc.
+  ASGNotifications:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: SaaS Autoscaling Notifications
+      Tags:
+      - Key: StackName
+        Value: !Ref AWS::StackName
+      - Key: Purpose
+        Value: ASGNotifications
+  ASGQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+      VisibilityTimeout: 60
+      Tags:
+      - Key: StackName
+        Value: !Ref AWS::StackName
+      - Key: Purpose
+        Value: ASGQueue
+
+  ASGQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Sid: allow-sns-messages
+          Effect: Allow
+          Principal: '*'
+          Action: sqs:SendMessage
+          Resource: '*'
+          Condition:
+            ArnEquals:
+              'aws:sourceArn': !Ref ASGNotifications
+      Queues:
+        - !Ref ASGQueue
+
+  ASGSQSSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: sqs
+      Endpoint: !GetAtt 'ASGQueue.Arn'
+      Region: !Ref AWS::Region
+      TopicArn: !Ref 'ASGNotifications'
+      RawMessageDelivery: true
+
+  DumpEventToS3Fn:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Code:
+        ZipFile: |
+          import os
+          import json
+          import boto3
+          import uuid
+          from datetime import datetime
+
+          s3_bucket  = os.environ['S3BUCKET']
+          s3_prefix  = os.environ['S3PREFIX']
+          accountid  = os.environ['ACCOUNTID']
+          region     = os.environ['REGION']
+          def lambda_handler(event, context):
+              try:
+                  now = datetime.now()
+                  path = now.strftime('%Y/%m/%d/event-%Y%m%dT%H%M%S')
+                  uid = str(uuid.uuid4())
+                  s3 = boto3.resource('s3')
+                  s3.Object(s3_bucket, f"{s3_prefix}/{path}-{region}-{accountid}-{uid}.json").put(
+                      Body=json.dumps(event, indent=2))
+                  return 'Event stored'
+              except:
+                  raise
+      Handler: index.lambda_handler
+      Description: "Save any event to S3"
+      Environment:
+        Variables:
+          S3BUCKET: !Ref S3LogBucket
+          S3PREFIX: !Sub 'SQSLogs/${AWS::Region}/${AWS::AccountId}'
+          ACCOUNTID: !Ref 'AWS::AccountId'
+          REGION: !Ref 'AWS::Region'
+      Role: !GetAtt DumpEventToS3Role.Arn
+      Runtime: python3.6
+      Timeout: 60
+  DumpEventToS3LambdaLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${DumpEventToS3Fn}'
+  DumpEventToS3Permissions:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt DumpEventToS3Fn.Arn
+      Principal: '*'
+      SourceAccount: !Ref 'AWS::AccountId'
+      #SourceArn: !Ref ASGNotifications
+
+  DumpEventToS3Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - sts:AssumeRole
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: "DumpEventToS3Policy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: 'arn:aws:logs:*:*:*'
+              - Effect: "Allow"
+                Action:
+                  - "sqs:*"
+                Resource: '*'
+              - Effect: "Allow"
+                Action:
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3LogBucket}"
+              - Effect: "Allow"
+                Action:
+                  - s3:*Object
+                Resource:
+                  - !Sub "arn:aws:s3:::${S3LogBucket}/*"
+              - Effect: "Allow"
+                Action:
+                  - ec2:DescribeTags
+                Resource:
+                  - !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*"
+  GatewayAttach:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref IGW
+      VpcId: !Ref VPC
+  SubnetPublicSharedA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs ''
+      CidrBlock: !Ref psharedacidr
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-subnetpublica'
+        - Key: StackName
+          Value: !Ref 'AWS::StackName'
+  SubnetPublicSharedB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select
+        - 1
+        - !GetAZs ''
+      CidrBlock: !Ref psharedbcidr
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-subnetpublicb'
+        - Key: StackName
+          Value: !Ref 'AWS::StackName'
+          #  SubnetPublicSharedC:
+          #    Type: AWS::EC2::Subnet
+          #    Condition: SubnetC
+          #    Properties:
+          #      AvailabilityZone: !Select
+          #        - 2
+          #        - !GetAZs ''
+          #      CidrBlock: !Ref psharedccidr
+          #      MapPublicIpOnLaunch: true
+          #      VpcId: !Ref VPC
+          #      Tags:
+          #        - Key: Name
+          #          Value: !Sub '${AWS::StackName}-subnetpublicc'
+          #        - Key: StackName
+          #          Value: !Ref 'AWS::StackName'
+          #  SubnetPublicSharedD:
+          #    Condition: SubnetD
+          #    Type: AWS::EC2::Subnet
+          #    Properties:
+          #      AvailabilityZone: !Select
+          #        - 3
+          #        - !GetAZs ''
+          #      CidrBlock: !Ref pshareddcidr
+          #      MapPublicIpOnLaunch: true
+          #      VpcId: !Ref VPC
+          #      Tags:
+          #        - Key: Name
+          #          Value: !Sub '${AWS::StackName}-subnetpublicd'
+          #        - Key: StackName
+          #          Value: !Ref 'AWS::StackName'
+
+  SubnetPrivateA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs ''
+      CidrBlock: !Ref privateacidr
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-subnetprivatea'
+        - Key: StackName
+          Value: !Ref 'AWS::StackName'
+  SubnetPrivateB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select
+        - 1
+        - !GetAZs ''
+      CidrBlock: !Ref privatebcidr
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-subnetprivateb'
+        - Key: StackName
+          Value: !Ref 'AWS::StackName'
+  SubnetRouteTableAssociatePublicA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      SubnetId: !Ref SubnetPublicSharedA
+  SubnetRouteTableAssociatePublicB:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      SubnetId: !Ref SubnetPublicSharedB
+      #  SubnetRouteTableAssociatePublicC:
+      #    Type: AWS::EC2::SubnetRouteTableAssociation
+      #    Condition: SubnetC
+      #    Properties:
+      #      RouteTableId: !Ref RouteTablePublic
+      #      SubnetId: !Ref SubnetPublicSharedC
+      #  SubnetRouteTableAssociatePublicD:
+      #    Condition: SubnetD
+      #    Type: AWS::EC2::SubnetRouteTableAssociation
+      #    Properties:
+      #      RouteTableId: !Ref RouteTablePublic
+      #      SubnetId: !Ref SubnetPublicSharedD
+
+  SubnetRouteTableAssociatePrivateA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: DeployNATA
+    Properties:
+      RouteTableId: !Ref RouteTablePrivateA
+      SubnetId: !Ref SubnetPrivateA
+  SubnetRouteTableAssociatePrivateB:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Condition: DeployNATB
+    Properties:
+      RouteTableId: !Ref RouteTablePrivateB
+      SubnetId: !Ref SubnetPrivateB
+  RouteDefaultPublic:
+    Type: AWS::EC2::Route
+    DependsOn: GatewayAttach
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref IGW
+      RouteTableId: !Ref RouteTablePublic
+  RouteDefaultPrivateA:
+    Type: AWS::EC2::Route
+    Condition: DeployNATA
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayA
+      RouteTableId: !Ref RouteTablePrivateA
+  RouteDefaultPrivateB:
+    Type: AWS::EC2::Route
+    Condition: DeployNATB
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayB
+      RouteTableId: !Ref RouteTablePrivateB
+  RouteTablePublic:
+    Type: AWS::EC2::RouteTable
+    DependsOn: GatewayAttach
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-routetablepublic'
+        - Key: StackName
+          Value: !Ref 'AWS::StackName'
+  RouteTablePrivateA:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-routetableprivatea'
+        - Key: StackName
+          Value: !Ref 'AWS::StackName'
+  RouteTablePrivateB:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-routetableprivateb'
+        - Key: StackName
+          Value: !Ref 'AWS::StackName'
+  EIPNatGWA:
+    Type: AWS::EC2::EIP
+    Condition: DeployNATA
+    DependsOn: GatewayAttach
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-eipnatgwa'
+        - Key: StackName
+          Value: !Ref 'AWS::StackName'
+  EIPNatGWB:
+    Type: AWS::EC2::EIP
+    Condition: DeployNATB
+    DependsOn: GatewayAttach
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-eipnatgwb'
+        - Key: StackName
+          Value: !Ref 'AWS::StackName'
+  NatGatewayA:
+    Type: AWS::EC2::NatGateway
+    Condition: DeployNATA
+    DependsOn: GatewayAttach
+    Properties:
+      AllocationId: !GetAtt EIPNatGWA.AllocationId
+      SubnetId: !Ref SubnetPublicSharedA
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-natgwa'
+        - Key: StackName
+          Value: !Ref 'AWS::StackName'
+  NatGatewayB:
+    Type: AWS::EC2::NatGateway
+    Condition: DeployNATB
+    DependsOn: GatewayAttach
+    Properties:
+      AllocationId: !GetAtt EIPNatGWB.AllocationId
+      SubnetId: !Ref SubnetPublicSharedB
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-natgwb'
+        - Key: StackName
+          Value: !Ref 'AWS::StackName'
+  S3Endpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Sid: EFG123
+            Action: '*'
+            Effect: Allow
+            Resource: '*'
+            Principal: '*'
+      RouteTableIds:
+        - !Ref RouteTablePrivateA
+        - !Ref RouteTablePrivateB
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.s3
+      VpcId: !Ref VPC
+      VpcEndpointType: Gateway
+  DynamoDbEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Sid: EFG123
+            Action: '*'
+            Effect: Allow
+            Resource: '*'
+            Principal: '*'
+      RouteTableIds:
+        - !Ref RouteTablePrivateA
+        - !Ref RouteTablePrivateB
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.dynamodb
+      VpcId: !Ref VPC
+      VpcEndpointType: Gateway
+  EfsShare:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      Encrypted: true
+      LifecyclePolicies:
+        - TransitionToIA: 'AFTER_7_DAYS'
+      FileSystemTags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-EFS'
+        - Key: StackName
+          Value: !Ref 'AWS::StackName'
+  EfsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EFS Mount Access Security Group
+      VpcId: !Ref VPC
+  EfsSecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref EfsSecurityGroup
+      IpProtocol: "-1"
+      FromPort: 2049
+      ToPort: 2049
+      SourceSecurityGroupId: !Ref EfsSecurityGroup
+  EfsMountTargetPublicSubnetA:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EfsShare
+      SubnetId: !Ref SubnetPublicSharedA
+      SecurityGroups:
+        - !Ref EfsSecurityGroup
+  EfsMountTargetPublicSubnetB:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EfsShare
+      SubnetId: !Ref SubnetPublicSharedB
+      SecurityGroups:
+        - !Ref EfsSecurityGroup
+Outputs:
+  vpccidr:
+    Description: IP Range of Shared Infrastructure VPC
+    Value: !Ref vpccidr
+    Export:
+      Name: !Sub ${AWS::StackName}-vpccidr
+  subnetprivatea:
+    Value: !Ref SubnetPrivateA
+    Export:
+      Name: !Sub ${AWS::StackName}-subprivatea
+  subnetprivateb:
+    Value: !Ref SubnetPrivateB
+    Export:
+      Name: !Sub ${AWS::StackName}-subprivateb
+  subnetpublicb:
+    Description: Subnet Public B
+    Value: !Ref SubnetPublicSharedB
+    Export:
+      Name: !Sub ${AWS::StackName}-subnetpublicb
+  subnetpublica:
+    Value: !Ref SubnetPublicSharedA
+    Export:
+      Name: !Sub ${AWS::StackName}-subnetpublica
+  subnetpublicb:
+    Description: Subnet Public B
+    Value: !Ref SubnetPublicSharedB
+    Export:
+      Name: !Sub ${AWS::StackName}-subnetpublicb
+      #  subnetpublicc:
+      #    Description: Subnet Public C
+      #    Condition: SubnetC
+      #    Value: !Ref SubnetPublicSharedC
+      #    Export:
+      #      Name: !Sub ${AWS::StackName}-subnetpublicc
+      #  subnetpublicd:
+      #    Description: Subnet Public D
+      #    Condition: SubnetD
+      #    Value: !Ref SubnetPublicSharedD
+      #    Export:
+      #      Name: !Sub ${AWS::StackName}-subnetpublicd
+  vpcsharedacidr:
+    Description: IP Range of Shared Public SubnetA
+    Value: !Ref psharedacidr
+    Export:
+      Name: !Sub ${AWS::StackName}-vpcsharedacidr
+  vpcsharedbcidr:
+    Description: IP Range of Shared Public SubnetB
+    Value: !Ref psharedbcidr
+    Export:
+      Name: !Sub ${AWS::StackName}-vpcsharedbcidr
+      #  vpcsharedccidr:
+      #    Description: IP Range of Shared Public SubnetC
+      #    Condition: SubnetC
+      #    Value: !Ref psharedccidr
+      #    Export:
+      #      Name: !Sub ${AWS::StackName}-vpcsharedccidr
+      #  vpcshareddcidr:
+      #    Condition: SubnetD
+      #    Description: IP Range of Shared Public SubnetD
+      #    Value: !Ref pshareddcidr
+      #    Export:
+      #      Name: !Sub ${AWS::StackName}-vpcshareddcidr
+  vpcprivateacidr:
+    Description: IP Range of Shared Private SubnetA
+    Value: !Ref privateacidr
+    Export:
+      Name: !Sub ${AWS::StackName}-vpcprivateacidr
+  vpcprivatebcidr:
+    Description: IP Range of Shared Private SubnetB
+    Value: !Ref psharedbcidr
+    Export:
+      Name: !Sub ${AWS::StackName}-vpcprivatebcidr
+  vpcid:
+    Description: ID of Shared Infrastructure VPC
+    Value: !Ref VPC
+    Export:
+      Name: !Sub ${AWS::StackName}-vpcid
+  natgatewayaid:
+    Condition: DeployNATA
+    Description: ID of NAT Gateway A
+    Value: !Ref NatGatewayA
+    Export:
+      Name: !Sub ${AWS::StackName}-natgatewayaid
+  natgatewaybid:
+    Condition: DeployNATB
+    Description: ID of NAT Gateway B
+    Value: !Ref NatGatewayB
+    Export:
+      Name: !Sub ${AWS::StackName}-natgatewaybid
+  publicroutetable:
+    Description: ID of Public Route Table
+    Value: !Ref RouteTablePublic
+    Export:
+      Name: !Sub ${AWS::StackName}-publicrt
+  privateroutetablea:
+    Description: ID of Private Route Table - A
+    Value: !Ref RouteTablePrivateA
+    Export:
+      Name: !Sub ${AWS::StackName}-privaterta
+  privateroutetableb:
+    Description: ID of Private Route Table - B
+    Value: !Ref RouteTablePrivateB
+    Export:
+      Name: !Sub ${AWS::StackName}-privatertb
+  samplebucket:
+    Description: Shared Infrastructure Sample Data
+    Value: !Ref S3SampleBucket
+    Export:
+      Name: !Sub ${AWS::StackName}-samplebucket
+  workbucket:
+    Description: Shared Infrastructure Work or Temp Bucket
+    Value: !Ref S3WorkBucket
+    Export:
+      Name: !Sub ${AWS::StackName}-workbucket
+  logbucket:
+    Description: Shared Infrastructure Logs Bucket
+    Value: !Ref S3LogBucket
+    Export:
+      Name: !Sub ${AWS::StackName}-logbucket
+  appbucketurl:
+    Description: Shared Infrastructure App Bucket
+    Value: !GetAtt S3AppBucket.WebsiteURL
+    Export:
+      Name: !Sub ${AWS::StackName}-appbucketurl
+  appbucket:
+    Description: App Bucket Name
+    Value: !Ref S3AppBucket
+    Export:
+      Name: !Sub ${AWS::StackName}-appbucket
+  lambdabucket:
+    Description: Shared Infrastructure Lambda Bucket
+    Value: !Ref S3LambdaBucket
+    Export:
+      Name: !Sub ${AWS::StackName}-lambdabucket
+  asgtopic:
+    Description: Autoscaling SNS topic
+    Value: !Ref ASGNotifications
+    Export:
+      Name: !Sub ${AWS::StackName}-asgtopic
+  efs:
+    Description: Shared Infrastructure EFS Store
+    Value: !Ref EfsShare
+    Export:
+      Name: !Sub ${AWS::StackName}-efs
+  efstargeta:
+    Description: EFS Target Zone1
+    Value: !Ref EfsMountTargetPublicSubnetA
+    Export:
+      Name: !Sub ${AWS::StackName}-efstargeta
+  efstargetb:
+    Description: EFS Target Zone2
+    Value: !Ref EfsMountTargetPublicSubnetB
+    Export:
+      Name: !Sub ${AWS::StackName}-efstargetb
+  efssg:
+    Description: EFS Security Group
+    Value: !Ref EfsSecurityGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-efssg
+  lambdalayer:
+    Description: Shared Lambda Layer
+    Value: !Ref SharedLayer
+    Export:
+      Name: !Sub ${AWS::StackName}-lambdalayer

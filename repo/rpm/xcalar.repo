@@ -1,0 +1,5 @@
+[xcalar]
+name = Xcalar Yum Repository
+baseurl = http://repo.xcalar.net/rpm/el$releasever/$basearch/
+gpgcheck = 1
+enabled = 1

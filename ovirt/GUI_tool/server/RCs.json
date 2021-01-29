@@ -1,0 +1,174 @@
+{
+    "xcalar-1.4.0-RC1": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC1/20180523-a0f4ed75/debug/xcalar-1.4.0-1873-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC1/20180523-a0f4ed75/prod/xcalar-1.4.0-1873-installer"
+    },
+    "xcalar-1.4.0-RC10": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC10/20180613-7ce71a7a/debug/xcalar-1.4.0-1912-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC10/20180613-7ce71a7a/prod/xcalar-1.4.0-1912-installer"
+    },
+    "xcalar-1.4.0-RC11": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC11/20180615-a124a0d8/debug/xcalar-1.4.0-1915-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC11/20180615-a124a0d8/prod/xcalar-1.4.0-1915-installer"
+    },
+    "xcalar-1.4.0-RC12": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC12/20180621-43ff8510/debug/xcalar-1.4.0-1929-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC12/20180621-43ff8510/prod/xcalar-1.4.0-1929-installer"
+    },
+    "xcalar-1.4.0-RC13": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC13/20180624-43ff8510/debug/xcalar-1.4.0-1934-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC13/20180624-43ff8510/prod/xcalar-1.4.0-1934-installer"
+    },
+    "xcalar-1.4.0-RC14": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC14/20180702-6a12e5fb/debug/xcalar-1.4.0-1955-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC14/20180702-6a12e5fb/prod/xcalar-1.4.0-1955-installer"
+    },
+    "xcalar-1.4.0-RC15": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC15/20180703-c8283382/debug/xcalar-1.4.0-1959-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC15/20180703-c8283382/prod/xcalar-1.4.0-1959-installer"
+    },
+    "xcalar-1.4.0-RC16": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC16/20180714-616515eb/debug/xcalar-1.4.0-1977-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC16/20180714-616515eb/prod/xcalar-1.4.0-1977-installer"
+    },
+    "xcalar-1.4.0-RC19": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC19/20180902-3625fb3f/debug/xcalar-1.4.0.1-2138-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC19/20180902-3625fb3f/prod/xcalar-1.4.0.1-2138-installer"
+    },
+    "xcalar-1.4.0-RC2": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC2/20180523-547603d2/debug/xcalar-1.4.0-1874-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC2/20180523-547603d2/prod/xcalar-1.4.0-1874-installer"
+    },
+    "xcalar-1.4.0-RC20": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC20/20180903-967aa50d/debug/xcalar-1.4.0.1-2142-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC20/20180903-967aa50d/prod/xcalar-1.4.0.1-2142-installer"
+    },
+    "xcalar-1.4.0-RC21": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC21/20180924-f43c113d/debug/xcalar-1.4.0.2-2204-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC21/20180924-f43c113d/prod/xcalar-1.4.0.2-2204-installer"
+    },
+    "xcalar-1.4.0-RC22": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC22/20181004-961560d7/debug/xcalar-1.4.0.2-2248-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC22/20181004-961560d7/prod/xcalar-1.4.0.2-2248-installer"
+    },
+    "xcalar-1.4.0-RC23": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC23/20181009-2803c7c1/debug/xcalar-1.4.0.2-2289-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC23/20181009-2803c7c1/prod/xcalar-1.4.0.2-2289-installer"
+    },
+    "xcalar-1.4.0-RC3": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC3/20180523-99715e48/debug/xcalar-1.4.0-1876-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC3/20180523-99715e48/prod/xcalar-1.4.0-1876-installer"
+    },
+    "xcalar-1.4.0-RC4": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC4/20180524-3ee78643/debug/xcalar-1.4.0-1878-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC4/20180524-3ee78643/prod/xcalar-1.4.0-1878-installer"
+    },
+    "xcalar-1.4.0-RC5": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC5/20180526-a3c4b18e/debug/xcalar-1.4.0-1882-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC5/20180526-a3c4b18e/prod/xcalar-1.4.0-1882-installer",
+        "prod-backup": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC5/20180526-a3c4b18e/prod-backup/xcalar-1.4.0-1882-installer"
+    },
+    "xcalar-1.4.0-RC6": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC6/20180606-d9ca6c8b/debug/xcalar-1.4.0-1898-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC6/20180606-d9ca6c8b/prod/xcalar-1.4.0-1898-installer"
+    },
+    "xcalar-1.4.0-RC7": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC7/20180606-23574ab7/debug/xcalar-1.4.0-1899-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC7/20180606-23574ab7/prod/xcalar-1.4.0-1899-installer"
+    },
+    "xcalar-1.4.0-RC8": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC8/20180607-23574ab7/debug/xcalar-1.4.0-1904-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC8/20180607-23574ab7/prod/xcalar-1.4.0-1904-installer"
+    },
+    "xcalar-1.4.0-RC9": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC9/20180611-1262af71/debug/xcalar-1.4.0-1910-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.0-RC9/20180611-1262af71/prod/xcalar-1.4.0-1910-installer"
+    },
+    "xcalar-1.4.1-RC1": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC1/20180627-29f22571/debug/xcalar-1.4.1-1944-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC1/20180627-29f22571/prod/xcalar-1.4.1-1944-installer"
+    },
+    "xcalar-1.4.1-RC10": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC10/20181024-583e564f/debug/xcalar-1.4.1-2348-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC10/20181024-583e564f/prod/xcalar-1.4.1-2348-installer"
+    },
+    "xcalar-1.4.1-RC13": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC13/20181101-3fb6653c/debug/xcalar-1.4.1-2378-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC13/20181101-3fb6653c/prod/xcalar-1.4.1-2378-installer"
+    },
+    "xcalar-1.4.1-RC14": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC14/20181109-64309a8d/debug/xcalar-1.4.1-2402-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC14/20181109-64309a8d/prod/xcalar-1.4.1-2402-installer"
+    },
+    "xcalar-1.4.1-RC15": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC15/20181109-903a6c97/debug/xcalar-1.4.1-2403-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC15/20181109-903a6c97/prod/xcalar-1.4.1-2403-installer"
+    },
+    "xcalar-1.4.1-RC16": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC16/20181114-acdc2cb4/debug/xcalar-1.4.1-2423-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC16/20181114-acdc2cb4/prod/xcalar-1.4.1-2423-installer"
+    },
+    "xcalar-1.4.1-RC17": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC17/20181129-2f41bf42/debug/xcalar-1.4.1-2476-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC17/20181129-2f41bf42/prod/xcalar-1.4.1-2476-installer"
+    },
+    "xcalar-1.4.1-RC18": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC18/20181204-8d557d8c/debug/xcalar-1.4.1-2497-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC18/20181204-8d557d8c/prod/xcalar-1.4.1-2497-installer"
+    },
+    "xcalar-1.4.1-RC19": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC19/20181212-6acf0ca0/debug/xcalar-1.4.1-2527-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC19/20181212-6acf0ca0/prod/xcalar-1.4.1-2527-installer"
+    },
+    "xcalar-1.4.1-RC2": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC2/20180702-ce7936a7/debug/xcalar-1.4.1-1954-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC2/20180702-ce7936a7/prod/xcalar-1.4.1-1954-installer"
+    },
+    "xcalar-1.4.1-RC20": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC20/20181213-49450307/debug/xcalar-1.4.1-2532-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC20/20181213-49450307/prod/xcalar-1.4.1-2532-installer"
+    },
+    "xcalar-1.4.1-RC21": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC21/20181214-369eadf5/debug/xcalar-1.4.1-2538-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC21/20181214-369eadf5/prod/xcalar-1.4.1-2538-installer"
+    },
+    "xcalar-1.4.1-RC22": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC22/20190114-51474ca2/debug/xcalar-1.4.1-2619-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC22/20190114-51474ca2/prod/xcalar-1.4.1-2619-installer"
+    },
+    "xcalar-1.4.1-RC3": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC3/20180703-23715175/debug/xcalar-1.4.1-1958-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC3/20180703-23715175/prod/xcalar-1.4.1-1958-installer"
+    },
+    "xcalar-1.4.1-RC5": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC5/20181007-c8f6ab77/debug/xcalar-1.4.1-2264-installer"
+    },
+    "xcalar-1.4.1-RC7": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC7/20181008-3f60dbd5/debug/xcalar-1.4.1-2281-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC7/20181008-3f60dbd5/prod/xcalar-1.4.1-2281-installer"
+    },
+    "xcalar-1.4.1-RC8": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC8/20181009-f2954281/debug/xcalar-1.4.1-2287-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC8/20181009-f2954281/prod/xcalar-1.4.1-2287-installer"
+    },
+    "xcalar-1.4.1-RC9": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC9/20181009-b9580560/debug/xcalar-1.4.1-2290-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-1.4.1-RC9/20181009-b9580560/prod/xcalar-1.4.1-2290-installer"
+    },
+    "xcalar-2.0.0-RC1": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-2.0.0-RC1/debug/xcalar-2.0.0-2780-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-2.0.0-RC1/prod/xcalar-2.0.0-2780-installer"
+    },
+    "xcalar-2.0.0-RC2": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-2.0.0-RC2/debug/xcalar-2.0.0-2807-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-2.0.0-RC2/prod/xcalar-2.0.0-2807-installer"
+    },
+    "xcalar-2.0.0-RC3": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-2.0.0-RC3/debug/xcalar-2.0.0-2820-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-2.0.0-RC3/prod/xcalar-2.0.0-2820-installer"
+    },
+    "xcalar-2.0.0-RC4": {
+        "debug": "/netstore/builds/ReleaseCandidates/xcalar-2.0.0-RC4/debug/xcalar-2.0.0-2834-installer",
+        "prod": "/netstore/builds/ReleaseCandidates/xcalar-2.0.0-RC4/prod/xcalar-2.0.0-2834-installer"
+    }
+}

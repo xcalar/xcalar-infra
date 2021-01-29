@@ -1,0 +1,75 @@
+min_packer_version: '1.6.0'
+variables:
+  today: '{{ isotime "20060102" }}'
+  build_number: '{{ env `BUILD_NUMBER` }}'
+  http_proxy: '{{ env `http_proxy` }}'
+  https_proxy: '{{ env `https_proxy` }}'
+  no_proxy: '{{ env `no_proxy` }}'
+  disk_size: "128000"
+  osid: el7
+  iso_url: http://netstore/isos/CentOS_ISO/CentOS-7-x86_64-Minimal-2003.iso
+  iso_checksum: 'md5:f99e2b01389c62a56bb0d3afdbc202f2'
+  headless: "true"
+  build_number: '{{env `BUILD_NUMBER`}}'
+  vm_name: 'base-qemu'
+  mirror_url: 'http://netstore/isos/centos/7'
+  kickstart: ks7.cfg
+  output_directory: '/mnt/ssd/images'
+  manifest: '{{template_dir}}/packer-manifest.json'
+builders:
+  - type: qemu
+    name: '{{ user `osid` }}-base-qemu'
+    vm_name: '{{user `vm_name`}}'
+    accelerator: kvm
+    iso_url: '{{ user `iso_url` }}'
+    iso_checksum: '{{ user `iso_checksum` }}'
+    output_directory: '{{build_name}}'
+    disk_size: '{{user `disk_size`}}'
+    format: qcow2
+    headless: "{{user `headless`}}"
+    http_directory: '{{template_dir}}/../httpdir'
+    http_port_min: 10082
+    http_port_max: 10089
+    host_port_min: 2229
+    host_port_max: 2239
+    ssh_username: root
+    ssh_password: Welcome1
+    ssh_port: 22
+    ssh_wait_timeout: 900s
+    net_device: virtio-net
+    disk_interface: virtio
+    vnc_bind_address: 0.0.0.0
+    vnc_port_min: 6000
+    vnc_port_max: 6020
+    memory: 2048
+    cpus: 2
+    qemuargs:
+      - - "-serial"
+        - "mon:stdio"
+    boot_wait: 5s
+    boot_command:
+      - '<tab> text ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/{{user `kickstart`}}<enter><wait>'
+
+provisioners:
+  - type: shell
+    execute_command: chmod +x {{ .Path }}; {{ .Vars }} sudo -E bash -x {{ .Path }}
+    script: '{{ template_dir }}/../scripts/generalize.sh'
+    skip_clean: true
+    expect_disconnect: true
+
+post-processors:
+  - type: compress
+    format: gz
+    keep_input_artifact: true
+    output: '{{user `output_directory`}}/{{user `vm_name`}}.gz'
+  - type: manifest
+    output: '{{user `manifest`}}'
+    strip_path: true
+    custom_data:
+      build_number: '{{user `build_number`}}'
+      iso_checksum: '{{user `iso_checksum`}}'
+      iso_url: '{{user `iso_url`}}'
+      osid: '{{user `osid`}}'
+      output_directory: '{{user `output_directory`}}'
+      today: '{{user `today`}}'
+      output: '{{user `output_directory`}}/{{user `vm_name`}}.gz'

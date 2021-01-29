@@ -1,0 +1,198 @@
+#!/bin/bash
+#
+#
+# Detect the host OS distro/flavor and version
+#
+# Centos6: OSID=el6 OSID_FULL=centos6
+# Centos7: OSID=el7 OSID_FULL=centos7
+# RHEL6: OSID=el6 OSID_FULL=rhel6
+# RHEL7: OSID=el7 OSID_FULL=rhel7
+#
+#
+# shellcheck disable=SC2086
+
+_osid() {
+    (
+        SYS_RELEASE=/etc/system-release-cpe
+        OS_RELEASE=/etc/os-release
+        if [[ "$OSTYPE" =~ darwin ]]; then
+            OSID_FULL=$OSTYPE
+            OSID=darwin
+            OSINIT=launchctl
+        elif test -f $SYS_RELEASE && CPEID=$(cat $SYS_RELEASE); then
+            case "$CPEID" in
+                cpe:/o:centos:linux:6*)
+                    OSID_FULL=centos6
+                    OSID=el6
+                    OSINIT=sysvinit
+                    ;;
+                cpe:/o:centos:centos:7)
+                    OSID_FULL=centos7
+                    OSID=el7
+                    OSINIT=systemd
+                    ;;
+                cpe:/o:centos:centos:8)
+                    OSID_FULL=centos8
+                    OSID=el8
+                    OSINIT=systemd
+                    ;;
+                cpe:/o:redhat:enterprise_linux:6*)
+                    OSID_FULL=rhel6
+                    OSID=el6
+                    OSINIT=sysvinit
+                    ;;
+                cpe:/o:redhat:enterprise_linux:7*)
+                    OSID_FULL=rhel7
+                    OSID=el7
+                    OSINIT=systemd
+                    ;;
+                cpe:/o:redhat:enterprise_linux:8*)
+                    OSID_FULL=rhel8
+                    OSID=el8
+                    OSINIT=systemd
+                    ;;
+                cpe:/o:oracle:linux:6*)
+                    OSID_FULL=oel6
+                    OSID=el6
+                    OSINIT=sysvinit
+                    ;;
+                cpe:/o:oracle:linux:7*)
+                    OSID_FULL=oel7
+                    OSID=el7
+                    OSINIT=systemd
+                    ;;
+                cpe:/o:oracle:linux:8*)
+                    OSID_FULL=oel8
+                    OSID=el8
+                    OSINIT=systemd
+                    ;;
+                cpe:/o:amazon:linux:20*)
+                    OSID_FULL=amzn1
+                    OSID=amzn1
+                    OSINIT=sysvinit
+                    ;;
+                cpe:2.3:o:amazon:amazon_linux:2)
+                    OSID_FULL=amzn2
+                    OSID=amzn2
+                    OSINIT=systemd
+                    ;;
+                *)
+                    echo >&2 "ERROR: Unknown system release: $CPEID"
+                    exit 2
+                    ;;
+            esac
+            OSID_NAME="${OSID_FULL%[0-9]}"
+            OSID_VERSION="${OSID_FULL#$OSID_NAME}"
+            OSPKG=rpm
+        elif [ -f $OS_RELEASE ]; then
+            . $OS_RELEASE
+            case "$NAME" in
+                Alibaba\ Group\ Enterprise\ Linux\ Server)
+                    OSID_NAME=al
+                    OSID_VERSION="${VERSION%%.*}"    # 2 or 17
+                    OSID_FULL=${OSID_NAME}${OSID_VERSION} # eg, al17 or al2
+                    OSID=el${OSID_VERSION}
+                    OSINIT=systemd
+                    OSPKG=rpm
+                    ;;
+                *)
+                    case "$ID" in
+                        ubuntu)
+                            OSID_NAME="${ID:0:2}"
+                            OSID_VERSION=${VERSION_ID:0:2}
+                            OSID_FULL=${OSID_NAME}${OSID_VERSION}
+                            OSID=${OSID_FULL}
+                            [[ $OSID_VERSION -lt 16 ]] && OSINIT=upstart || OSINIT=systemd
+                            OSPKG=deb
+                            ;;
+                        alinux)
+                            OSID_NAME="${ID:0:2}"            # eg, 'al'
+                            OSID_VERSION="${VERSION%%.*}"    # 2 or 17
+                            OSID_FULL=${OSID_NAME}${OSID_VERSION} # eg, al17 or al2
+                            OSID="el7"
+                            OSINIT=systemd
+                            OSPKG=rpm
+                            ;;
+                        *)
+                            echo >&2 "ERROR: Unknown distro ID=$ID and NAME=\"$NAME\" is unrecognized"
+                            return 1
+                            ;;
+                    esac
+                    ;;
+            esac
+        else
+            echo >&2 "ERROR: Neither $SYS_RELEASE nor $OS_RELEASE found"
+            return 2
+        fi
+
+        [ $# -gt 0 ] || set -- --full
+
+        while [ $# -gt 0 ]; do
+            cmd="$1"
+            shift
+            case "$cmd" in
+                -h | --help)
+                    echo >&2 "$0 [-l|--like] [-a|--all] [-i|--init] [-f|--full] [-s|--split] [-p|--package]"
+                    return 1
+                    ;;
+                -l | --like) echo "$OSID" ;;
+                -i | --init) echo "$OSINIT" ;;
+                -a | --all) echo $OSID_FULL ;;
+                -f | --full) echo "$OSID" ;;
+                -s | --split) echo "$OSID" | sed -E -e 's/([a-z]+)([0-9]+)/\1 \2/g' ;;
+                -p | --package) echo $OSPKG ;;
+                -n | --name) echo "$VERSION_CODENAME";;
+                *)
+                    echo >&2 "Unknown option $cmd"
+                    return 1
+                    ;;
+            esac
+        done
+        return $?
+    )
+}
+
+if [[ ${#BASH_SOURCE[@]} -eq 1 ]] && [[ "$(basename "${BASH_SOURCE[0]}")" = "$(basename "$0")" ]]; then
+    DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    OSID_INIT=$(_osid --init)
+    case "$1" in
+        enable | disable)
+            case "${OSID_INIT}" in
+                systemd) systemctl $1 $2 ;;
+                upstart) update-rc.d $1 $2 ;;
+                sysvinit) [ "$1" = enable ] && chkconfig $2 on || chkconfig $2 off ;;
+                *)
+                    echo >&2 "Don't know how to $1 $2 on ${OSID_INIT}"
+                    exit 1
+                    ;;
+            esac
+            exit $?
+            ;;
+        start | stop | restart)
+            case "${OSID_INIT}" in
+                systemd) systemctl $1 $2 ;;
+                upstart) service $2 $1 ;;
+                sysvinit) /etc/init.d/$2 $1 ;;
+                *)
+                    echo >&2 "Don't know how to $1 $2 on ${OSID_NAME}"
+                    exit 1
+                    ;;
+            esac
+            exit $?
+            ;;
+        -t | -e)
+            exec ${DIR}/t/test_osid.sh "$@"
+            ;;
+    esac
+    _osid "$@"
+    exit $?
+fi
+
+# Sourced
+if [ -z "$OSID" ]; then
+    _VER=($(_osid -s))
+    OSID_NAME="${_VER[0]}"
+    OSID_VERSION="${_VER[1]}"
+    OSID="${OSID_NAME}${OSID_VERSION}"
+    unset _VER
+fi

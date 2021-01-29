@@ -1,0 +1,50 @@
+{
+    "StackName": "sharedinf",
+    "TemplateURL": "https://s3.us-west-2.amazonaws.com/xcrepo/cfn/sharedinf/sharedinfrastructure.yaml",
+    "UsePreviousTemplate": false,
+    "Parameters": [
+      {
+        "UsePreviousValue": false,
+        "ParameterKey": "vpccidr",
+        "ParameterValue": "10.101.0.0/16"
+      },
+      {
+        "UsePreviousValue": false,
+        "ParameterKey": "psharedacidr",
+        "ParameterValue": "10.101.32.0/20"
+      },
+      {
+        "UsePreviousValue": false,
+        "ParameterKey": "psharedbcidr",
+        "ParameterValue": "10.101.96.0/20"
+      },
+      {
+        "UsePreviousValue": false,
+        "ParameterKey": "psharedccidr",
+        "ParameterValue": "10.101.160.0/20"
+      },
+      {
+        "UsePreviousValue": false,
+        "ParameterKey": "pshareddcidr",
+        "ParameterValue": "10.101.224.0/20"
+      },
+      {
+        "UsePreviousValue": false,
+        "ParameterKey": "privateacidr",
+        "ParameterValue": "10.101.0.0/19"
+      },
+      {
+        "UsePreviousValue": false,
+        "ParameterKey": "privatebcidr",
+        "ParameterValue": "10.101.64.0/19"
+      },
+      {
+        "UsePreviousValue": false,
+        "ParameterKey": "deploynatgw",
+        "ParameterValue": "false"
+      }
+    ],
+    "Capabilities": [
+        "CAPABILITY_NAMED_IAM"
+    ]
+}

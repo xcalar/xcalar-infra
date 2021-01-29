@@ -1,0 +1,5 @@
+---
+- name: restart caddy
+  become: yes
+  become_user: xcalar
+  shell: XCE_WORKDIR=/var/tmp/xcalar-root /opt/xcalar/bin/supervisorctl -c /etc/xcalar/supervisor.conf "restart xcalar:caddy"

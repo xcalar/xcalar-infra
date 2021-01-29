@@ -1,0 +1,4 @@
+enableLicense: true
+enableLifecycle: true
+enableCloud: true
+enableDnsFailover: false

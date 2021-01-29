@@ -1,0 +1,14 @@
+{
+  "Name": "NetworkInterface Lister",
+  "Description": "Discover VM's that are cluster members.",
+  "Actions": [
+    "Microsoft.Network/networkInterfaces/*/read",
+    "Microsoft.Authorization/*/read",
+    "Microsoft.Resources/subscriptions/resourceGroups/read",
+    "Microsoft.Resources/subscriptions/resourceGroups/resources/read"
+  ],
+  "AssignableScopes": [
+    "/subscriptions/861014e9-bb2e-40ff-b6f6-85a511035bfd",
+    "/subscriptions/44415367-81c1-4f95-9b83-fd8e25bd2e8e"
+  ]
+}

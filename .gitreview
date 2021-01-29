@@ -1,0 +1,9 @@
+[gerrit]
+scheme=ssh
+host=gerrit.int.xcalar.com
+port=29418
+project=xcalar/xcalar-infra.git
+defaultbranch=master
+defaultremote=gerrit
+defaultrebase=1
+track=0

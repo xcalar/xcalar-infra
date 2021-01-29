@@ -1,0 +1,2 @@
+#!/bin/bash
+docker build --no-cache -f $XLRINFRADIR/ubm_perf/grafana/Dockerfile --rm -t ubm-perf-grafana-datasource $XLRINFRADIR

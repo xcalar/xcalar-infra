@@ -1,0 +1,2 @@
+#!/bin/bash
+docker build --no-cache -f $XLRINFRADIR/py_common/xc_stats/Dockerfile --rm -t xcalar-stats-plotter $XLRINFRADIR

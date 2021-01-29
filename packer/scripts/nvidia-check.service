@@ -1,0 +1,11 @@
+[Unit]
+Description=Load nvidia devices
+After=basic.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/bin/bash /usr/local/bin/nvidia-check.sh
+
+[Install]
+WantedBy=multi-user.target

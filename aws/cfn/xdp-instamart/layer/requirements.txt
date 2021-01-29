@@ -1,0 +1,13 @@
+attrs
+botocore
+boto3
+crhelper
+Flask
+Jinja2
+jmespath
+jsonpath-rw
+jsonpickle
+requests
+structlog
+transitions
+

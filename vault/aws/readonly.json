@@ -1,0 +1,28 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyData",
+      "Effect": "Deny",
+      "Action": [
+        "cloudformation:GetTemplate",
+        "dynamodb:GetItem",
+        "dynamodb:BatchGetItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "ec2:GetConsoleOutput",
+        "ec2:GetConsoleScreenshot",
+        "ecr:BatchGetImage",
+        "ecr:GetAuthorizationToken",
+        "ecr:GetDownloadUrlForLayer",
+        "kinesis:Get*",
+        "lambda:GetFunction",
+        "logs:GetLogEvents",
+        "s3:GetObject",
+        "sdb:Select*",
+        "sqs:ReceiveMessage"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

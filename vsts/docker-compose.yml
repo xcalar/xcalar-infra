@@ -1,0 +1,56 @@
+---
+version: '2'
+services:
+  vsts1:
+    image: microsoft/vsts-agent:ubuntu-14.04-docker-17.12.0-ce-standard
+    restart: on-failure
+    environment:
+      VSTS_ACCOUNT: xcalar
+      VSTS_TOKEN_FILE: /vsts-token
+      VSTS_WORK: /var/vsts/agent
+      VSTS_POOL: Default
+      VSTS_AGENT: vsts1
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock'
+      - './vsts-token:/vsts-token:ro'
+      - './work1:/var/vsts/agent'
+  vsts2:
+    image: microsoft/vsts-agent:ubuntu-14.04-docker-17.12.0-ce-standard
+    restart: on-failure
+    environment:
+      VSTS_ACCOUNT: xcalar
+      VSTS_TOKEN_FILE: /vsts-token
+      VSTS_WORK: /var/vsts/agent
+      VSTS_POOL: Default
+      VSTS_AGENT: vsts2
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock'
+      - './vsts-token:/vsts-token:ro'
+      - './work2:/var/vsts/agent'
+  vsts3:
+    image: microsoft/vsts-agent:ubuntu-14.04-docker-17.12.0-ce-standard
+    restart: on-failure
+    environment:
+      VSTS_ACCOUNT: xcalar
+      VSTS_TOKEN_FILE: /vsts-token
+      VSTS_WORK: /var/vsts/agent
+      VSTS_POOL: Default
+      VSTS_AGENT: vsts3
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock'
+      - './vsts-token:/vsts-token:ro'
+      - './work3:/var/vsts/agent'
+  vsts4:
+    image: microsoft/vsts-agent:ubuntu-14.04-docker-17.12.0-ce-standard
+    restart: on-failure
+    environment:
+      VSTS_ACCOUNT: xcalar
+      VSTS_TOKEN_FILE: /vsts-token
+      VSTS_WORK: /var/vsts/agent
+      VSTS_POOL: Default
+      VSTS_AGENT: vsts4
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock'
+      - './vsts-token:/vsts-token:ro'
+      - './work4:/var/vsts/agent'
+

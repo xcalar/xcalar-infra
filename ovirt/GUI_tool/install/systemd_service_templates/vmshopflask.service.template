@@ -1,0 +1,12 @@
+[Unit]
+Description=Flask server for vmshop
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5s
+User=@USER@
+ExecStart=/usr/bin/bash -x @XLRINFRADIR@/ovirt/GUI_tool/server/startServer.sh
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,44 @@
+---
+
+- hosts: all
+  become: True
+  vars:
+    dest_crt: /etc/xcalar/cert.crt
+    dest_key: /etc/xcalar/cert.key
+    certname: 'invalid'
+    src_crt: xcalar.cloud.crt
+    src_key: xcalar.cloud.key
+  tasks:
+  - name: Copy crt file
+    copy:
+      src: "{{ src_crt }}"
+      dest: "{{ dest_crt }}"
+      owner: root
+      group: xcalar
+      mode: '0644'
+      force: yes
+    register: crtf
+  - name: Copy key file
+    copy:
+      src: "{{ src_key }}"
+      dest: "{{ dest_key }}"
+      owner: root
+      group: xcalar
+      mode: '0640'
+      force: yes
+    register: keyf
+  - name: Configure Caddyfile
+    lineinfile:
+      state: present
+      backup: yes
+      path: /etc/xcalar/Caddyfile
+      regexp: '^(\s*)tls .*$'
+      line: '\1tls {{ dest_crt }} {{ dest_key }}'
+      backrefs: yes
+    register: caddyf
+  - name: Reload caddy
+    command: pkill -USR1 caddy
+    when: crtf.changed or keyf.changed or caddyf.changed
+
+
+# vim: ft=yaml.ansible

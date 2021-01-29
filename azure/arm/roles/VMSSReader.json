@@ -1,0 +1,11 @@
+{
+    "Name": "VMSS Reader",
+    "IsCustom": true,
+    "Description": "For dynamic cluster discovery. Let's a VMSS discover the other members in the scale-set.",
+    "Actions": [
+        "Microsoft.Compute/virtualMachineScaleSets/*/read"
+    ],
+    "AssignableScopes": [
+        "/subscriptions/${ARM_SUBSCRIPTION_ID}"
+    ]
+}

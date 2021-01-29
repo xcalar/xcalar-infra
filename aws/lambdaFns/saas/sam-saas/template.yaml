@@ -1,0 +1,394 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Xcalar Cluster Serverless Application\nSAM Template for sam-cluster\n
+Globals:
+  Function:
+    Timeout: 300
+
+Parameters:
+  Domain:
+    Type: String
+    Default: 'test.xcalar.cloud'
+  UserTable:
+    Type: String
+    Default: 'saas_user'
+  BillingTable:
+    Type: String
+    Default: 'saas_billing'
+  SessionTable:
+    Type: String
+    Default: 'saas-auth-session-table'
+  CredsTable:
+    Type: String
+    Default: 'saas-auth-creds-table'
+  UserStackPrefix:
+    Type: String
+    Default: 'saas-test'
+  Role:
+    Type: String
+    Default: 'arn:aws:iam::${AWS::AccountId}:role/AWSCloudFormationAdmin'
+  StackName:
+    Type: String
+    Default: ''
+  Region:
+    Type: String
+    Default: 'us-west-2'
+  SSMKey:
+    Type: String
+    Default: '/xcalar/cloud/cfn/template_url'
+
+Resources:
+  LibLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: sam-saas-lib
+      Description: A set of code shared across functions within sam-saas
+      ContentUri: lib/
+      CompatibleRuntimes:
+        - python3.6
+  ClusterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/cluster
+      Handler: cluster.lambda_handler
+      Runtime: python3.6
+      Layers:
+        - !Ref LibLayer
+      Events:
+        StartCluster:
+          Type: Api
+          Properties:
+            Path: /cluster/start
+            Method: post
+        StartClusterOption:
+          Type: Api
+          Properties:
+            Path: /cluster/start
+            Method: options
+        StopCluster:
+          Type: Api
+          Properties:
+            Path: /cluster/stop
+            Method: post
+        StopClusterOption:
+          Type: Api
+          Properties:
+            Path: /cluster/stop
+            Method: options
+        GetClusterUrl:
+          Type: Api
+          Properties:
+            Path: /cluster/get
+            Method: post
+        GetClusterUrlOption:
+          Type: Api
+          Properties:
+            Path: /cluster/get
+            Method: options
+      Environment:
+        Variables:
+          USER_TABLE:
+              Ref: UserTable
+          BILLING_TABLE:
+              Ref: BillingTable
+          SESSION_TABLE:
+              Ref: SessionTable
+          CREDS_TABLE:
+              Ref: CredsTable
+          CFN_ROLE_ARN:
+              Ref: Role
+          DOMAIN:
+              Ref: Domain
+          REGION:
+              Ref: Region
+          SSM_KEY:
+              Ref: SSMKey
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cloudformation:UpdateStack
+              Resource:
+                !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${UserStackPrefix}-*'
+            - Effect: Allow
+              Action:
+                - cloudformation:DescribeStacks
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:PutItem
+                - dynamodb:UpdateItem
+              Resource:
+                !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${UserTable}'
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+              Resource:
+                !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${BillingTable}'
+            - Effect: Allow
+              Action:
+                - dynamodb:UpdateItem
+                - dynamodb:GetItem
+              Resource:
+                !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${SessionTable}'
+            - Effect: Allow
+              Action:
+                - dynamodb:UpdateItem
+                - dynamodb:GetItem
+              Resource:
+                !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${CredsTable}'
+            - Effect: Allow
+              Action:
+                - iam:PassRole
+              Resource:
+                !Sub '${Role}'
+            - Effect: Allow
+              Action:
+                - ec2:DescribeInstances
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - cognito-identity:GetCredentialsForIdentity
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - ssm:GetParameter
+              Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SSMKey}'
+  BillingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/billing
+      Handler: billing.lambda_handler
+      Runtime: python3.6
+      Layers:
+        - !Ref LibLayer
+      Events:
+        GetCredit:
+          Type: Api
+          Properties:
+            Path: /billing/get
+            Method: post
+        GetCreditOptions:
+          Type: Api
+          Properties:
+            Path: /billing/get
+            Method: options
+        UpdateCredit:
+          Type: Api
+          Properties:
+            Path: /billing/update
+            Method: post
+        UpdateCreditOptions:
+          Type: Api
+          Properties:
+            Path: /billing/update
+            Method: options
+        DeductCredit:
+          Type: Api
+          Properties:
+            Path: /billing/deduct
+            Method: post
+        DeductCreditOptions:
+          Type: Api
+          Properties:
+            Path: /billing/deduct
+            Method: options
+      Environment:
+        Variables:
+          USER_TABLE:
+              Ref: UserTable
+          BILLING_TABLE:
+              Ref: BillingTable
+          SESSION_TABLE:
+              Ref: SessionTable
+          CREDS_TABLE:
+              Ref: CredsTable
+          DOMAIN:
+              Ref: Domain
+          REGION:
+              Ref: Region
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cloudformation:DescribeStacks
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - ec2:DescribeInstances
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+              Resource:
+                !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${UserTable}'
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+                - dynamodb:Query
+              Resource:
+                !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${BillingTable}'
+            - Effect: Allow
+              Action:
+                - dynamodb:UpdateItem
+                - dynamodb:GetItem
+              Resource:
+                !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${SessionTable}'
+            - Effect: Allow
+              Action:
+                - dynamodb:UpdateItem
+                - dynamodb:GetItem
+              Resource:
+                !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${CredsTable}'
+  S3Function:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/s3/
+      Handler: s3.lambda_handler
+      Runtime: python3.6
+      Layers:
+        - !Ref LibLayer
+      Events:
+        UploadFileUrl:
+          Type: Api
+          Properties:
+            Path: /s3/uploadurl
+            Method: post
+        UploadFileUrlOptions:
+          Type: Api
+          Properties:
+            Path: /s3/uploadurl
+            Method: options
+        DeleteFile:
+          Type: Api
+          Properties:
+            Path: /s3/delete
+            Method: post
+        DeleteFileOptions:
+          Type: Api
+          Properties:
+            Path: /s3/delete
+            Method: options
+        BucketInfo:
+          Type: Api
+          Properties:
+            Path: /s3/describe
+            Method: post
+        BucketInfoOptions:
+          Type: Api
+          Properties:
+            Path: /s3/describe
+            Method: options
+        PutCORSConfiguration:
+          Type: Api
+          Properties:
+            Path: /s3/corsconfig
+            Method: post
+        PutCORSConfigurationOptions:
+          Type: Api
+          Properties:
+            Path: /s3/corsconfig
+            Method: options
+      Environment:
+        Variables:
+          USER_TABLE:
+              Ref: UserTable
+          SESSION_TABLE:
+              Ref: SessionTable
+          CREDS_TABLE:
+              Ref: CredsTable
+          DOMAIN:
+              Ref: Domain
+          REGION:
+              Ref: Region
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cloudformation:DescribeStacks
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+              Resource:
+                !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${UserTable}'
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+                - s3:DeleteObject
+                - s3:PutBucketCORS
+              Resource:
+                !Sub 'arn:aws:s3:::${UserStackPrefix}*' # For test only
+            - Effect: Allow
+              Action:
+                - dynamodb:UpdateItem
+                - dynamodb:GetItem
+              Resource:
+                !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${SessionTable}'
+            - Effect: Allow
+              Action:
+                - dynamodb:UpdateItem
+                - dynamodb:GetItem
+              Resource:
+                !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${CredsTable}'
+  ConfigFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/config/
+      Handler: config.lambda_handler
+      Runtime: python3.6
+      Layers:
+        - !Ref LibLayer
+      Events:
+        GetConfig:
+          Type: Api
+          Properties:
+            Path: /config
+            Method: get
+  LambdaConfigurationInformation:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/xcalar/cloud/main/${StackName}'
+      Type: String
+      Value: !Join
+        - ''
+        - - "XCE_SAAS_MAIN_LAMBDA_URL="
+          - https://
+          - !Ref ServerlessRestApi
+          - ".execute-api."
+          - !Ref AWS::Region
+          - ".amazonaws.com/Prod\n"
+
+Outputs:
+  SaaSApi:
+    Description: API Gateway endpoint URL for Prod stage for SaaS function
+    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/v1/'
+  ClusterFunction:
+    Description: Cluster Lambda Function ARN
+    Value: !GetAtt 'ClusterFunction.Arn'
+  ClusterFunctionIamRole:
+    Description: Implicit IAM Role created for Cluster function
+    Value: !GetAtt 'ClusterFunctionRole.Arn'
+  BillingFunction:
+    Description: Billing Lambda Function ARN
+    Value: !GetAtt 'BillingFunction.Arn'
+  BillingFunctionIamRole:
+    Description: Implicit IAM Role created for Billing function
+    Value: !GetAtt 'BillingFunctionRole.Arn'
+  S3Function:
+    Description: S3 Lambda Function ARN
+    Value: !GetAtt 'S3Function.Arn'
+  S3FunctionIamRole:
+    Description: Implicit IAM Role created for S3 function
+    Value: !GetAtt 'S3FunctionRole.Arn'
+  ConfigFunction:
+    Description: Config Lambda Function ARN
+    Value: !GetAtt 'ConfigFunction.Arn'
+  ConfigFunctionIamRole:
+    Description: Implicit IAM Role created for S3 function
+    Value: !GetAtt 'ConfigFunctionRole.Arn'
+

@@ -1,0 +1,21 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "NotAction": [
+                "organizations:*",
+                "iam:CreateUser",
+                "iam:CreateGroup",
+                "iam:DeleteUser",
+                "iam:DeleteGroup"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": "organizations:DescribeOrganization",
+            "Resource": "*"
+        }
+    ]
+}

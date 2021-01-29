@@ -1,0 +1,10 @@
+--- ./libunwind-1.3-rc1-orig/include/config.h	2018-01-25 23:54:12.036688077 -0800
++++ ./libunwind-1.3-rc1/include/config.h	2018-01-24 14:38:50.522679413 -0800
+@@ -188,6 +188,7 @@
+ 
+ /* Define to 1 if __thread keyword is supported by the C compiler. */
+ /* #undef HAVE___THREAD */
++#define HAVE___THREAD 1
+ 
+ /* Define to the sub-directory in which libtool stores uninstalled libraries.
+    */

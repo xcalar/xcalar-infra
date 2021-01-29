@@ -1,0 +1,10 @@
+--- require.js  2018-10-02 16:27:35.000000000 -0700
++++ require.js.modified 2018-10-02 16:11:13.000000000 -0700
+@@ -1812,7 +1812,7 @@
+     /**
+      * Export require as a global, but only if it does not already exist.
+      */
+-    if (!require) {
++    if (!require || (require && nw)) {
+         require = req;
+     }

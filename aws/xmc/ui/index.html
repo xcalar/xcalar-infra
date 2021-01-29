@@ -1,0 +1,222 @@
+<HTML>
+<link rel="stylesheet" type="text/css" href="style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+<body onload="xmc();">
+    <div id="xcmDiv">
+        <div class="HEADER">
+            <span class="main-title">XCALAR MANAGEMENT CONSOLE</span>
+        </div>
+        <div class="xcm-inner-div">
+            <div class="cluster-content inner-container">
+                <div class="cluster-content-header band">
+                    <div class="cShowHide">
+                        <div class="show-hide-clusters icon-xi-up font-button-show-hide"></div>
+                    </div>
+                    <div class="cTitle content-caption">Cluster Management</div>
+                </div>
+                <div class="cluster-content-wrapper cluster-panel">
+                    <div class="cluster-content-subHeader band">
+
+                        <div class="licensed-nodes band text-style-1">Licensed Nodes: (0/0)</div>
+                        <div class="update-license-btn">
+                            <span class="update-license-btn-text">UPDATE LICENSE</span>
+                        </div>
+                    </div>
+                    <div class="cluster-content-sub-subHeader band">
+                        <div class="provision-cluster-button">
+                            <div class="cShowHide">
+                                <div class="show-hide-clusters icon-xi-plus font-button-plus"></div>
+                            </div>
+                            <span class="provision-cluster-button-text">PROVISION NEW CLUSTER</span>
+                        </div>
+                        <div class="cluster-action-wrapper">
+                        </div>
+                    </div>
+                    <div id="cList">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="xcm-inner-div">
+            <div class="cluster-content inner-container">
+                <div class="cluster-content-header band">
+
+                    <div class="cShowHide">
+                        <div class="icon-xi-down show-hide-settings font-button-show-hide"></div>
+                    </div>
+                    <div class="cTitle content-caption">Settings</div>
+                </div>
+                <div class="cluster-content-wrapper settings-panel">
+                    <div class="default-values band">
+                        <div class="licensed-nodes band">Default Values</div>
+                    </div>
+                    <div class="setting">
+                        <div class="settings-group-label">
+                            <div class="installer-settings-content">
+                            </div>
+                        </div>
+                        <div class="band-space">
+                            <div id="btnSaveSettings" class="save-settings-button">
+                                <span class="provision-cluster-button-text">SAVE SETTINGS</span>
+                            </div>
+                            <div id="btnRestorePrevious" class="restore-previous-button">
+                                <span>RESTORE PREVIOUS</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="cluster-provision-dialog modal-dialog">
+            <div class="setting">
+                <div class="auth-settings">
+                    <div class="dialog-header band-center">
+                        <div>Provision New Cluster</div>
+                        <div class="close-button icon-xi-close22"></div>
+                    </div>
+                    <div class="provision-model-content">
+                        <div class="band cluster-provision-content">
+                            <div class="icon-xi-help cluster-help-icon"></div>
+                            <div class="cluster-text">Cluster Name:</div>
+                            <div>
+                                <input id="pClusterName" class="cluster-input" type="text">
+                            </div>
+                        </div>
+                        <div class="band cluster-provision-content">
+                            <div class="icon-xi-help cluster-help-icon"></div>
+                            <div class="cluster-text"># of Nodes:</div>
+                            <div>
+                                <input id="pNumberOfNodes" class="cluster-input2" type="text">
+                            </div>
+                            <div class="max-10">(max 10)</div>
+                        </div>
+                        <div class="band cluster-provision-content">
+                            <div class="icon-xi-help cluster-help-icon"></div>
+                            <div class="cluster-text">Instance Type:</div>
+                            <div class="cluster-instance-type">
+                            </div>
+                        </div>
+                        <div class="band cluster-provision-content">
+                            <div class="icon-xi-help cluster-help-icon"></div>
+                            <div class="cluster-text">Xcalar Version:</div>
+                            <div class="cluster-data ">1.4.1</div>
+                        </div>
+                    </div>
+                    <div id="btnModalProvision" class="provisionDlgButton">
+                        <span class="provision-cluster-button-text">Provision Cluster</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="cluster-detail-dialog modal-dialog">
+            <div class="setting">
+                <div class="auth-settings">
+                    <div class="dialog-header band-center">
+                        <div>View Configuration</div>
+                        <div class="close-button icon-xi-close22"></div>
+                    </div>
+                    <div class="detail-model-content">
+                        <div class="band cluster-detail-item">
+                            <div class="cluster-detail-key font-dialog-key">Status:</div>
+                            <div class="cluster-detail-value font-dialog-value cluster-detail-status">Running</div>
+                            <div class="icon-xi-success generic-right-icon cluster-detail-status-icon"></div>
+                        </div>
+                        <div class="band cluster-detail-item">
+                            <div class="cluster-detail-key font-dialog-key">Uptime:</div>
+                            <div class="cluster-detail-value font-dialog-value cluster-detail-uptime">3 days, 5 hours, 20 minutes</div>
+                        </div>
+                        <div class="band cluster-detail-item-list node-list-container">
+                            <div class="cluster-detail-key font-dialog-key">Number of Nodes:</div>
+                            <div class="cluster-detail-value font-dialog-valuec2 cluster-detail-nodes">4</div>
+                            <div class="icon-xi-arrow-down open-close-nodes cluster-detail-list-nodes cluster-nodes-expand"></div>
+                        </div>
+
+                        <div class="band cluster-detail-item-list2 font-dialog-valuec2">
+                            <div class="node-list">
+                            </div>
+                        </div>
+                        <div class="band cluster-detail-item">
+                            <div class="cluster-detail-key font-dialog-key">Xcalar Version:</div>
+                            <div class="cluster-detail-value font-dialog-value cluster-detail-version">N/A</div>
+                        </div>
+                        <div class="band cluster-detail-item">
+                            <div class="cluster-detail-key font-dialog-key">Installer URL:</div>
+                            <div class="cluster-detail-value font-dialog-value cluster-detail-url">N/A</div>
+                        </div>
+                        <div class="band cluster-detail-item">
+                            <div class="cluster-detail-key font-dialog-key">Xcalar Root:</div>
+                            <div class="cluster-detail-value font-dialog-value cluster-detail-root">N/A</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="license-dialog modal-dialog">
+            <div class="dialog-header band-center">
+                <div>Update Xcalar License</div>
+                <div class="close-button icon-xi-close22"></div>
+            </div>
+            <div>
+                <div class="dialog-inner-content license-info">
+                    <div class="default-values band your-xcalar-license-div">
+                        <div class="licensed-nodes band">Your Xcalar License</div>
+                    </div>
+                    <div class="band license-text-container">
+                        <textarea id="license-text" class="text-area settingWidget">
+                            LIcense Comes Here
+                        </textarea>
+                    </div>
+                    <div class="band-center license-buttons-div">
+
+                        <div class="modal-button-white license-update-button">
+                            <span class="update-license-btn-text">UPDATE</span>
+                        </div>
+                        <div class="modal-button-blue license-preview-button">
+                            <span class="provision-cluster-button-text">PREVIEW</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="license-preview">
+                    <div class="license-details-caption">License Details</div>
+                    <div class="license-details-data licensed-to">Licensed To: Xcalar, Inc.</div>
+                    <div class="license-details-data number-of-nodes">Number of Nodes: 3</div>
+                    <div class="license-details-data license-expiration">Expiration: 12/12/2034</div>
+                </div>
+            </div>
+        </div>
+        <div class="message-dialog ">
+            <div class="setting">
+                <div class="auth-settings">
+                    <div class="dialog-header band-center">
+                        <div class="message-dialog-header">ERROR_HEADER</div>
+                    </div>
+                    <div class="detail-model-content">
+                        <div class="band cluster-detail-item">
+                            <div class="message-dialog-content">ERROR_TEXT></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="band-center message-buttons-div">
+                    <div class="modal-button-blue close-message-dialog">
+                        <span class="provision-cluster-button-text">OK</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="ajax_loading"></div>
+        <div id="lock_background"></div>
+        <div id="lock_background_trans"></div>
+        <div id="hintBox">URL of the Xcalar installer. Needs to be bluh bluh and bluh</div>
+        <div class="include" fileName="licenseDialog.html"></div>
+    </div>
+</body>
+</HTML>
+<script src="pako.js"></script>
+<script src="customSelect.js"></script>
+<script src="utils.js"></script>
+<script src="data.js"></script>
+<script src="settings_data.js"></script>
+<script src="ui.js"></script>
+<script src="client.js"></script>

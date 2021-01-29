@@ -1,0 +1,64 @@
+#!/bin/bash
+#set -x
+_env_script="${BASH_SOURCE[0]}"
+_env_0="$0"
+
+env_sourced()  {
+    [[ "$(basename "$BASH_SOURCE")" != "$(basename $(readlink -f "$0"))" ]]
+}
+
+env_load()  {
+    local this_dir
+    if this_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; then
+        export XLRINFRADIR="$this_dir"
+        if [ -z "${PIPENV_ACTIVE:-}" ]; then
+            if [ -n "${VIRTUAL_ENV}" ]; then
+                deactivate 2>/dev/null || true
+            fi
+            (cd $XLRINFRADIR && make -s venv)
+            . $XLRINFRADIR/.venv/bin/activate
+        fi
+        local script_names ii
+        export PATH="$XLRINFRADIR/bin:$XLRINFRADIR/azure:$XLRINFRADIR/aws:$XLRINFRADIR/gce:$PATH"
+        script_names="infra-sh-lib azure-sh-lib aws-sh-lib gce-sh-lib"
+        for ii in $script_names; do
+            echo >&2 "Sourcing ${ii} ..."
+            if ! source "${ii}"; then
+                echo >&2 " -> Failed to source ${ii}"
+                return 1
+            fi
+        done
+    else
+        echo >&2 "Failed to cd to $(dirname "${BASH_SOURCE[0]}")!"
+        set +x
+        return 1
+    fi
+    set +x
+}
+
+# When a script is sourced, you can use this function to get the caller / origin
+env_script_file()  {
+    echo "${BASH_SOURCE[-1]}"
+}
+
+env_script_dir()  {
+    local this_script="$(env_script_file)"
+    echo "$(cd "$(dirname "$this_script")" && pwd)"
+}
+
+env_debug()  {
+    echo "NARGS: $#"
+    echo "ARGS: $*"
+
+    echo "\$0: $0"
+    echo "\$BASH_SOURCE: $BASH_SOURCE"
+    echo "\${BASH_SOURCE[0]}: ${BASH_SOURCE[0]}"
+    echo "\${BASH_SOURCE[-1]} ${BASH_SOURCE[-1]}"
+
+    echo "env_script_file: $(env_script_file)"
+    echo "env_script_dir: $(env_script_dir)"
+    echo "_env_script: $_env_script"
+    echo "env_sourced: $(env_sourced && echo true || echo false)"
+}
+
+env_load

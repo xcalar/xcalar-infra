@@ -1,0 +1,3 @@
+ca_pem_src: trusted-user-ca-keys.pem
+ca_pem_dest: /etc/ssh/trusted-user-ca-keys.pem
+sshd_config: /etc/ssh/sshd_config

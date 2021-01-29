@@ -1,0 +1,6 @@
+[xcalar-ius-mirror]
+name=Xcalar IUS $releasever Mirror Repository
+baseurl=@URL@/$releasever/ius
+enabled=1
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Xcalar-IUS-Mirror

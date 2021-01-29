@@ -1,0 +1,8 @@
+{
+    "ldap_uri":"ldap://ldap.azure.xcalar.io:389",
+    "userDN":"mail=%username%,ou=People,dc=xcalar,dc=com",
+    "useTLS":false,
+    "searchFilter":"(memberof=cn=xceUsers,ou=Groups,dc=xcalar,dc=com)",
+    "activeDir":false,
+    "ldapConfigEnabled":true
+}

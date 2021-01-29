@@ -1,0 +1,28 @@
+---
+- import_playbook: trial.yml
+
+#- name: Copy new cert
+#  hosts: all
+#
+#  vars:
+#     local_home: "{{ lookup('env','HOME') }}"
+#     xlrinfradir: "{{ lookup('env', 'XLRINFRADIR') }}"
+#
+#  handlers:
+#    - name: yum-clean-metadata
+#      command: yum clean metadata
+#      args:
+#        warn: no
+#
+#  tasks:
+#    - name: Setting route53 {{ vars.desired_name }} to point to {{ vars.given_name }}
+#      become: false
+#      local_action: "shell jinja2 route53.json.j2 -D NAME={{ vars.desired_name }} -D CNAME={{ vars.given_name }} -D AWS_HOSTED_ZONE_ID={{ vars.hosted_zone }} > route53.json"
+#
+#    - name: Configure Route53
+#      become: false
+#      local_action: "shell aws route53 change-resource-record-sets --cli-input-json file://./route53.json > route53-response.json"
+#
+#
+#
+#

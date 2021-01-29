@@ -1,0 +1,2 @@
+#!/bin/bash
+exec docker run --detach --init --restart always --name jdq-grafana-datasource --hostname jdq-grafana-datasource -p 3333:80 jdq-grafana-datasource

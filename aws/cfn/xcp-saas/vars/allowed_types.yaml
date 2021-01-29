@@ -1,0 +1,9 @@
+instance_default: r5d.xlarge
+instance_types:
+  - r5d.xlarge
+  - r5d.2xlarge
+  - r5d.4xlarge
+  - r5d.8xlarge
+  - r5d.12xlarge
+  - r5d.16xlarge
+  - r5d.24xlarge

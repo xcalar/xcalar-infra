@@ -1,0 +1,46 @@
+#!/bin/bash
+
+MODE=ssh
+
+while [ $# -gt 0 ]; do
+    cmd="$1"
+    shift
+    case "$cmd" in
+        --host-port) MODE=host_port ;;
+        --ssh) MODE=ssh ;;
+        --) break ;;
+        -*)
+            echo >&2 "ERROR: Invalid command-line $cmd"
+            exit 1
+            ;;
+        *)
+            set -- "$cmd" "$@"
+            break
+            ;;
+    esac
+done
+
+rc=0
+for ii in "$@"; do
+    SERVICE="${ii}.service.consul"
+    declare -a SSH=()
+    if ! SRV=($(dig SRV $SERVICE +short | head -1)) || [ "${#SRV[@]}" -eq 0 ]; then
+        rc=1
+        echo >&2 "ERROR: Unable to find SRV entry for $SERVICE"
+    else
+        PORT=${SRV[2]}
+        HOST=${SRV[3]}
+        case "$MODE" in
+            ssh)
+                echo "-p ${PORT} ${HOST%.}"
+                ;;
+            host_port)
+                echo "${HOST%.} ${PORT}"
+                ;;
+            *)
+                echo >&2 "ERROR: Unknown MODE=$MODE"
+                exit 1
+                ;;
+        esac
+    fi
+done

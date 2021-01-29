@@ -1,0 +1,119 @@
+variables:
+  today: '{{ isotime "20060102" }}'
+  instance_name: 'xcalar'
+  role: 'xcalar'
+  cluster: 'xcalar'
+  owner: 'azureuser'
+  cloud: azure
+  location: westus2
+  osid: el7
+  domain: azure.xcalar.io
+  home: '{{env `HOME`}}'
+  puppet_src: '{{ env `HOME` }}/puppet'
+  image_name: '{{ user `instance_name` }}-{{user `osid`}}-{{user `version`}}-{{user `build_number`}}-{{user `image_build_number`}}-{{user `today`}}'
+  installer_url: '{{env `INSTALLER_URL` }}'
+  disk_size: '30'
+  version: '{{env `VERSION`}}'
+  build_number: '1'
+  image_build_number: '1'
+  client_id: '{{ env `ARM_CLIENT_ID` }}'
+  client_secret: '{{ env `ARM_CLIENT_SECRET` }}'
+  subscription_id: '{{ env `ARM_SUBSCRIPTION_ID` }}'
+  tenant_id: '{{ env `ARM_TENANT_ID` }}'
+  shared_image_gallery_resource_group: xcimages
+  shared_image_gallery: sharedimages
+  shared_image_name: '{{user `instance_name`}}'
+  virtual_network_resource_group_name: xcalardev-rg
+  virtual_network_name: xcalardev-vnet
+  virtual_network_subnet_name: jenkins-subnet
+builders:
+  - type: azure-arm
+    name: azure-arm-el7
+    client_id: '{{ user `client_id` }}'
+    client_secret: '{{ user `client_secret` }}'
+    subscription_id: '{{ user `subscription_id` }}'
+    tenant_id: '{{ user `tenant_id` }}'
+    #shared_image_gallery_destination:
+    #  resource_group: '{{user `shared_image_gallery_resource_group`}}'
+    #  gallery_name: '{{user `shared_image_gallery`}}'
+    #  image_name: '{{user `shared_image_name`}}'
+    #  image_version: '{{user `version`}}'
+    #  replication_regions:
+    #    - '{{user `location`}}'
+    #shared_image_gallery_timeout: '180m'  # yes, 3 hours
+    managed_image_name: '{{ user `image_name`}}'
+    managed_image_resource_group_name: '{{user `shared_image_gallery_resource_group`}}'
+    os_type: Linux
+    image_publisher: OpenLogic
+    image_offer: CentOS-CI
+    image_sku: "7-CI"
+    ssh_username: '{{user `owner`}}'
+    ssh_private_key_file: '{{template_dir}}/../ssh/id_packer.pem'
+    ssh_pty: true
+    azure_tags:
+      Name: '{{ user `image_name`}}'
+      OS: '{{ user `osid`}}'
+      Author: Packer SP
+      version: '{{user `version`}}'
+      build_number: '{{user `build_number`}}'
+      image_build_number: '{{user `image_build_number`}}'
+    os_disk_size_gb: '{{user `disk_size`}}'
+    location: '{{user `location`}}'
+    vm_size: Standard_D8_v3
+    async_resourcegroup_delete: true
+    virtual_network_resource_group_name: '{{user `virtual_network_resource_group_name`}}'
+    virtual_network_name: '{{user `virtual_network_name`}}'
+    virtual_network_subnet_name: '{{user `virtual_network_subnet_name`}}'
+provisioners:
+  - type: shell-local
+    inline:
+      - ulimit -Ss 8192; cd {{ user `puppet_src` }} && make puppet.tar.gz
+  - type: shell
+    inline:
+      - mkdir /tmp/scripts
+  - type: file
+    source: '{{ user `puppet_src` }}/puppet.tar.gz'
+    destination: /tmp/scripts/
+    generated: true
+  - type: file
+    source: '{{ template_dir }}/../scripts/run-puppet.sh'
+    destination: /tmp/scripts/
+  - type: file
+    source: '{{ template_dir }}/../scripts/generalize.sh'
+    destination: /tmp/scripts/
+  - type: shell
+    environment_vars:
+      - OSID={{user `osid`}}
+      - FACTER_owner={{user `owner`}}
+      - FACTER_role={{user `role`}}
+      - FACTER_cluster={{user `cluster`}}
+      - FACTER_datacenter={{user `cloud`}}-{{user `location`}}
+      - FACTER_cloud={{user `cloud`}}
+      - CLOUD={{user `cloud`}}
+      - MYHOSTNAME={{user `image_name`}}.{{user `domain`}}
+      - PUPPET_TAR=/tmp/scripts/puppet.tar.gz
+      - NODISABLE=puppet
+      - RELEASEVER=7
+      - EPHEMERAL='{{ user `ephemeral`}}'
+      - VERSION={{user `version`}}
+      - "INSTALLER_URL={{user `installer_url`}}"
+      - "PS4=# ${BASH_SOURCE}:${LINENO}: ${FUNCNAME[0]}() - [${SHLVL},${BASH_SUBSHELL},$?] "
+    execute_command: '{{ .Vars }} sudo -E /bin/bash {{.Path}}'
+    skip_clean: true
+    inline:
+      - set -x
+      - cd /tmp/scripts
+      - if BADG=$(getent group 999 | cut -d':' -f1); then if [ -n "$BADG" ]; then BADF=$(find /dev -gid 999); groupmod -g 499 $BADG; chgrp 499 ${BADF}; fi; fi
+      - groupadd -o -r -g 999 docker
+      - yum update -y
+      - bash -x run-puppet.sh --cloud "{{user `cloud`}}" --role "{{user `role`}}" --datacenter "{{user `datacenter`}}" --region "{{user `location`}}"
+      - if mountpoint /ephemeral/data; then export TMPDIR=/ephemeral/data/tmp; else export TMPDIR=/tmp/1; fi
+      - mkdir -m 1777 $TMPDIR
+      - if test -n "$INSTALLER_URL"; then curl -sfSL "$INSTALLER_URL" -o $TMPDIR/installer.sh && bash -x $TMPDIR/installer.sh --nostart; fi
+      - if ! rpm -q cloud-init; then if rpm -q ephemeral-disk; then systemctl enable ephemeral-disk || true; fi; fi
+      - bash -x generalize.sh
+      - /usr/sbin/waagent -force -deprovision
+      - cd / && rm -rfv /tmp/scripts
+      - export HISTSIZE=0 && sync
+post-processors:
+  - type: manifest

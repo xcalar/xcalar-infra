@@ -1,0 +1,2 @@
+#!/bin/bash
+exec docker run --detach --init --restart always --name sql-perf-grafana-datasource --hostname sql-perf-grafana-datasource -p 3331:80 -v /netstore/qa/jenkins/SqlScaleTest:/netstore/qa/jenkins/SqlScaleTest -v /netstore/qa/sqlPerfCompare:/netstore/qa/sqlPerfCompare sql-perf-grafana-datasource

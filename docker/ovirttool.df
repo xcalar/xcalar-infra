@@ -1,0 +1,12 @@
+FROM ub14-build
+
+RUN apt-get update \
+    && apt-get install -f -y libcurl4-openssl-dev \
+    && pip3 install ovirt-engine-sdk-python \
+    && pip3 install paramiko \
+    && pip3 install requests \
+    && pip3 install future
+
+ENTRYPOINT ["/opt/xcalar/bin/python3"]
+
+CMD ["ovirt/ovirttool.py"]

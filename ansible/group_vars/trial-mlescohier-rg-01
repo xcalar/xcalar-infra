@@ -1,0 +1,5 @@
+ansible_user: mlescohier
+ansible_ssh_pass: wQ27j7GU
+given_name: trial-mlescohier-01.westus2.cloudapp.azure.com
+desired_name: xdp-preview-104.xcalar.io.
+

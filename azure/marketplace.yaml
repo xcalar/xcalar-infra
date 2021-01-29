@@ -1,0 +1,327 @@
+Title: Xcalar Data Platform
+Summary: Data analytics at unprecedented simplicity, speed and scale
+Long Summary: 'Xcalar dramatically simplifies and unifies your approach to modern
+  data analysis for a wide range of users: Data Engineers, Data Scientists, Business
+  Analysts, and DBAs.'
+Description: '<p><b>Request for a trial license</b><br />Contact Xcalar at <a href="mailto:info@xcalar.com">info@xcalar.com</a>
+  for a trial license</p><p>&emsp; Xcalar is the first business analytics platform
+  to enable Fundamental Discovery&#8482; of meaningful insights directly from petabytes
+  of data. Xcalar uniquely extends relational compute on a scale-out platform for
+  modern data. It allows businesses to discover insights simply not possible otherwise.
+  Xcalar''s unprecedented speed, scale, simplicity, and efficiency brings orders of
+  magnitude reduction in the time needed to gain business insights regardless of the
+  size and complexity of the dataset. Xcalar does not require any data prep or data
+  shuffling before it begins analysis, nor does it need to move data due to its patent-pending
+  True Data In Place&#8482; technology. Xcalar delivers the fastest time-to-insight
+  on the market.</p>
+
+  <p>&emsp; Xcalar is designed for general purpose processing and analytics. It supports
+  the next generation of big data applications and Business Intelligence (BI) tools.
+  Data cleansing, transformation, enrichment, and creation of algorithms and dataflows
+  are achieved by iterating through the data model using Xcalar Design -- a single
+  intuitive GUI. Xcalar Design eliminates the use of complex and inefficient programming
+  languages, such as HIVE, Pig, and Scala. Xcalar reduces time-to-value from months
+  to hours while showing your entire data lineage.</p>
+
+  <p>&emsp; Data engineers and business analysts can carry out interactive data exploration
+  on hundreds of billions of rows with ease and work on data cleansing, data quality
+  and data preparation in a highly efficiently manner. Data scientists can then visually
+  build data models, and export the result to existing databases, data warehouses,
+  data marts, analytics applications, Tableau applications and other tools for visualization.
+  The models can be operationalized to run on petabytes of raw data.</p>
+
+  <p>&emsp; Xcalar products run on-premises and on all major Cloud hosting services.
+  Xcalar is storage agnostic and can use HDFS, Azure Storage, S3, GCS, or on-premises
+  storage, such as SAN, NAS, and NFS.</p>
+
+  <p>&emsp; Xcalar is highly extensible through the Xcalar SDKs. Xcalar can also run
+  Spark applications written in Scala, Java, and Python, and TensorFlow code written
+  in Python.</p>
+
+  <p>&emsp; Xcalar tables are accessible through Open Database Connectivity (ODBC)
+  and Java Database Connectivity (JDBC) standards, and work seamlessly with a variety
+  of visualization and reporting tools, such as Tableau, Excel, Power BI, Looker,
+  QlikView, and MicroStrategy.</p>'
+Marketing Identifier: xdp
+Preview Subscription Ids: 861014e9-bb2e-40ff-b6f6-85a511035bfd
+Useful link:
+  - Title: Homepage
+    URL: https://www.xcalar.com
+  - Title: Community Forum
+    URL: https://discourse.xcalar.com
+  - Title: Support
+    URL: https://www.xcalar.com/support.html
+  - Title: Youtube
+    URL: https://www.youtube.com/channel/UCS-x8wOBSeqJ2hg2HYNk70w
+  - Title: Contact us
+    URL: https://www.xcalar.com/contact.html
+Suggested Categories:
+  - Analytics
+  - Big Data
+  - Business Applications
+  - Database
+Videos:
+  - Name: Xcalar Data Platform
+    Link: https://www.youtube.com/watch?v=18eLNOF9S6Y
+Lead Management:
+  Lead Destination: Salesforce
+  Object Identifier: 00Dj00000028dhA
+Legal:
+  Privacy Policy URL: https://www.xcalar.com/privacy-and-security-statement.html
+  Terms of use: '<p><b>Xcalar End User License Agreement for Hosting Service Marketplaces</b></p>
+
+    <p>Please read this document carefully before proceeding. By clicking on the "I
+    Accept" or "Agree" button or accessing or using the Xcalar software, you are agreeing
+    to the terms of this end user license agreement ("<b>Agreement</b>"). </p>
+
+    <p>This is a legal agreement between you (either an individual or a single legal
+    entity) ("<b>Customer</b>") and Xcalar, Inc., a Delaware corporation with offices
+    at 3031 Tisch Way, Suite 420, San Jose, California 95128 ("<b>Xcalar</b>"). If
+    you are entering into this Agreement on behalf of an entity (such as your employer),
+    then you represent and warrant that you have the authority to bind that entity
+    to this Agreement. As used herein, each of Xcalar and Customer may be referred
+    to as a "<b>Party</b>" and collectively as the "<b>Parties</b>." </p>
+
+    <p>This Agreement governs your use of Xcalar''s big data analysis and reporting
+    software product (the "<b>Solution</b>") as made available by Xcalar through third-party
+    marketplaces like Amazon Web Services, Microsoft Azure, or Google Cloud Platform
+    (each a "<b>Hosting Service</b>"). If Customer wishes to receive additional services,
+    warranties, or other terms not provided by this Agreement, Customer must negotiate
+    a separate written agreement with Xcalar regarding such terms. </p>
+
+    <p><b>1. License Grant and Restrictions</b></p>
+
+    <p> &emsp;<b>1.1 License Grant.</b> Subject to the terms and conditions of this
+    Agreement, including payment of all amounts charged by Xcalar (through the Hosting
+    Service or otherwise) for use of the Solution, Xcalar hereby grants to Customer
+    a non-exclusive, non-sublicensable, non-assignable license to use the computer
+    software programs comprising the Solution, in object code form, as provided to
+    Customer through the Hosting Service (the "<b>Licensed Software</b>"), solely
+    as provided by the Hosting Service on the infrastructure provided by the Hosting
+    Service, and solely for Customer''s own internal business purposes (which, for
+    the avoidance of doubt, shall not include redistributing or otherwise allowing
+    any third parties to access or use the Licensed Software). </p>
+
+    <p> &emsp;<b>1.2 Additional Restrictions.</b> The Licensed Software may allow
+    Customer to generate code, query language, schemas, or similar information or
+    data structures ("<b>Generated Code</b>") which result from the unique operation
+    of the Licensed Software. Customer agrees not to use or permit any third party
+    to use any Generated Code, other than in connection with use of the Licensed Software
+    in accordance with this Agreement. Additionally, Customer shall not, and shall
+    not permit any third party, including any parent, subsidiary, affiliate, or agent
+    of Customer, to:
+
+    <p>&emsp; &emsp; (a) assign, sell, lease, distribute, license, sublicense or otherwise
+    transfer or attempt to transfer rights to the Licensed Software;</p>
+
+    <p>&emsp; &emsp; (b) extract, reverse engineer, decompile, disassemble or otherwise
+    attempt to derive source code or algorithms from the Licensed Software, except
+    to the extent expressly permitted by applicable law notwithstanding this restriction;</p>
+
+    <p>&emsp; &emsp; (c) modify, translate, or create derivative works, adaptations
+    or compilations of, or based on, any part of the Licensed Software;</p>
+
+    <p>&emsp; &emsp; (d) remove or otherwise interfere with any part of the Licensed
+    Software designed to monitor Customer''s compliance with this Agreement; </p>
+
+    <p>&emsp; &emsp; (e) use the Licensed Software on behalf of, or to perform any
+    services for, any third party, or include the Licensed Software in any services
+    or products provided by Customer to any third party; </p>
+
+    <p>&emsp; &emsp; (f) provide, disclose, divulge or make available to, or permit
+    use of the Licensed Software by any third party without Xcalar''s prior written
+    consent; </p>
+
+    <p>&emsp; &emsp; (g) make the Licensed Software available to third parties on
+    a service bureau, rental, lease, or application service provider basis; </p>
+
+    <p>&emsp; &emsp; (h) copy the Licensed Software, in whole or in part, except as
+    specifically authorized by this Agreement; or </p>
+
+    <p> &emsp; &emsp; (i) remove any proprietary notices or labels on or in any of
+    the Licensed Software. </p> </p>
+
+    <p> &emsp; <b>1.3 Copies.</b> Customer may make a reasonable number of machine-readable
+    copies of the Licensed Software only as is reasonably necessary in connection
+    with administration of infrastructure provided by the Hosting Service, such as
+    for backup or archival purposes. Customer shall maintain accurate and up-to-date
+    records of the number and location of all copies of the Licensed Software and
+    inform Xcalar in writing of such location upon Xcalar''s request. All copies of
+    the Licensed Software will be subject to all terms and conditions of this Agreement.
+    </p>
+
+    <p> &emsp; <b>1.4 Feedback.</b> Customer may provide feedback to Xcalar concerning
+    the functionality of, and enhancements and changes to, the Licensed Software from
+    time to time, including without limitation identifying errors and potential improvements
+    ("<b>Feedback</b>"). Such Feedback includes any comments or content posted by
+    Customer on Xcalar websites regarding the Licensed Software or provided to Xcalar
+    personnel. Customer hereby grants to Xcalar a worldwide, irrevocable, assignable,
+    perpetual, royalty-free license to use and otherwise exploit such Feedback without
+    restriction. The Parties acknowledge and agree that notwithstanding anything to
+    the contrary herein, such Feedback shall not be deemed to be the confidential
+    information of Customer, and Xcalar has the right to modify, disclose and/or remove
+    from display any such Feedback in its sole discretion. </p>
+
+    <p> &emsp; <b>1.5 Reservation of Rights.</b> Except for the limited rights granted
+    in Section 2.1, Xcalar retains all right, title and interest in and to the Licensed
+    Software, and all intellectual property rights therein and thereto. Nothing in
+    this Agreement shall constitute a transfer of any ownership rights by Xcalar to
+    Customer in the Licensed Software or otherwise. All rights in the Licensed Software
+    not expressly granted hereunder are reserved by Xcalar and its licensors. Notwithstanding
+    the foregoing, if and to the extent that the Licensed Software contains any open
+    source software components, such components are licensed to Customer under the
+    terms of the applicable open source license, and this Agreement is not intended
+    to limit any rights granted to Customer under such open source license. </p>
+
+    <p><b>2. Maintenance, Support, and other Professional Services</b></p>
+
+    <p> &emsp; <b>2.1 No Services.</b> Xcalar is not obligated to provide any maintenance,
+    support, and other professional services ("<b>Services</b>") under this Agreement,
+    and any such Services offered by Xcalar are offered in Xcalar''s sole discretion.
+    If Customer wishes to procure Services from Xcalar, Customer may request that
+    the parties enter into a separate written agreement providing for such Services.
+    </p>
+
+    <p><b>3. Fees and Payment</b></p>
+
+    <p> &emsp; <b>3.1 Payment Terms.</b> Customer agrees to pay all fees specified
+    by Xcalar for use of the Solution in accordance with the policies and payment
+    terms specified by Xcalar on its website or the Hosting Service from time to time.
+    Customer may not use the Solution without paying such fees to Xcalar. Xcalar may
+    change its pricing for the Solution and the Licensed Software in its sole discretion;
+    if Customer objects to any such change, Customer may terminate this Agreement
+    in accordance with Section 5. </p>
+
+    <p> &emsp; <b>3.2 Audit Rights.</b> Xcalar may implement mechanisms in the Licensed
+    Software (such as through the use of license keys) to audit Customer''s use of
+    the Licensed Software. Additionally, upon five (5) days'' written notice, but
+    no more frequently than once per calendar quarter, Xcalar may require that Customer
+    provide Xcalar with such information and assistance as is reasonably necessary
+    for Xcalar to verify Customer''s compliance with this Agreement, including, without
+    limitation, verification regarding any restrictions on use of the Licensed Software.
+    </p>
+
+    <p><b>4. Disclaimers and Limitations of Liability</b></p>
+
+    <p> &emsp; <b>4.1 Disclaimer.</b> THE LICENSED SOFTWARE IS PROVIDED THROUGH THE
+    HOSTING SERVICE ON AN "AS-IS" BASIS, AND XCALAR MAKES NO WARRANTIES, WHETHER EXPRESS,
+    IMPLIED, OR STATUTORY REGARDING OR RELATING TO THE LICENSED SOFTWARE OR ANY MATERIALS
+    OR SERVICES FURNISHED OR PROVIDED TO CUSTOMER UNDER OR IN CONNECTION WITH THIS
+    AGREEMENT. XCALAR HEREBY DISCLAIMS ALL IMPLIED WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT WITH RESPECT TO THE LICENSED
+    SOFTWARE AND ANY OTHER MATERIALS AND SERVICES FURNISHED OR PROVIDED UNDER OR IN
+    CONNECTION WITH THIS AGREEMENT, AND WITH RESPECT TO THE USE OF ANY OF THE FOREGOING.
+    XCALAR DOES NOT WARRANT THAT THE LICENSED SOFTWARE WILL BE ERROR-FREE OR SECURE,
+    OR THAT THE LICENSED SOFTWARE WILL WORK WITHOUT INTERRUPTIONS. </p>
+
+    <p> &emsp; <b>4.2 Limitation of Liability.</b> IN NO EVENT WILL XCALAR BE LIABLE
+    FOR ANY LOSS OF PROFITS, LOSS OF USE, BUSINESS INTERRUPTION, LOSS OF DATA, COST
+    OF COVER, OR INDIRECT, SPECIAL, INCIDENTAL, PUNITIVE OR CONSEQUENTIAL DAMAGES
+    OF ANY KIND IN CONNECTION WITH OR ARISING OUT OF THE FURNISHING, PERFORMANCE,
+    OR USE OF THE LICENSED SOFTWARE OR ANY SERVICES, WHETHER ALLEGED AS A BREACH OF
+    CONTRACT, TORT (INCLUDING NEGLIGENCE), OR ANY OTHER CLAIM OR CAUSE OF ACTION,
+    EVEN IF XCALAR HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. XCALAR''S
+    LIABILITY UNDER THIS AGREEMENT FOR DAMAGES WILL NOT, IN ANY EVENT, EXCEED THE
+    AMOUNTS PAID BY CUSTOMER FOR THE LICENSED SOFTWARE DURING THE SIX (6) MONTHS PRECEDING
+    THE EVENTS WHICH GAVE RISE TO THE DAMAGES. </p>
+
+    <p> &emsp; <b>4.3 Basis of Bargain; Failure of Essential Purpose.</b> Customer
+    acknowledges that Xcalar offers the Licensed Software through the Hosting Service
+    and set its prices and entered into this Agreement in reliance upon the limitations
+    of liability and the disclaimers of warranties and damages set forth herein, and
+    that the same form an essential basis of the bargain between the Parties. The
+    Parties agree that the limitations of liability and disclaimers set forth in this
+    Agreement will survive and apply even if found to have failed of their essential
+    purpose. </p>
+
+    <p><b>5. Term and Termination</b></p>
+
+    <p> &emsp; <b>5.1 Term.</b> This Agreement shall commence on the Effective Date
+    and will remain in force until terminated in accordance with this Agreement. </p>
+
+    <p> &emsp; <b>5.2 Termination by Customer.</b> This Agreement may be terminated
+    by Customer at any time, with or without cause, provided that no such termination
+    will entitle Customer to a refund of any prepaid fees. </P>
+
+    <p> &emsp; <b>5.3 Termination by Xcalar.</b> Xcalar may, by providing written
+    notice to Customer, terminate this Agreement if Customer is in material breach
+    of any term, condition or provision of this Agreement, which breach, if capable
+    of being cured, is not cured within thirty (30) days after Xcalar provides Customer
+    with written notice of such breach. Xcalar may also terminate this agreement upon
+    thirty (30) days'' notice if, in Xcalar''s sole discretion, Xcalar decides that
+    it will not continue to make the Licensed Software available to customers through
+    the Hosting Service. </p>
+
+    <p> &emsp; <b>5.4 Effect of Termination.</b> Termination of this Agreement will
+    become effective immediately or on the date set forth in the written notice of
+    termination. Upon termination of this Agreement for any reason, the license granted
+    to Customer in Section 2.1 will immediately cease and Customer will have no further
+    rights to use the Licensed Software. </p>
+
+    <p> &emsp; <b>5.5 Survival.</b> The following provisions will survive any termination
+    of this Agreement: Sections 1, 2.2, 2.4, 2.5, 4, 5, 6.4, 6.5 and 7. </p>
+
+    <p><b>6. Miscellaneous</b></p>
+
+    <p> &emsp; <b>6.1 Assignment.</b> Neither this Agreement nor any rights under
+    this Agreement may be assigned or otherwise transferred by Customer, in whole
+    or in part, whether voluntarily or by operation of law, including by way of sale
+    of assets, merger, or consolidation, without the prior written consent of Xcalar.
+    Any attempted assignment without such consent will be null and void. Xcalar may
+    freely assign or transfer this Agreement, in whole or in part, whether voluntarily
+    or by operation of law, including by way of sale of assets, merger, or consolidation.
+    Subject to the foregoing, this Agreement will be binding upon and will inure to
+    the benefit of the Parties and their respective successors and assigns. </p>
+
+    <p> &emsp; <b>6.2 Relationship of Parties.</b> Nothing contained in this Agreement
+    shall be construed as creating any agency, partnership or other form of joint
+    enterprise between the Parties. The relationship between the Parties shall at
+    all times be that of independent contractors. Neither Party shall have the authority
+    to contract for or bind the other in any manner whatsoever. This Agreement confers
+    no rights upon either Party except those expressly granted herein. </p>
+
+    <p> &emsp; <b>6.3 Notices.</b> Any notice to Xcalar required or permitted under
+    the terms of this Agreement or required by law must be in writing and must be
+    (a) delivered in person, (b) sent by first class registered mail, or air mail,
+    as appropriate or (c) sent by overnight air courier, in each case properly posted
+    and fully prepaid to the appropriate address first set forth above. </p>
+
+    <p> &emsp; <b>6.4 Export Control.</b> Customer agrees to comply with all applicable
+    export control laws and regulations. Customer shall not sell, export, reexport,
+    transfer, divert or otherwise dispose of, whether directly or indirectly, any
+    regulated item or information to anyone outside the U.S. in connection with this
+    Agreement without first complying with all export control laws and regulations
+    which may be imposed by the U.S. Government and any country or organization of
+    nations within whose jurisdiction Customer operates or does business. </p>
+
+    <p> &emsp; <b>6.5 Waiver.</b> Any waiver of the provisions of this Agreement or
+    of a Party''s rights or remedies under this Agreement must be in writing to be
+    effective. Failure, neglect or delay by a Party to enforce the provisions of this
+    Agreement or its rights or remedies at any time will not be construed as, and
+    will not be deemed to be, a waiver of such Party''s rights under this Agreement,
+    and will not in any way affect the validity of the whole or any part of this Agreement
+    or prejudice such Party''s right to take subsequent action. No exercise or enforcement
+    by either Party of any right or remedy under this Agreement will preclude the
+    enforcement by such Party of any other right or remedy under this Agreement or
+    any other right or remedy that such Party is entitled by law to enforce. </p>
+
+    <p> &emsp; <b>6.6 Severability.</b> If any term, condition or provision in this
+    Agreement is found to be invalid, unlawful or unenforceable to any extent, such
+    invalid term, condition or provision will be severed from the remaining terms,
+    conditions and provisions, which will continue to be valid and enforceable to
+    the fullest extent permitted by law. </p>
+
+    <p> &emsp; <b>6.7 Integration.</b> This Agreement contains the entire agreement
+    of the Parties with respect to the subject matter of this Agreement and supersedes
+    all previous communications, representations, understandings and agreements, either
+    oral or written, between the Parties with respect to said subject matter. This
+    Agreement may not be amended, except by a writing signed by both Parties. </p>
+
+    <p> &emsp; <b>6.8 Governing Law.</b> This Agreement will be interpreted and construed
+    in accordance with the laws of the State of California and the United States of
+    America, without regard to conflict of law principles. The Parties agree that
+    the United Nations Convention on Contracts for the International Sale of Goods
+    is specifically excluded from application to this Agreement. Any judicial action
+    or proceeding arising hereunder or relating hereto shall be brought in, and the
+    Parties hereby consent to the exclusive personal jurisdiction of, the state and
+    federal courts located in Santa Clara County, California. </p>'

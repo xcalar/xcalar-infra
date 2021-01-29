@@ -1,0 +1,21 @@
+{
+  "HostedZoneId": "{{ AWS_HOSTED_ZONE_ID }}",
+  "ChangeBatch": {
+    "Comment": "Adding {{ CNAME }}",
+    "Changes": [
+      {
+        "Action": "UPSERT",
+        "ResourceRecordSet": {
+          "Name": "{{ NAME }}",
+          "Type": "CNAME",
+          "TTL": 60,
+          "ResourceRecords": [
+            {
+              "Value": "{{ CNAME }}"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

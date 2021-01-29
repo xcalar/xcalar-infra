@@ -1,0 +1,100 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "_artifactsLocation": {
+      "value": "https://xcrepo.blob.core.windows.net/public/xdp-standard-platform/v12/"
+    },
+    "installerUrl": {
+      "value": "https://xcrepo.blob.core.windows.net/builds/prod/xcalar-2.0.3-3458-installer-el7"
+    },
+    "installerUrlSasToken": {
+      "value": "?st=2019-06-19T21%3A09%3A19Z&se=2020-06-20T21%3A09%3A00Z&sp=rl&sv=2018-03-28&sr=c&sig=dg7RKTcDKuFSKQy2llQJ%2FIiLXGRec2rTcQ%2BS1p%2FHpUQ%3D"
+    },
+    "location": {
+      "value": "westus2"
+    },
+    "appName": {
+      "value": "xdp-standard"
+    },
+    "scaleNumber": {
+      "value": 3
+    },
+    "appUsername": {
+      "value": "xdpadmin"
+    },
+    "appPassword": {
+      "value": "Welcome1"
+    },
+    "authenticationType": {
+      "value": "sshPublicKey"
+    },
+    "adminEmail": {
+      "value": "abakshi@xcalar.com"
+    },
+    "adminUsername": {
+      "value": "azureuser"
+    },
+    "adminPasswordOrKey": {
+      "value": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCkSfi00gfzVoaqLs/Col/kNNg2jGHNhP3LA6OykWt1ev04CbNCiGB01+wgPy6Jx0aKvA7Mx7a4cUCJs8NvgH0wfgzLo0HAcAdMoXHl7ZE6psOR5/w7WJEFZ4xd7v9WanAsONtgS5iLwuzHkMvrImO6aOz2YxzYoNRpVbsJ5PViD9EkRyaEPLRI0A9/DFY96o/xRT/EXxT2ekjJ9loIkeU2Cxs1k0R0TYxPORAvuaM2HHQ12fG51wSNkc3WQ7ehLlULjnxyanptLTDGlU6CwN0i7YEbqr8gpCw510KJg75TqxB8pBxBuN0RHacsf6Lgz/rSw97ryox/ynCzQT9hrE9b"
+    },
+    "vmDiskType": {
+      "value": "StandardSSD_LRS"
+    },
+    "publicIpAddressNewOrExisting": {
+      "value": "new"
+    },
+    "shareSize": {
+      "value": "Standard_A2_v2"
+    },
+    "shareServerNewOrExisting": {
+      "value": "existing"
+    },
+    "shareName": {
+      "value": "10.11.1.5"
+    },
+    "shareFolder": {
+      "value": "/data/nfs"
+    },
+    "vmSize": {
+      "value": "Standard_D8_v3"
+    },
+    "storageAccountNewOrExisting": {
+      "value": "existing"
+    },
+    "storageAccountRG": {
+      "value": "xcalarroot-rg"
+    },
+    "storageAccountName": {
+      "value": "xcalarroot"
+    },
+    "storageAccountType": {
+      "value": "Standard_LRS"
+    },
+    "virtualNetworkNewOrExisting": {
+      "value": "existing"
+    },
+    "subnetName": {
+      "value": "subnet1"
+    },
+    "subnetPrefix": {
+      "value": "10.11.5.0/24"
+    },
+    "addressPrefix": {
+      "value": "10.11.0.0/16"
+    },
+    "virtualNetworkName": {
+      "value": "xcalardev-vnet"
+    },
+    "virtualNetworkRG": {
+      "value": "xcalardev-rg"
+    },
+    "cgroupsEnabled": {
+      "value": "false"
+    },
+    "imageSKU": {
+      "value": "7_8"
+    }
+
+  }
+}

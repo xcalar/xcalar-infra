@@ -1,0 +1,27 @@
+builds:
+  matrix:
+    environments:
+      - prod
+      - test
+      - dev
+    flavors:
+      - byovpc
+      - byovpc-scheduler
+      - default
+    templates:
+      - xdp-standard.template.j2
+      - scheduler/stepfun.template.j2
+  lambda:
+    runtime: python3.6
+    source: lambda/
+  scripts:
+    - scripts/user-data.sh
+    - scripts/batch.sh
+    - scripts/batch.py
+    - scripts/runner.sh
+    - scripts/s3target.py
+  deploy:
+    bucket: xcrepo
+    prefix: "cfn/{{ environment }}/{{ project }}/{{ version }}-{{ image_build_number }}-{{ build_number }}{{ rc }}{{ release_candidate }}/"
+    output:
+      xdp-standard.json

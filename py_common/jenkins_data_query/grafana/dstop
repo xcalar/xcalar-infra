@@ -1,0 +1,4 @@
+#!/bin/bash
+docker stop jdq-grafana-datasource
+sleep 2
+docker rm jdq-grafana-datasource

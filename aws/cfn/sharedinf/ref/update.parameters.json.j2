@@ -1,0 +1,26 @@
+[
+    {
+        "ParameterKey": "vpccidr",
+        "ParameterValue": "10.{{ subnet }}.0.0/16"
+    },
+    {
+        "ParameterKey": "deploynatgw",
+        "UsePreviousValue": true
+    },
+    {
+        "ParameterKey": "privateacidr",
+        "ParameterValue": "10.{{ subnet }}.0.0/19"
+    },
+    {
+        "ParameterKey": "psharedacidr",
+        "ParameterValue": "10.{{ subnet }}.32.0/20"
+    },
+    {
+        "ParameterKey": "privatebcidr",
+        "ParameterValue": "10.{{ subnet }}.64.0/19"
+    },
+    {
+        "ParameterKey": "psharedbcidr",
+        "ParameterValue": "10.{{ subnet }}.224.0/20"
+    }
+]

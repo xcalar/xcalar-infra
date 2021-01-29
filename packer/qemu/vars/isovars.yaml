@@ -1,0 +1,19 @@
+centos7:
+  iso_url: http://netstore/isos/CentOS_ISO/CentOS-7-x86_64-Minimal-2003.iso
+  iso_checksum: f99e2b01389c62a56bb0d3afdbc202f2
+  iso_checksum_type: md5
+
+centos8:
+  iso_url: http://netstore/isos/CentOS_ISO/CentOS-8.1.1911-x86_64-boot.iso
+  iso_checksum: 4205f35219bb4a82b6ae2b0a64669eb4
+  iso_checksum_type: md5
+
+ubuntu18:
+  iso_url: http://netstore/isos/ubuntu-18.04.1-desktop-amd64.iso
+  iso_checksum: f430da8fa59d2f5f4262518e3c177246
+  iso_checksum_type: md5
+
+ubuntu20:
+  iso_url: http://netstore/isos/ubuntu-20.04-desktop-amd64.iso
+  iso_checksum: ea28c4fd933be55f9f01a5fa9e868490
+  iso_checksum_type: md5

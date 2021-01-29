@@ -1,0 +1,1333 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location of resources"
+      }
+    },
+    "_artifactsLocation": {
+      "metadata": {
+        "description": "The base URI where artifacts required by this template are located including a trailing '/'"
+      },
+      "type": "string",
+      "defaultValue": "https://xcrepo.blob.core.windows.net/public/xdp-standard-platform/v8/"
+    },
+    "_artifactsLocationSasToken": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The sasToken required to access _artifactsLocation.  When the template is deployed using the accompanying scripts, a sasToken will be automatically generated. Use the defaultValue if the staging location is not secured."
+      }
+    },
+    "appName": {
+      "type": "string",
+      "defaultValue": "xdp-standard",
+      "metadata": {
+        "description": "Must be valid for a hostname (all lower case, no underscores, periods etc)"
+      }
+    },
+    "installerUrl": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Custom installer URL (Optional)"
+      }
+    },
+    "installerUrlSasToken": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Custom installer URL SAS Token"
+      }
+    },
+    "licenseKey": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Valid license key or empty to enter key from XD GUI (Optional)"
+      }
+    },
+    "scaleNumber": {
+      "type": "int",
+      "defaultValue": 1,
+      "minValue": 1,
+      "maxValue": 249,
+      "metadata": {
+        "description": "Number of XCE nodes to provision. (Max: 249)"
+      }
+    },
+    "domainNameLabel": {
+      "type": "string",
+      "defaultValue": "[concat('xdp-standard-', uniqueString(resourceGroup().id))]",
+      "metadata": {
+        "description": "Domain name label for public ip."
+      }
+    },
+    "appUsername": {
+      "type": "string",
+      "metadata": {
+        "description": "XDP Administrator's username"
+      }
+    },
+    "appPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "XDP Administrator's password"
+      }
+    },
+    "adminEmail": {
+      "type": "string",
+      "metadata": {
+        "description": "Administrator's email address"
+      }
+    },
+    "authenticationType": {
+      "type": "string",
+      "defaultValue": "sshPublicKey",
+      "allowedValues": [
+        "password",
+        "sshPublicKey"
+      ],
+      "metadata": {
+        "description": "Authentication to use (password of sshkey)"
+      }
+    },
+    "adminUsername": {
+      "type": "string",
+      "metadata": {
+        "description": "VM Administrator's username for the Xcalar cluster, use for SSH access."
+      }
+    },
+    "adminPasswordOrKey": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "VM Administrator's password or SSH public key for the Xcalar cluster."
+      }
+    },
+    "vmDiskType": {
+      "type": "string",
+      "defaultValue": "StandardSSD_LRS",
+      "allowedValues": [
+        "Premium_LRS",
+        "StandardSSD_LRS",
+        "Standard_LRS"
+      ],
+      "metadata": {
+        "description": "Type of disk for your VM"
+      }
+    },
+    "vmSize": {
+      "type": "string",
+      "defaultValue": "Standard_E8_v3",
+      "metadata": {
+        "description": "Size of the VM"
+      }
+    },
+    "publicIpAddressNewOrExisting": {
+      "type": "string",
+      "defaultValue": "new",
+      "allowedValues": [
+        "new",
+        "existing"
+      ],
+      "metadata": {
+        "description": "New or existing IP address"
+      }
+    },
+    "publicIpAddressRG": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().name]",
+      "metadata": {
+        "description": "Resource group of ipAddrress"
+      }
+    },
+    "publicIpAddressName": {
+      "type": "string",
+      "defaultValue": "[concat(parameters('appName'),'-pip')]",
+      "metadata": {
+        "description": "IP Address to use"
+      }
+    },
+    "virtualNetworkNewOrExisting": {
+      "type": "string",
+      "defaultValue": "new",
+      "allowedValues": [
+        "new",
+        "existing"
+      ],
+      "metadata": {
+        "description": "Determines whether or not a new virtual network should be provisioned."
+      }
+    },
+    "virtualNetworkRG": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().name]",
+      "metadata": {
+        "description": "Name of the resource group for the existing virtual network"
+      }
+    },
+    "virtualNetworkName": {
+      "type": "string",
+      "defaultValue": "[concat(parameters('appName'),'-vnet')]",
+      "metadata": {
+        "description": "Name of the virtual network"
+      }
+    },
+    "addressPrefix": {
+      "type": "string",
+      "defaultValue": "10.0.0.0/16",
+      "metadata": {
+        "description": "Address prefix of the virtual network"
+      }
+    },
+    "subnetName": {
+      "type": "string",
+      "defaultValue": "[concat(parameters('appName'),'-subnet')]",
+      "metadata": {
+        "description": "Name of the subnet"
+      }
+    },
+    "subnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.0.0.0/24",
+      "metadata": {
+        "description": "Subnet prefix of the virtual network"
+      }
+    },
+    "storageAccountNewOrExisting": {
+      "type": "string",
+      "defaultValue": "new",
+      "allowedValues": [
+        "new",
+        "existing"
+      ],
+      "metadata": {
+        "description": "New or existing Storage account"
+      }
+    },
+    "storageAccountName": {
+      "type": "string",
+      "defaultValue": "[concat('xdp', uniqueString(resourceGroup().id))]",
+      "metadata": {
+        "description": "Storage account name"
+      }
+    },
+    "storageAccountType": {
+      "type": "string",
+      "defaultValue": "Standard_LRS",
+      "allowedValues": [
+        "Standard_LRS",
+        "Standard_GRS",
+        "Standard_RAGRS"
+      ],
+      "metadata": {
+        "description": "Storage Account type"
+      }
+    },
+    "storageAccountRG": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().name]",
+      "metadata": {
+        "description": "Storage account resource group"
+      }
+    },
+    "shareServerNewOrExisting": {
+      "type": "string",
+      "defaultValue": "new",
+      "allowedValues": [
+        "new",
+        "existing"
+      ],
+      "metadata": {
+        "description": "New or existing NFS server"
+      }
+    },
+    "shareSize": {
+      "type": "string",
+      "metadata": {
+        "description": "Size of NFS Server VM"
+      }
+    },
+    "shareName": {
+      "type": "string",
+      "defaultValue": "[concat(parameters('appName'),'-nfs')]",
+      "metadata": {
+        "description": "NFS storage server"
+      }
+    },
+    "shareFolder": {
+      "type": "string",
+      "defaultValue": "/data/nfs",
+      "metadata": {
+        "description": "Share folder on the NFS server"
+      }
+    },
+    "bootDiagnostics": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Enable storing boot diagnostics"
+      }
+    },
+    "osDiskSize": {
+      "type": "int",
+      "defaultValue": 127,
+      "minValue": 31,
+      "metadata": {
+        "description": "Size of root disk"
+      }
+    },
+    "cgroupsEnabled": {
+      "type": "string",
+      "defaultValue": "false"
+    },
+    "cluster": {
+      "type": "string",
+      "defaultValue": "[replace(resourceGroup().name,'-rg','')]"
+    },
+    "customScriptUrl": {
+      "type": "string",
+      "defaultValue": "[concat(parameters('_artifactsLocation'),'bootstrap.sh', parameters('_artifactsLocationSasToken'))]"
+    },
+    "customScriptCommandToExecute": {
+      "type": "string",
+      "defaultValue": "/bin/bash -x bootstrap.sh "
+    },
+    "imageSKU": {
+        "type": "string",
+        "defaultValue": "7_8",
+        "metadata": {
+            "description": "Image SKU to use"
+        }
+    }
+  },
+  "variables": {
+    "vmName": "[concat(toLower(parameters('appName')), '-vm')]",
+    "nicName": "[concat(parameters('appName'), '-nic')]",
+    "networkSecurityGroupName": "[concat(parameters('appName'),'-nsg')]",
+    "shareNic": "[concat(parameters('appName'), '-nfs-nic')]",
+    "subnetID": "[resourceId(parameters('virtualNetworkRG'), 'Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), parameters('subnetName'))]",
+    "publicIPAddress": {
+      "id": "[resourceId(parameters('publicIpAddressRG'),'Microsoft.Network/publicIPAddresses', parameters('publicIpAddressName'))]"
+    },
+    "sizesVmgen2":[
+        "Standard_D8s_v3",
+        "Standard_D32-8s_v3",
+        "Standard_E8s_v3",
+        "Standard_F8s_v2",
+        "Standard_D16s_v3",
+        "Standard_D32-16s_v3",
+        "Standard_D64-16s_v3",
+        "Standard_E16s_v3",
+        "Standard_E32-16s_v3",
+        "Standard_F16s_v2",
+        "Standard_D32s_v3",
+        "Standard_D64-32s_v3",
+        "Standard_E32s_v3",
+        "Standard_E32-8s_v3",
+        "Standard_F32s_v2",
+        "Standard_D40s_v3",
+        "Standard_D64s_v3",
+        "Standard_E64s_v3",
+        "Standard_E64-16s_v3",
+        "Standard_E64-32s_v3",
+        "Standard_F64s_v2",
+        "Standard_F72s_v2",
+        "Standard_D4s_v3",
+        "Standard_E4s_v3",
+        "Standard_F4s_v2",
+        "Standard_L80s_v2",
+        "Standard_E64is_v3",
+        "Standard_E4-2s_v3",
+        "Standard_E8-4s_v3",
+        "Standard_E8-2s_v3",
+        "Standard_E16-4s_v3",
+        "Standard_E16-8s_v3",
+        "Standard_E20s_v3",
+        "Standard_M208ms_v2",
+        "Experimental_E64-40s_v3",
+        "Standard_M416ms_v2",
+        "Standard_M416s_v2",
+        "Standard_M208s_v2",
+        "FCA_E64-52s_v3",
+        "FCA_E32-28s_v3",
+        "FCA_E32-26s_v3",
+        "FCA_E32-24s_v3",
+        "FCA_E16-14s_v3",
+        "FCA_E16-12s_v3",
+        "FCA_E16-10s_v3",
+        "FCA_E8-6s_v3",
+        "Standard_D48s_v3",
+        "Standard_E48s_v3",
+        "Standard_F48s_v2",
+        "Standard_L48s_v2",
+        "Standard_F72fs_v2",
+        "Standard_ND40s_v3",
+        "Standard_D4as_v3",
+        "Standard_D8as_v3",
+        "Standard_D16as_v3",
+        "Standard_D32as_v3",
+        "Standard_D48as_v3",
+        "Standard_D64as_v3",
+        "Standard_D96as_v3",
+        "Standard_D104as_v3",
+        "Standard_E4as_v3",
+        "Standard_E8as_v3",
+        "Standard_E16as_v3",
+        "Standard_E32as_v3",
+        "Standard_E48as_v3",
+        "Standard_E64as_v3",
+        "Standard_E96as_v3",
+        "Standard_E104as_v3",
+        "Standard_D4s_v4",
+        "Standard_D8s_v4",
+        "Standard_D16s_v4",
+        "Standard_D32s_v4",
+        "Standard_D48s_v4",
+        "Standard_D64s_v4",
+        "Standard_D4ds_v4",
+        "Standard_D8ds_v4",
+        "Standard_D16ds_v4",
+        "Standard_D32ds_v4",
+        "Standard_D48ds_v4",
+        "Standard_D64ds_v4",
+        "Standard_E4s_v4",
+        "Standard_E8s_v4",
+        "Standard_E16s_v4",
+        "Standard_E20s_v4",
+        "Standard_E32s_v4",
+        "Standard_E48s_v4",
+        "Standard_E64s_v4",
+        "Standard_E64is_v4",
+        "Standard_E4ds_v4",
+        "Standard_E8ds_v4",
+        "Standard_E16ds_v4",
+        "Standard_E20ds_v4",
+        "Standard_E32ds_v4",
+        "Standard_E48ds_v4",
+        "Standard_E64ds_v4",
+        "Standard_E64ids_v4",
+        "Standard_DC2s_v2",
+        "Standard_DC4s_v2",
+        "Standard_D4as_v4",
+        "Standard_D8as_v4",
+        "Standard_D16as_v4",
+        "Standard_D32as_v4",
+        "Standard_D48as_v4",
+        "Standard_D64as_v4",
+        "Standard_D96as_v4",
+        "Standard_E4as_v4",
+        "Standard_E8as_v4",
+        "Standard_E16as_v4",
+        "Standard_E20as_v4",
+        "Standard_E32as_v4",
+        "Standard_E48as_v4",
+        "Standard_E64as_v4",
+        "Standard_E96as_v4",
+        "Standard_E64is_v4_SPECIAL",
+        "Standard_E64ids_v4_SPECIAL",
+        "Standard_E4-2s_v4",
+        "Standard_E8-2s_v4",
+        "Standard_E8-4s_v4",
+        "Standard_E16-8s_v4",
+        "Standard_E16-4s_v4",
+        "Standard_E32-16s_v4",
+        "Standard_E32-8s_v4",
+        "Standard_E64-32s_v4",
+        "Standard_E64-16s_v4",
+        "Standard_E4-2ds_v4",
+        "Standard_E8-4ds_v4",
+        "Standard_E8-2ds_v4",
+        "Standard_E16-8ds_v4",
+        "Standard_E16-4ds_v4",
+        "Standard_E32-16ds_v4",
+        "Standard_E32-8ds_v4",
+        "Standard_E64-32ds_v4",
+        "Standard_E64-16ds_v4",
+        "Standard_M24s_v2",
+        "Standard_M24ms_v2",
+        "Standard_M48s_v2",
+        "Standard_M48ms_v2",
+        "Standard_M96s_v2",
+        "Standard_M96ms_v2",
+        "Standard_M192s_v2",
+        "Standard_M192ms_v2"
+      ],
+    "sizesWithAcceleratedNetworking": [
+        "Standard_D3_v2",
+        "Standard_D12_v2",
+        "Standard_D3_v2_Promo",
+        "Standard_D12_v2_Promo",
+        "Standard_DS3_v2",
+        "Standard_DS12_v2",
+        "Standard_DS13-4_v2",
+        "Standard_DS14-4_v2",
+        "Standard_DS3_v2_Promo",
+        "Standard_DS12_v2_Promo",
+        "Standard_DS13-4_v2_Promo",
+        "Standard_DS14-4_v2_Promo",
+        "Standard_F4",
+        "Standard_F4s",
+        "Standard_D8_v3",
+        "Standard_D8s_v3",
+        "Standard_D32-8s_v3",
+        "Standard_E8_v3",
+        "Standard_E8s_v3",
+        "Standard_D3_v2_ABC",
+        "Standard_D12_v2_ABC",
+        "Standard_F4_ABC",
+        "Standard_F8s_v2",
+        "Standard_D4_v2",
+        "Standard_D13_v2",
+        "Standard_D4_v2_Promo",
+        "Standard_D13_v2_Promo",
+        "Standard_DS4_v2",
+        "Standard_DS13_v2",
+        "Standard_DS14-8_v2",
+        "Standard_DS4_v2_Promo",
+        "Standard_DS13_v2_Promo",
+        "Standard_DS14-8_v2_Promo",
+        "Standard_F8",
+        "Standard_F8s",
+        "Standard_M64-16ms",
+        "Standard_D16_v3",
+        "Standard_D16s_v3",
+        "Standard_D32-16s_v3",
+        "Standard_D64-16s_v3",
+        "Standard_E16_v3",
+        "Standard_E16s_v3",
+        "Standard_E32-16s_v3",
+        "Standard_D4_v2_ABC",
+        "Standard_D13_v2_ABC",
+        "Standard_F8_ABC",
+        "Standard_F16s_v2",
+        "Standard_D5_v2",
+        "Standard_D14_v2",
+        "Standard_D5_v2_Promo",
+        "Standard_D14_v2_Promo",
+        "Standard_DS5_v2",
+        "Standard_DS14_v2",
+        "Standard_DS5_v2_Promo",
+        "Standard_DS14_v2_Promo",
+        "Standard_F16",
+        "Standard_F16s",
+        "Standard_M64-32ms",
+        "Standard_M128-32ms",
+        "Standard_D32_v3",
+        "Standard_D32s_v3",
+        "Standard_D64-32s_v3",
+        "Standard_E32_v3",
+        "Standard_E32s_v3",
+        "Standard_E32-8s_v3",
+        "Standard_E32-16_v3",
+        "Standard_D5_v2_ABC",
+        "Standard_D14_v2_ABC",
+        "Standard_F16_ABC",
+        "Standard_F32s_v2",
+        "Standard_D15_v2",
+        "Standard_D15_v2_Promo",
+        "Standard_D15_v2_Nested",
+        "Standard_DS15_v2",
+        "Standard_DS15_v2_Promo",
+        "Standard_DS15_v2_Nested",
+        "Standard_D40_v3",
+        "Standard_D40s_v3",
+        "Standard_D15_v2_ABC",
+        "Standard_M64ms",
+        "Standard_M64s",
+        "Standard_M128-64ms",
+        "Standard_D64_v3",
+        "Standard_D64s_v3",
+        "Standard_E64_v3",
+        "Standard_E64s_v3",
+        "Standard_E64-16s_v3",
+        "Standard_E64-32s_v3",
+        "Standard_F64s_v2",
+        "Standard_F72s_v2",
+        "Standard_M128s",
+        "Standard_M128ms",
+        "Standard_L8s_v2",
+        "Standard_L16s_v2",
+        "Standard_L32s_v2",
+        "Standard_L64s_v2",
+        "Standard_D4_v3",
+        "Standard_D4s_v3",
+        "Standard_D2_v2",
+        "Standard_DS2_v2",
+        "Standard_E4_v3",
+        "Standard_E4s_v3",
+        "Standard_F2",
+        "Standard_F2s",
+        "Standard_F4s_v2",
+        "Standard_D11_v2",
+        "Standard_DS11_v2",
+        "Standard_PB6s",
+        "Standard_PB12s",
+        "Standard_PB24s",
+        "Standard_L80s_v2",
+        "Standard_M8ms",
+        "Standard_M8-4ms",
+        "Standard_M8-2ms",
+        "Standard_M16ms",
+        "Standard_M16-8ms",
+        "Standard_M16-4ms",
+        "Standard_M32ms",
+        "Standard_M32-8ms",
+        "Standard_M32-16ms",
+        "Standard_M32ls",
+        "Standard_M32ts",
+        "Standard_M64ls",
+        "Standard_E64i_v3",
+        "Standard_E64is_v3",
+        "Standard_E4-2s_v3",
+        "Standard_E8-4s_v3",
+        "Standard_E8-2s_v3",
+        "Standard_E16-4s_v3",
+        "Standard_E16-8s_v3",
+        "Standard_E20s_v3",
+        "Standard_E20_v3",
+        "Standard_D11_v2_Promo",
+        "Standard_D2_v2_Promo",
+        "Standard_DS11_v2_Promo",
+        "Standard_DS2_v2_Promo",
+        "Standard_M208ms_v2",
+        "Standard_MDB16s",
+        "Standard_MDB32s",
+        "Experimental_E64-40s_v3",
+        "Standard_DS11-1_v2",
+        "Standard_DS12-1_v2",
+        "Standard_DS12-2_v2",
+        "Standard_DS13-2_v2",
+        "MSODSG5",
+        "Special_CCX_DS13_v2",
+        "Special_CCX_DS14_v2",
+        "F2_Flex",
+        "F4_Flex",
+        "F8_Flex",
+        "F16_Flex",
+        "F32_Flex",
+        "F64_Flex",
+        "F2s_Flex",
+        "F4s_Flex",
+        "F8s_Flex",
+        "F16s_Flex",
+        "F32s_Flex",
+        "F64s_Flex",
+        "D2_Flex",
+        "D4_Flex",
+        "D8_Flex",
+        "D16_Flex",
+        "D32_Flex",
+        "D64_Flex",
+        "D2s_Flex",
+        "D4s_Flex",
+        "D8s_Flex",
+        "D16s_Flex",
+        "D32s_Flex",
+        "D64s_Flex",
+        "E2_Flex",
+        "E4_Flex",
+        "E8_Flex",
+        "E16_Flex",
+        "E32_Flex",
+        "E64_Flex",
+        "E64i_Flex",
+        "E2s_Flex",
+        "E4s_Flex",
+        "E8s_Flex",
+        "E16s_Flex",
+        "E32s_Flex",
+        "E64s_Flex",
+        "E64is_Flex",
+        "Standard_M416ms_v2",
+        "Standard_M416s_v2",
+        "Standard_M208s_v2",
+        "FCA_E64-52s_v3",
+        "FCA_E32-28s_v3",
+        "FCA_E32-26s_v3",
+        "FCA_E32-24s_v3",
+        "FCA_E16-14s_v3",
+        "FCA_E16-12s_v3",
+        "FCA_E16-10s_v3",
+        "FCA_E8-6s_v3",
+        "Special_D4_v2",
+        "D48_Flex",
+        "D48s_Flex",
+        "E20_Flex",
+        "E20s_Flex",
+        "E48_Flex",
+        "E48s_Flex",
+        "F48s_Flex",
+        "Standard_D48_v3",
+        "Standard_D48s_v3",
+        "Standard_E48_v3",
+        "Standard_E48s_v3",
+        "Standard_F48s_v2",
+        "Standard_L48s_v2",
+        "Standard_M128",
+        "Standard_M128m",
+        "Standard_M64",
+        "Standard_M64m",
+        "Standard_B12ms",
+        "Standard_B16ms",
+        "Standard_B20ms",
+        "Standard_DS15i_v2",
+        "Standard_D15i_v2",
+        "Standard_F72fs_v2",
+        "Standard_ND40s_v3",
+        "StandardM208msv2",
+        "Standard_D4a_v3",
+        "Standard_D8a_v3",
+        "Standard_D16a_v3",
+        "Standard_D32a_v3",
+        "Standard_D48a_v3",
+        "Standard_D64a_v3",
+        "Standard_D96a_v3",
+        "Standard_D104a_v3",
+        "Standard_D4as_v3",
+        "Standard_D8as_v3",
+        "Standard_D16as_v3",
+        "Standard_D32as_v3",
+        "Standard_D48as_v3",
+        "Standard_D64as_v3",
+        "Standard_D96as_v3",
+        "Standard_D104as_v3",
+        "Standard_E4a_v3",
+        "Standard_E8a_v3",
+        "Standard_E16a_v3",
+        "Standard_E32a_v3",
+        "Standard_E48a_v3",
+        "Standard_E64a_v3",
+        "Standard_E96a_v3",
+        "Standard_E104a_v3",
+        "Standard_E4as_v3",
+        "Standard_E8as_v3",
+        "Standard_E16as_v3",
+        "Standard_E32as_v3",
+        "Standard_E48as_v3",
+        "Standard_E64as_v3",
+        "Standard_E96as_v3",
+        "Standard_E104as_v3",
+        "Standard_D4_v4",
+        "Standard_D8_v4",
+        "Standard_D16_v4",
+        "Standard_D32_v4",
+        "Standard_D48_v4",
+        "Standard_D64_v4",
+        "Standard_D4d_v4",
+        "Standard_D8d_v4",
+        "Standard_D16d_v4",
+        "Standard_D32d_v4",
+        "Standard_D48d_v4",
+        "Standard_D64d_v4",
+        "Standard_D4s_v4",
+        "Standard_D8s_v4",
+        "Standard_D16s_v4",
+        "Standard_D32s_v4",
+        "Standard_D48s_v4",
+        "Standard_D64s_v4",
+        "Standard_D4ds_v4",
+        "Standard_D8ds_v4",
+        "Standard_D16ds_v4",
+        "Standard_D32ds_v4",
+        "Standard_D48ds_v4",
+        "Standard_D64ds_v4",
+        "Standard_E4_v4",
+        "Standard_E8_v4",
+        "Standard_E16_v4",
+        "Standard_E20_v4",
+        "Standard_E32_v4",
+        "Standard_E48_v4",
+        "Standard_E64_v4",
+        "Standard_E4d_v4",
+        "Standard_E8d_v4",
+        "Standard_E16d_v4",
+        "Standard_E20d_v4",
+        "Standard_E32d_v4",
+        "Standard_E48d_v4",
+        "Standard_E64d_v4",
+        "Standard_E4s_v4",
+        "Standard_E8s_v4",
+        "Standard_E16s_v4",
+        "Standard_E20s_v4",
+        "Standard_E32s_v4",
+        "Standard_E48s_v4",
+        "Standard_E64s_v4",
+        "Standard_E64is_v4",
+        "Standard_E4ds_v4",
+        "Standard_E8ds_v4",
+        "Standard_E16ds_v4",
+        "Standard_E20ds_v4",
+        "Standard_E32ds_v4",
+        "Standard_E48ds_v4",
+        "Standard_E64ds_v4",
+        "Standard_E64ids_v4",
+        "Standard_DC2s_v2",
+        "Standard_DC4s_v2",
+        "Standard_DC8_v2",
+        "Standard_D4a_v4",
+        "Standard_D4as_v4",
+        "Standard_D8a_v4",
+        "Standard_D8as_v4",
+        "Standard_D16a_v4",
+        "Standard_D16as_v4",
+        "Standard_D32a_v4",
+        "Standard_D32as_v4",
+        "Standard_D48a_v4",
+        "Standard_D48as_v4",
+        "Standard_D64a_v4",
+        "Standard_D64as_v4",
+        "Standard_D96a_v4",
+        "Standard_D96as_v4",
+        "Standard_E4a_v4",
+        "Standard_E4as_v4",
+        "Standard_E8a_v4",
+        "Standard_E8as_v4",
+        "Standard_E16a_v4",
+        "Standard_E16as_v4",
+        "Standard_E20a_v4",
+        "Standard_E20as_v4",
+        "Standard_E32a_v4",
+        "Standard_E32as_v4",
+        "Standard_E48a_v4",
+        "Standard_E48as_v4",
+        "Standard_E64a_v4",
+        "Standard_E64as_v4",
+        "Standard_E96a_v4",
+        "Standard_E96as_v4",
+        "Standard_E64is_v4_SPECIAL",
+        "Standard_E64ids_v4_SPECIAL",
+        "Standard_E4-2s_v4",
+        "Standard_E8-2s_v4",
+        "Standard_E8-4s_v4",
+        "Standard_E16-8s_v4",
+        "Standard_E16-4s_v4",
+        "Standard_E32-16s_v4",
+        "Standard_E32-8s_v4",
+        "Standard_E64-32s_v4",
+        "Standard_E64-16s_v4",
+        "Standard_E4-2ds_v4",
+        "Standard_E8-4ds_v4",
+        "Standard_E8-2ds_v4",
+        "Standard_E16-8ds_v4",
+        "Standard_E16-4ds_v4",
+        "Standard_E32-16ds_v4",
+        "Standard_E32-8ds_v4",
+        "Standard_E64-32ds_v4",
+        "Standard_E64-16ds_v4",
+        "Standard_M24s_v2",
+        "Standard_M24ms_v2",
+        "Standard_M48s_v2",
+        "Standard_M48ms_v2",
+        "Standard_M96s_v2",
+        "Standard_M96ms_v2",
+        "Standard_M192s_v2",
+        "Standard_M192ms_v2"
+    ],
+    "storageAccountId": "[resourceId(parameters('storageAccountRG'),'Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
+    "imageReference": {
+      "publisher": "OpenLogic",
+      "offer": "[if(contains(toLower(parameters('imageSKU')),'lvm'),'CentOS-LVM','CentOS')]",
+      "sku": "[if(contains(variables('sizesVmgen2'), parameters('vmSize')),concat(parameters('imageSKU'),'-gen2'),parameters('imageSKU'))]",
+      "version": "latest"
+    },
+    "placementGroup": "[concat(parameters('appName'),'-ppg')]",
+    "linuxConfiguration": {
+      "disablePasswordAuthentication": "true",
+      "ssh": {
+        "publicKeys": [
+          {
+            "path": "[concat('/home/',parameters('adminUsername'),'/.ssh/authorized_keys')]",
+            "keyData": "[parameters('adminPasswordOrKey')]"
+          }
+        ]
+      }
+    },
+    "shareNetworkSecurityGroupName": "[concat(parameters('shareName'),'-nsg')]"
+  },
+  "resources": [
+    {
+      "apiVersion": "2017-05-10",
+      "condition": "[equals(parameters('shareServerNewOrExisting'),'new')]",
+      "name": "[concat(deployment().name,'-nfsTemplate')]",
+      "type": "Microsoft.Resources/deployments",
+      "dependsOn": [
+        "[parameters('virtualNetworkName')]",
+        "[concat('Microsoft.Network/networkInterfaces/',variables('shareNic'))]"
+      ],
+      "properties": {
+        "mode": "Incremental",
+        "templateLink": {
+          "contentVersion": "1.0.0.0",
+          "uri": "[concat(parameters('_artifactsLocation'),'nfsTemplate.json', parameters('_artifactsLocationSasToken'))]"
+        },
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "_artifactsLocation": {
+            "value": "[parameters('_artifactsLocation')]"
+          },
+          "_artifactsLocationSasToken": {
+            "value": "[parameters('_artifactsLocationSasToken')]"
+          },
+          "vmName": {
+            "value": "[parameters('shareName')]"
+          },
+          "vmSize": {
+            "value": "[parameters('shareSize')]"
+          },
+          "vmDiskType": {
+            "value": "[parameters('vmDiskType')]"
+          },
+          "shareFolder": {
+            "value": "[parameters('shareFolder')]"
+          },
+          "imageReference": {
+            "value": "[variables('imageReference')]"
+          },
+          "authenticationType": {
+            "value": "[parameters('authenticationType')]"
+          },
+          "adminUsername": {
+            "value": "[parameters('adminUsername')]"
+          },
+          "adminPasswordOrKey": {
+            "value": "[parameters('adminPasswordOrKey')]"
+          },
+          "networkInterfaceId": {
+            "value": "[resourceId('Microsoft.Network/networkInterfaces', variables('shareNic'))]"
+          },
+          "nfsPrefix": {
+            "value": "[parameters('subnetPrefix')]"
+          },
+          "tags": {
+            "value": {
+              "appName": "[parameters('appName')]",
+              "adminEmail": "[parameters('adminEmail')]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "2018-02-01",
+      "name": "pid-0477ea54-137d-53ee-a010-42e454ef46f9",
+      "type": "Microsoft.Resources/deployments",
+      "properties": {
+        "mode": "Incremental",
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "resources": []
+        }
+    }
+    },
+    {
+      "apiVersion": "2018-07-01",
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[parameters('storageAccountName')]",
+      "condition": "[equals(parameters('storageAccountNewOrExisting'),'new')]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "appName": "[parameters('appName')]",
+        "adminEmail": "[parameters('adminEmail')]"
+      },
+      "sku": {
+        "name": "[parameters('storageAccountType')]"
+      },
+      "kind": "StorageV2",
+      "properties": {
+        "accessTier": "Hot"
+      }
+    },
+    {
+      "apiVersion": "2018-11-01",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "[parameters('publicIpAddressName')]",
+      "condition": "[equals(parameters('publicIpAddressNewOrExisting'),'new')]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "appName": "[parameters('appName')]",
+        "adminEmail": "[parameters('adminEmail')]"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic",
+        "dnsSettings": {
+          "domainNameLabel": "[parameters('domainNameLabel')]"
+        }
+      }
+    },
+    {
+      "apiVersion": "2018-11-01",
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "condition": "[equals(parameters('shareServerNewOrExisting'),'new')]",
+      "name": "[variables('shareNetworkSecurityGroupName')]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "appName": "[parameters('appName')]",
+        "adminEmail": "[parameters('adminEmail')]"
+      },
+      "properties": {
+        "securityRules": [
+          {
+            "name": "ssh_rule",
+            "properties": {
+              "description": "Allow SSH access",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "22",
+              "sourceAddressPrefix": "VirtualNetwork",
+              "destinationAddressPrefix": "VirtualNetwork",
+              "access": "Allow",
+              "priority": 101,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "nfs_rule",
+            "properties": {
+              "description": "Allow NFS access",
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "2049",
+              "sourceAddressPrefix": "VirtualNetwork",
+              "destinationAddressPrefix": "VirtualNetwork",
+              "access": "Allow",
+              "priority": 110,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "deny_all_rule",
+            "properties": {
+              "description": "Deny all remaining incoming",
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Deny",
+              "priority": 200,
+              "direction": "Inbound"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2018-11-01",
+      "condition": "[equals(parameters('virtualNetworkNewOrExisting'), 'new')]",
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "[variables('networkSecurityGroupName')]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "appName": "[parameters('appName')]",
+        "adminEmail": "[parameters('adminEmail')]"
+      },
+      "properties": {
+        "securityRules": [
+          {
+            "name": "ssh_rule",
+            "properties": {
+              "description": "Allow SSH access",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "22",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 101,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "https_rule",
+            "properties": {
+              "description": "Allow HTTP, HTTPS access",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRanges": [
+                "80",
+                "443",
+                "8080",
+                "8443",
+                "9443"
+              ],
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 102,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "xcdata_rule",
+            "properties": {
+              "description": "Xcalar data path",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "5000",
+              "sourceAddressPrefix": "VirtualNetwork",
+              "destinationAddressPrefix": "VirtualNetwork",
+              "access": "Allow",
+              "priority": 103,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "xcmonitor_rule",
+            "properties": {
+              "description": "Xcalar Monitor communication",
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "8000",
+              "sourceAddressPrefix": "VirtualNetwork",
+              "destinationAddressPrefix": "VirtualNetwork",
+              "access": "Allow",
+              "priority": 104,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "xcapi_rule",
+            "properties": {
+              "description": "Xcalar API communication",
+              "protocol": "Tcp",
+              "sourcePortRange": "*",
+              "destinationPortRange": "18552",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 105,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "deny_all_rule",
+            "properties": {
+              "description": "Deny all remaining incoming",
+              "protocol": "*",
+              "sourcePortRange": "*",
+              "destinationPortRange": "*",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Deny",
+              "priority": 200,
+              "direction": "Inbound"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2018-11-01",
+      "type": "Microsoft.Network/virtualNetworks",
+      "condition": "[equals(parameters('virtualNetworkNewOrExisting'), 'new')]",
+      "name": "[parameters('virtualNetworkName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
+      ],
+      "tags": {
+        "appName": "[parameters('appName')]",
+        "adminEmail": "[parameters('adminEmail')]"
+      },
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[parameters('addressPrefix')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[parameters('subnetName')]",
+            "properties": {
+              "addressPrefix": "[parameters('subnetPrefix')]",
+              "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2018-11-01",
+      "type": "Microsoft.Network/networkInterfaces",
+      "condition": "[equals(parameters('shareServerNewOrExisting'),'new')]",
+      "name": "[variables('shareNic')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[parameters('virtualNetworkName')]",
+        "[resourceId('Microsoft.Network/networkSecurityGroups', variables('shareNetworkSecurityGroupName'))]"
+      ],
+      "tags": {
+        "nodeRole": "nfsserver",
+        "appName": "[parameters('appName')]",
+        "adminEmail": "[parameters('adminEmail')]"
+      },
+      "properties": {
+        "primary": true,
+        "enableAcceleratedNetworking": "[contains(variables('sizesWithAcceleratedNetworking'), parameters('shareSize'))]",
+        "networkSecurityGroup": {
+          "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('shareNetworkSecurityGroupName'))]"
+        },
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[variables('subnetID')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2018-11-01",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[concat(variables('nicName'), copyIndex())]",
+      "location": "[parameters('location')]",
+      "copy": {
+        "name": "nicLoop",
+        "count": "[parameters('scaleNumber')]"
+      },
+      "tags": {
+        "nodeId": "[copyIndex()]",
+        "appName": "[parameters('appName')]",
+        "adminEmail": "[parameters('adminEmail')]"
+      },
+      "dependsOn": [
+        "[variables('publicIpAddress').id]",
+        "[parameters('virtualNetworkName')]"
+      ],
+      "properties": {
+        "primary": true,
+        "enableAcceleratedNetworking": "[contains(variables('sizesWithAcceleratedNetworking'), parameters('vmSize'))]",
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "publicIPAddress": "[if(equals(copyIndex(), 0), variables('publicIPAddress'), json('null'))]",
+              "subnet": {
+                "id": "[variables('subnetID')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2018-04-01",
+      "type": "Microsoft.Compute/proximityPlacementGroups",
+      "name": "[variables('placementGroup')]",
+      "location": "[parameters('location')]"
+    },
+    {
+      "apiVersion": "2018-10-01",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[concat(variables('vmName'), copyIndex())]",
+      "location": "[parameters('location')]",
+      "copy": {
+        "name": "nodeId",
+        "count": "[parameters('scaleNumber')]"
+      },
+      "tags": {
+        "nodeId": "[copyIndex()]",
+        "appName": "[parameters('appName')]",
+        "adminEmail": "[parameters('adminEmail')]"
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Storage/storageAccounts/', parameters('storageAccountName'))]",
+        "[concat('Microsoft.Network/networkInterfaces/',variables('nicName'), copyIndex())]",
+        "[concat('Microsoft.Compute/proximityPlacementGroups/', variables('placementGroup'))]"
+      ],
+      "properties": {
+        "proximityPlacementGroup": {
+          "id": "[resourceId('Microsoft.Compute/proximityPlacementGroups',variables('placementGroup'))]"
+        },
+        "hardwareProfile": {
+          "vmSize": "[parameters('vmSize')]"
+        },
+        "osProfile": {
+          "computername": "[concat(variables('vmName'), copyIndex())]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPasswordOrKey')]",
+          "linuxConfiguration": "[if(equals(parameters('authenticationType'), 'password'), json('null'), variables('linuxConfiguration'))]"
+        },
+        "storageProfile": {
+          "imageReference": "[variables('imageReference')]",
+          "osDisk": {
+            "name": "[concat(variables('vmName'), copyIndex(), '-osdisk')]",
+            "createOption": "FromImage",
+            "caching": "ReadWrite",
+            "diskSizeGB": "[int(parameters('osDiskSize'))]",
+            "managedDisk": {
+              "storageAccountType": "[parameters('vmDiskType')]"
+            }
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', concat(variables('nicName'), copyIndex()))]"
+            }
+          ]
+        },
+        "diagnosticsProfile": {
+          "bootDiagnostics": {
+            "enabled": "[parameters('bootDiagnostics')]",
+            "storageUri": "[if(parameters('bootDiagnostics'), reference(variables('storageAccountId'), '2017-10-01').primaryEndpoints.blob, json('null'))]"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "2018-10-01",
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(variables('vmName'), copyIndex(), '/bootstrap')]",
+      "location": "[parameters('location')]",
+      "copy": {
+        "name": "numExt",
+        "count": "[parameters('scaleNumber')]"
+      },
+      "tags": {
+        "nodeId": "[copyIndex()]",
+        "appName": "[parameters('appName')]",
+        "adminEmail": "[parameters('adminEmail')]"
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/', variables('vmName'), copyIndex())]"
+      ],
+      "properties": {
+        "publisher": "Microsoft.Azure.Extensions",
+        "type": "CustomScript",
+        "typeHandlerVersion": "2.0",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+          "fileUris": [
+            "[parameters('customScriptUrl')]"
+          ]
+        },
+        "protectedSettings": {
+          "commandToExecute": "[concat(parameters('customScriptCommandToExecute'), ' -s ', if( equals(parameters('shareServerNewOrExisting'),'new'), reference(resourceId('Microsoft.Network/networkInterfaces', variables('shareNic'))).ipConfigurations[0].properties.privateIPAddress, parameters('shareName')),':', parameters('shareFolder'),' -d ', parameters('domainNameLabel'),' -b ',parameters('cgroupsEnabled'),' -i ', copyIndex(), ' -e \"', variables('vmName'), '\" -c \"', parameters('cluster'),'\" -n ', parameters('scaleNumber'), ' -l \"', parameters('licenseKey'), '\" -v \"', parameters('adminEmail'), '\" -w \"', parameters('appUsername'), '\" -x \"', parameters('appPassword'), '\" -y ', parameters('storageAccountName'), ' -z \"', listKeys(variables('storageAccountId'), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value, '\" -u \"', parameters('installerUrl'), parameters('installerUrlSasToken'), '\"')]"
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "fqdn": {
+      "value": "[reference(variables('publicIpAddress').id,'2017-09-01').dnsSettings.fqdn]",
+      "type": "string"
+    }
+  }
+}

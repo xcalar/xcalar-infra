@@ -1,0 +1,131 @@
+variables:
+  today: '{{ isotime "20060102" }}'
+  http_proxy: '{{ env `http_proxy` }}'
+  https_proxy: '{{ env `https_proxy` }}'
+  no_proxy: '{{ env `no_proxy` }}'
+  cluster: jenkins-swarm
+  role: jenkins_slave
+  datacenter: xcalar-sjc
+  ts: '{{ timestamp }}'
+  osid: el7
+  cacher_ip: '{{ env `CACHER_IP` }}'
+  iso_url: el7-base-qemu/tdhtest
+  iso_checksum: 'md5:489da6148a3480a9d4ef94eb895ef033'
+  headless: "true"
+  home: '{{env `HOME`}}'
+  puppet_src: '{{env `PUPPET_SRC`}}'
+  puppet_host: 'puppet'
+  domain: 'int.xcalar.com'
+  disk_size: "128000"
+  build_number: '4'
+  environment: 'production'
+  output_directory: null
+  mirrorurl: 'http://netstore/isos/centos/7'
+builders:
+  - type: qemu
+    name: "{{user `osid`}}-packages-qemu"
+    accelerator: kvm
+    iso_url: '{{ user `iso_url` }}'
+    iso_checksum: '{{ user `iso_checksum` }}'
+    output_directory: '{{user `output_directory`}}'
+    disk_size: '{{user `disk_size`}}'
+    disk_image: true
+    use_backing_file: true
+    format: qcow2
+    headless: "{{user `headless`}}"
+    http_directory: httpdir
+    http_port_min: 10082
+    http_port_max: 10082
+    host_port_min: 2229
+    host_port_max: 2239
+    ssh_username: root
+    ssh_password: Welcome1
+    ssh_port: 22
+    ssh_wait_timeout: 900s
+    vm_name: '{{build_name}}-{{user `build_number`}}'
+    net_device: virtio-net
+    disk_interface: virtio
+    vnc_bind_address: 0.0.0.0
+    vnc_port_min: 5999
+    vnc_port_max: 6019
+    memory: 2048
+    cpus: 4
+    qemuargs:
+      - - "-serial"
+        - "mon:stdio"
+    #    qemuargs:
+    #      - - -netdev
+    #        - user,hostfwd=tcp::{{ .SSHHostPort }}-:22,id=forward
+    #      - - -device
+    #        - virtio-net,netdev=forward,id=net0
+    #      - - -m
+    #        - 2048
+    #      - - -smp
+    #        - 2
+    #
+provisioners:
+  - type: shell
+    inline:
+      - mkdir /tmp/packer
+
+  - type: file
+    source: "{{ user `puppet_src` }}/t/repo.tar"
+    destination: /tmp/packer/
+
+  - type: file
+    source: "{{ user `puppet_src` }}/t/{{user `osid`}}-packages.txt"
+    destination: /tmp/packer/
+
+  - type: file
+    source: "{{ template_dir }}/../scripts/{{user `osid`}}-build.sh"
+    destination: /tmp/packer/
+
+  - type: file
+    source: "{{ template_dir }}/../scripts/centos-updates.sh"
+    destination: /tmp/packer/
+
+  - type: shell
+    environment_vars:
+      - OSID={{user `osid`}}
+      - http_proxy={{user `http_proxy`}}
+      - https_proxy={{user `https_proxy`}}
+      - no_proxy={{user `no_proxy`}}
+      - CACHER_IP={{user `cacher_ip`}}
+      - MYHOSTNAME={{user `cluster`}}-{{user `osid`}}.{{user `domain`}}
+      - EL7_MIRROR_URL={{user `mirrorurl`}}
+      - XCALAR_PYTHON_VERSION=3.6.11-150
+      - XCALAR_ARROW_VERSION=0.13.0-8
+      - XCALAR_THRIFT_VERSION=0.10.0-28
+      - XCALAR_PROTOBUF_VERSION=3.11.2
+      - XCALAR_DOCKER_VERSION=19.03.8
+      - XCALAR_CLANG_VERSION=5
+      - XCALAR_TESTDATA_VERSION=2.0.5-10
+      - XCALAR_GRPC_VERSION=1.28.1-4
+      - XCALAR_REPOPKG_URL=http://repo.xcalar.net
+      - XCALAR_REPOPKG_ORG=http://repo.xcalar.net
+      - CONTAINER_UID=1000
+      - CONTAINER_GID=1000
+      - CONTAINER_USER=jenkins
+      - CONTAINER_HOME=/home/jenkins
+      - LIBARCHIVE_VERSION=3.3.1-12.el7
+    execute_command: chmod +x {{ .Path }}; {{ .Vars }} {{.Path}}
+    inline:
+      - set -x
+      - cd /tmp/packer
+      - yum clean all --enablerepo='*' && rm -rf /var/cache/yum/*
+      - yum localinstall -y http://repo.xcalar.net/xcalar-release-${OSID}.rpm
+      - bash -x {{user `osid`}}-build.sh
+      - yum clean all --enablerepo='*' && rm -rf /var/cache/yum/*
+      - yum install --enablerepo='xcalar-*' -y $(cat ${OSID}-packages.txt  | grep -v '^#')
+      - yum clean all --enablerepo='*' && rm -rf /var/cache/yum/*
+      - exit 0
+  - type: shell
+    script: '{{ template_dir }}/../scripts/generalize.sh'
+    expect_disconnect: true
+    skip_clean: true
+
+post-processors:
+  - type: compress
+    format: gz
+    keep_input_artifact: true
+    output: '{{user `output_directory`}}/{{build_name}}-{{user `build_number`}}.gz'

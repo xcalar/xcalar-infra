@@ -1,0 +1,32 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "name": {
+            "value": "xdpManagedApp"
+        },
+        "location": {
+            "value": "westus2"
+        },
+        "lockLevel": {
+            "value": "readonly"
+        },
+        "authorizations": {
+            "value": [
+                {
+                    "principalId": "d9e94f5d-8513-482b-989b-64ad90cf602f",
+                    "roleDefinitionId": "8e3af657-a8ff-443c-a75c-2fe8c4bcb635"
+                }
+            ]
+        },
+        "description": {
+            "value": "Xcalar Data Platform Managed Application"
+        },
+        "displayName": {
+            "value": "XdpManagedApp"
+        },
+        "packageFileUri": {
+            "value": "https://xcrepo.blob.core.windows.net/public/xdp-standard-platform/v1/xdp-standard-package.zip"
+        }
+    }
+}

@@ -1,0 +1,21 @@
+---
+role: nomad_client
+cluster: nomadvmss
+cloud: azure
+region: westus2
+datacenter: azure-westus2
+
+vmSku: Standard_D8_v3
+subnet: infra-subnet
+vnetName: xcalardev-vnet
+subnetResourceGroup: xcalardev-rg
+enableAcceleratedNetworking: "true"
+instanceCount: 3
+osDiskSize: 127
+lbPort: 4646
+
+image:
+  publisher: OpenLogic
+  offer: CentOS-CI
+  sku: 7-CI
+  version: latest

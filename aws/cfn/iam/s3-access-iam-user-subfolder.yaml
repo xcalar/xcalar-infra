@@ -1,0 +1,35 @@
+Version: '2012-10-17'
+Statement:
+  - Sid: AllowGroupToSeeBucketListInTheConsole
+    Action:
+      - s3:ListAllMyBuckets
+      - s3:GetBucketLocation
+    Effect: Allow
+    Resource: arn:aws:s3:::*
+  - Sid: AllowRootLevelListingOfTheBucket
+    Action: s3:ListBucket
+    Effect: Allow
+    Resource: arn:aws:s3:::awsexamplebucket1
+    Condition:
+      StringEquals:
+        s3:prefix:
+          - ''
+        s3:delimiter:
+          - /
+  - Sid: AllowListBucketOfASpecificUserPrefix
+    Action: s3:ListBucket
+    Effect: Allow
+    Resource: arn:aws:s3:::awsexamplebucket1
+    Condition:
+      StringLike:
+        s3:prefix:
+          - ${aws:username}/*
+  - Sid: AllowUserSpecificActionsOnlyInTheSpecificUserPrefix
+    Effect: Allow
+    Action:
+      - s3:PutObject
+      - s3:GetObject
+      - s3:GetObjectVersion
+      - s3:DeleteObject
+      - s3:DeleteObjectVersion
+    Resource: arn:aws:s3:::awsexamplebucket1/${aws:username}/*

@@ -1,0 +1,9 @@
+#requests==2.18.4
+boto3
+awscli
+aws-sam-cli
+cfn-flip
+cfn-lint
+troposphere
+yamllint
+yapf

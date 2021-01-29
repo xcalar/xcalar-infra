@@ -1,0 +1,39 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "diskName": {
+            "value": "nfs-disk1"
+        },
+        "location": {
+            "value": "westus2"
+        },
+        "sku": {
+            "value": "StandardSSD_LRS"
+        },
+        "diskSizeGb": {
+            "value": 128
+        },
+        "diskCount": {
+            "value": 8
+        },
+        "osType": {
+            "value": "linux"
+        },
+        "sourceUri": {
+            "value": ""
+        },
+        "sourceResourceId": {
+            "value": ""
+        },
+        "hyperVGeneration": {
+            "value": ""
+        },
+        "diskEncryptionSetType": {
+            "value": "EncryptionAtRestWithPlatformKey"
+        },
+        "createOption": {
+            "value": "empty"
+        }
+    }
+}

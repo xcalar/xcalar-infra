@@ -1,0 +1,18 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Xcalar Cloud. This template is to import resources before creation.",
+    "Resources": {
+        "Efs": {
+            "Type": "AWS::EFS::FileSystem",
+            "DeletionPolicy": "Retain"
+        }
+    },
+    "Outputs": {
+        "Efs": {
+            "Description": "EFS Data",
+            "Value": {
+                "Ref": "Efs"
+            }
+        }
+    }
+}

@@ -1,0 +1,21 @@
+{
+    "production": {
+        "app_function": "app.app", 
+        "aws_region": "us-west-2", 
+        "profile_name": null, 
+        "project_name": "licenseserver", 
+        "cors": true,
+        "runtime": "python2.7", 
+        "s3_bucket": "zappa-4o0g3f1os"
+    },
+
+    "dev": {
+        "app_function": "app.app", 
+        "aws_region": "us-west-2", 
+        "profile_name": "xcalar-test",
+        "project_name": "licenseserverdev",
+        "cors": true,
+        "runtime": "python2.7", 
+        "s3_bucket": "zappa-dev-4o0g3f1os"
+    }
+}

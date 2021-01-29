@@ -1,0 +1,11 @@
+#!/bin/bash
+deactivate 2>/dev/null || true
+
+export XLRINFRADIR="$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)"
+export PATH="$XLRINFRADIR/bin:$PATH"
+
+. infra-sh-lib
+. aws-sh-lib
+
+make -s -C $XLRINFRADIR venv
+. $XLRINFRADIR/.venv/bin/activate

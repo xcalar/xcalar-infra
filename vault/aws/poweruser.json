@@ -1,0 +1,67 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:*",
+        "cloudformation:*",
+        "s3:*",
+        "autoscaling:*",
+        "elasticfilesystem:*",
+        "lambda:*",
+        "dynamodb:*",
+        "route53:*",
+        "sns:*",
+        "sqs:*",
+        "ses:*",
+        "kinesisanalytics:*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "kms:ListKeys",
+        "kms:ListAliases",
+        "kms:DescribeKey",
+        "kms:ListKeyPolicies",
+        "kms:GetKeyPolicy",
+        "kms:GetKeyRotationStatus"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "kms:Encrypt",
+        "kms:Decrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*",
+        "kms:DescribeKey"
+      ],
+      "Resource": [
+        "arn:aws:kms:*:559166403383:key/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "iam:List*",
+        "iam:Get*",
+        "iam:PassRole",
+        "sts:GetFederationToken",
+        "sts:GetSessionToken",
+        "sts:DecodeAuthorizationMessage"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "sts:AssumeRole"
+      ],
+      "Resource": "arn:aws:iam::559166403383:role/*"
+    }
+  ]
+}

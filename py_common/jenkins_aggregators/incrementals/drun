@@ -1,0 +1,11 @@
+#!/bin/bash
+#
+# See Dockerfile for notes about /opt/clang5
+#
+docker run --init --rm \
+    --user `id -u`:`id -g` \
+    --volume="/etc/group:/etc/group:ro" \
+    --volume="/etc/passwd:/etc/passwd:ro" \
+    --volume="/etc/shadow:/etc/shadow:ro" \
+    --volume="/netstore:/netstore" \
+    jenkins-aggregators-incrementals py_common/jenkins_aggregators/incrementals/incrementals.py "$@"

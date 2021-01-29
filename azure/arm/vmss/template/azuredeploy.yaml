@@ -1,0 +1,171 @@
+$schema: http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#
+contentVersion: 1.0.0.0
+parameters:
+  location:
+    type: string
+  vmssName:
+    type: string
+  vmSku:
+    type: string
+  adminUsername:
+    type: string
+  instanceCount:
+    type: int
+  image:
+    type: object
+  singlePlacementGroup:
+    type: bool
+  pipName:
+    type: string
+  pipLabel:
+    type: string
+  skuType:
+    type: string
+  ipAllocationMethod:
+    type: string
+  priority:
+    type: string
+  subnetName:
+    type: string
+  enableAcceleratedNetworking:
+    type: bool
+  publicIpAddressPerInstance:
+    type: bool
+  upgradeMode:
+    type: string
+  sshPublicKey:
+    type: string
+  spreadingAlgorithmPlatformFaultDomainCount:
+    type: int
+  vnetName:
+    type: string
+  subnetResourceGroup:
+    type: string
+  customData:
+    type: string
+  osDiskSize:
+    type: int
+  osDiskType:
+    type: string
+  loadBalancerFrontEndPort:
+    type: int
+  loadBalancerBackEndPort:
+    type: int
+  overprovision:
+    type: bool
+variables:
+  namingInfix: "[toLower(substring(concat(parameters('vmssName'), uniqueString(resourceGroup().id)), 0, 9))]"
+  networkApiVersion: 2018-01-01
+  storageApiVersion: 2019-06-01
+  computeApiVersion: 2019-07-01
+  autoscaleApiVersion: 2015-04-01
+  subnetId: "[concat('/subscriptions/', subscription().subscriptionId,'/resourceGroups/', parameters('subnetResourceGroup'), '/providers/Microsoft.Network/virtualNetworks/', parameters('vnetName'), '/subnets/', parameters('subnetName'))]"
+  loadBalancerName: "[concat(parameters('vmssName'),'-lb')]"
+  loadBalancerProbeName: "[concat(parameters('vmssName'),'-lb-probe')]"
+  loadBalancerFrontEndName: "[concat(parameters('vmssName'),'-lb-fe')]"
+  loadBalancerBackEndName: "[concat(parameters('vmssName'),'-lb-be')]"
+  loadBalancerNatPoolName: "[concat(parameters('vmssName'),'-lb-natpool')]"
+resources:
+- name: "[parameters('vmssName')]"
+  type: Microsoft.Compute/virtualMachineScaleSets
+  apiVersion: "[variables('computeApiVersion')]"
+  location: "[parameters('location')]"
+  dependsOn:
+  - "[resourceId('Microsoft.Network/loadBalancers', variables('loadBalancerName'))]"
+  sku:
+    name: "[parameters('vmSku')]"
+    tier: Standard
+    capacity: "[int(parameters('instanceCount'))]"
+  identity:
+    type: SystemAssigned
+  properties:
+    overprovision: "[parameters('overprovision')]"
+    upgradePolicy:
+      mode: "[parameters('upgradeMode')]"
+    singlePlacementGroup: "[parameters('singlePlacementGroup')]"
+    virtualMachineProfile:
+      storageProfile:
+        imageReference: "[parameters('image')]"
+        osDisk:
+          createOption: fromImage
+          caching: ReadWrite
+          diskSizeGB: "[parameters('osDiskSize')]"
+          managedDisk:
+            storageAccountType: "[parameters('osDiskType')]"
+      priority: "[parameters('priority')]"
+      osProfile:
+        computerNamePrefix: "[variables('namingInfix')]"
+        adminUsername: "[parameters('adminUsername')]"
+        customData: "[parameters('customData')]"
+        linuxConfiguration:
+          disablePasswordAuthentication: true
+          ssh:
+            publicKeys:
+            - path: "[concat('/home/', parameters('adminUsername'), '/.ssh/authorized_keys')]"
+              keyData: "[parameters('sshPublicKey')]"
+      networkProfile:
+        networkInterfaceConfigurations:
+        - name: "[concat(parameters('vmssName'), '-nic')]"
+          properties:
+            primary: true
+            enableAcceleratedNetworking: "[parameters('enableAcceleratedNetworking')]"
+            ipConfigurations:
+            - name: "[concat(parameters('vmssName'), '-ipconfig')]"
+              properties:
+                subnet:
+                  id: "[variables('subnetId')]"
+                loadBalancerBackendAddressPools:
+                - id: "[concat('/subscriptions/', subscription().subscriptionId,'/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Network/loadBalancers/', variables('loadBalancerName'), '/backendAddressPools/', variables('loadBalancerBackEndName'))]"
+                loadBalancerInboundNatPools:
+                - id: "[concat('/subscriptions/', subscription().subscriptionId,'/resourceGroups/', resourceGroup().name, '/providers/Microsoft.Network/loadBalancers/', variables('loadBalancerName'), '/inboundNatPools/', variables('loadBalancerNatPoolName'))]"
+    platformFaultDomainCount: "[int(parameters('spreadingAlgorithmPlatformFaultDomainCount'))]"
+- type: Microsoft.Network/loadBalancers
+  name: "[variables('loadBalancerName')]"
+  location: '[resourceGroup().location]'
+  sku:
+    name: Basic
+  apiVersion: 2019-06-01
+  properties:
+    frontendIPConfigurations:
+    - name: "[variables('loadBalancerFrontEndName')]"
+      properties:
+        privateIPAllocationMethod: Dynamic
+        subnet:
+          id: "[variables('subnetId')]"
+    backendAddressPools:
+    - name: "[variables('loadBalancerBackendName')]"
+    loadBalancingRules:
+    - name: roundRobinLBRule
+      properties:
+        frontendIPConfiguration:
+          id: "[concat(resourceId('Microsoft.Network/loadBalancers', variables('loadBalancerName')), '/frontendIPConfigurations/', variables('loadBalancerFrontEndName'))]"
+        backendAddressPool:
+          id: "[concat(resourceId('Microsoft.Network/loadBalancers', variables('loadBalancerName')), '/backendAddressPools/', variables('loadBalancerBackendName'))]"
+        protocol: Tcp
+        frontendPort: "[parameters('loadBalancedFrontEndPort')]"
+        backendPort: "[parameters('loadBalancedBackEndPort')]"
+        enableFloatingIP: false
+        idleTimeoutInMinutes: 5
+        probe:
+          id: "[concat(resourceId('Microsoft.Network/loadBalancers', variables('loadBalancerName')), '/probes/', variables('loadBalancerProbeName'))]"
+    probes:
+    - name: "[variables('loadBalancerProbeName')]"
+      properties:
+        protocol: Tcp
+        port: "[parameters('loadBalancedBackEndPort')]"
+        intervalInSeconds: 5
+        numberOfProbes: 2
+    inboundNatPools:
+    - name: "[variables('loadBalancerNatPoolName')]"
+      properties:
+        frontendIPConfiguration:
+          id: "[concat(resourceId('Microsoft.Network/loadBalancers', variables('loadBalancerName')), '/frontendIPConfigurations/', variables('loadBalancerFrontEndName'))]"
+        protocol: Tcp
+        frontendPortRangeStart: 50000
+        frontendPortRangeEnd: 50099
+        backendPort: 22
+outputs:
+  principalId:
+      type: string
+      value: "[reference(concat(resourceId('Microsoft.Compute/virtualMachineScaleSets/', parameters('vmssName')),'/providers/Microsoft.ManagedIdentity/Identities/default'),'2015-08-31-PREVIEW').principalId]"
+# vim: ft=yaml

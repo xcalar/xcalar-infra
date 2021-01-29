@@ -1,0 +1,4 @@
+#!/bin/bash
+docker stop jdq-back
+sleep 2
+docker rm jdq-back

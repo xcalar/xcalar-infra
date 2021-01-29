@@ -1,0 +1,2 @@
+nfs_share: "10.0.0.15:/opt/nfs"
+nfs_mount: "/netstore"

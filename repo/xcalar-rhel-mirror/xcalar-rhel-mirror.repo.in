@@ -1,0 +1,7 @@
+[xcalar-rhel-mirror]
+name=Xcalar RHEL $releasever Mirror Repository
+baseurl=@URL@/$releasever/rhui
+enabled=1
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Xcalar-RHEL-Mirror
+

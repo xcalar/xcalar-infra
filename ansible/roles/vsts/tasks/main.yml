@@ -1,0 +1,31 @@
+---
+
+- name: Create VSTS root dir {{ vsts_root_dir }}
+  file: path="{{ vsts_root_dir }}" state=directory owner=root group=root mode=0700
+
+- name: Create VSTS token
+  lineinfile:
+    create: yes
+    mode: 0400
+    owner: root
+    group: root
+    path: "{{ vsts_token_file }}"
+    state: present
+    regexp: "^{{ vsts_token }}$"
+    line: "{{ vsts_token }}"
+
+- name: Create docker-compose file
+  template:
+    src: "{{ role_path }}/templates/docker-compose.yml.j2"
+    dest: "{{ vsts_root_dir }}/docker-compose.yml"
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Create VSTS work dir {{ vsts_work_dir }}
+  file: path="{{ vsts_work_dir }}" state=directory owner=root group=root mode=0700
+
+- name: Run docker-compose
+  command: /usr/local/bin/docker-compose up -d
+  args:
+    chdir: "{{ vsts_root_dir }}"

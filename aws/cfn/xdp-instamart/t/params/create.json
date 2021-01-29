@@ -1,0 +1,94 @@
+[
+    {
+        "ParameterKey": "VpcId",
+        "ParameterValue": "vpc-0891757cf5d9d7ed3"
+    },
+    {
+        "ParameterKey": "Subnet",
+        "ParameterValue": "subnet-0dc8e4b79d6cccb22"
+    },
+    {
+        "ParameterKey": "ClusterSize",
+        "ParameterValue": "3"
+    },
+    {
+        "ParameterKey": "ExistingS3",
+        "ParameterValue": "xc-internaltesting"
+    },
+    {
+        "ParameterKey": "ExistingSGs",
+        "ParameterValue": "sg-0116247eeb7984771,sg-01a5b96b8046abffb"
+    },
+    {
+        "ParameterKey": "KMSKeyArn",
+        "ParameterValue": "arn:aws:kms:us-west-2:559166403383:key/36bd8116-d662-421f-930f-0dc69c3d5b9e"
+    },
+    {
+        "ParameterKey": "InstanceType",
+        "ParameterValue": "c5d.2xlarge"
+    },
+    {
+        "ParameterKey": "AssociatePublicIpAddress",
+        "ParameterValue": "false"
+    },
+    {
+        "ParameterKey": "KeyName",
+        "ParameterValue": "xcalar-us-west-2"
+    },
+    {
+        "ParameterKey": "AdminUsername",
+        "ParameterValue": "xdpadmin"
+    },
+    {
+        "ParameterKey": "NotificationEmail",
+        "ParameterValue": "a@a.com"
+    },
+    {
+        "ParameterKey": "AllowedCIDR",
+        "ParameterValue": "0.0.0.0/0"
+    },
+    {
+        "ParameterKey": "AdminPassword",
+        "ParameterValue": "Welcome1"
+    },
+    {
+        "ParameterKey": "LicenseKey",
+        "ParameterValue": "H4sIABVCL14AA22Oy5KCMBRE9/kK95YKEREWWeCrAN8KCGymAgQFQ8AQRpyvH3XK3exudZ9TfVdZTFhNEqdExukILEE4FlnJEOxLYEexSEteoJW1cf0vX1WAR3j9quW+8gTWuLXYS4lF9k1mWOBj9kOQ7EyAnUTxnOGIkgQJ3hCw42XSxAL5MaaYd15w5zMAtmzeVhl/oFlWv5wPvcBFRh//O2/j/ewzJwhKEPZszHpQBZsyIdOyYQJpwK0J/7tlCdTZmWHRcIJcz6vkgR4PHHgJypHdtkStg3h5XuwuO6eZ47mS26aV3yOpG44NNffINM8nKxodLNcd0qIwSq1Lx9S6kovm0FAewdPCgJWKtchOw8BPIN/Uh9CYmRXX1ShpLzd4jx5617+35FrhYyDZ53QkpUNt3z04uTAtRU81ugzim1mkyni7PjBzf1TAL7O1McGlAQAA"
+    },
+    {
+        "ParameterKey": "RootSize",
+        "ParameterValue": "64"
+    },
+    {
+        "ParameterKey": "SSLCert",
+        "ParameterValue": "None"
+    },
+    {
+        "ParameterKey": "SSLKey",
+        "ParameterValue": "None"
+    },
+    {
+        "ParameterKey": "HostedZoneName",
+        "ParameterValue": ""
+    },
+    {
+        "ParameterKey": "EfsIP",
+        "ParameterValue": ""
+    },
+    {
+        "ParameterKey": "ExistingShare",
+        "ParameterValue": ""
+    },
+    {
+        "ParameterKey": "EfsProvisionedThroughputMibps",
+        "ParameterValue": "10"
+    },
+    {
+        "ParameterKey": "EfsThroughputMode",
+        "ParameterValue": "bursting"
+    },
+    {
+        "ParameterKey": "CNAME",
+        "ParameterValue": ""
+    }
+]

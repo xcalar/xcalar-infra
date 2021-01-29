@@ -1,0 +1,48 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "diskName": {
+            "type": "string"
+        },
+        "location": {
+            "type": "string",
+            "defaultValue":"[resourceGroup().location]"
+        },
+        "sku": {
+            "type": "string",
+            "defaultValue": "Premium_LRS"
+        },
+        "diskSizeGb": {
+            "type": "integer",
+            "defaultValue": 127
+        },
+        "count": {
+            "type": "integer",
+            "defaultValue": 4
+        }
+    },
+    "resources": [
+        {
+          "type": "Microsoft.Compute/disks",
+          "apiVersion": "2018-09-30",
+          "location": "[parameters('location')]",
+          "name": "[concat(parameters('diskName'),'st', copyIndex(1))]",
+          "sku": {
+            "name": "[parameters('sku')]"
+          },
+          "copy": {
+            "name": "diskLoop",
+            "count": "[parameters('count')]"
+          },
+          "properties": {
+            "creationData": {
+              "createOption": "Empty"
+            },
+            "diskSizeGB": "[parameters('diskSizeGb')]"
+          },
+          "tags": {}
+        }
+
+    ]
+}

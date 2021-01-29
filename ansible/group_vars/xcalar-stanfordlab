@@ -1,0 +1,3 @@
+ansible_user: xcuser
+ansible_ssh_pass: Xc4larStanf0rd
+ansible_port: 22022

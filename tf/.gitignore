@@ -1,0 +1,6 @@
+terraform.tfvars
+.terraform
+*.plan
+*.tfstate
+*.backup
+TRASH

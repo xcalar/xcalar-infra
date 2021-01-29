@@ -1,0 +1,4 @@
+GSBUCKET=rhel6-staging.xcalar.net
+GSBASE=el/
+RELEASEVER=6Server
+REPODIR=/srv/reposync/rhel-x86_64-server-6

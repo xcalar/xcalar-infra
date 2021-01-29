@@ -1,0 +1,236 @@
+<html>
+<head>
+  <title>VM Shoppe</title>
+
+  <link rel="shortcut icon" href="./assets/images/favicon.ico" type="image/x-icon">
+  <link rel="icon" href="./assets/images/favicon.ico" type="image/x-icon">
+  <script src="./assets/3rd/jquery.min.js"></script>
+  <script src="./assets/3rd/jquery-ui.js"></script>
+  <script src="./assets/js/ovirtGuiScripts.js"></script>
+  <!-- materialize stuff -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link type="text/css" rel="stylesheet" href="./assets/3rd/materialize/css/materialize.min.css"  media="screen,projection"/>
+    <!--Let browser know website is optimized for mobile-->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <!-- import our custom css after materialize, overwriting some stylings -->
+  <link rel="stylesheet" href="./assets/style/vmShopStyle.css" type="text/css">
+</head>
+
+<body>
+Welcome to the VM Shop!
+
+  <!-- div to display if something goes wrong in setup, can display msg here without displaying login or schedule div -->
+  <div class="msg" id="general-msg" hidden></div>
+
+  <!-- LOGIN SECTION -->
+  <div class="action-container" id="login-block" hidden>
+    <h1>Enter LDAP Credentials</h1>
+    <form id="login-form" target="_blank">
+      <input type="text" id="user" placeholder="Username" required="required" />
+      <input type="password" id="p" placeholder="Password" required="required" />
+      <button type="submit" id="login-button" class="btn waves-effect waves-light">Log In.</button>
+    </form>
+    <div class="msg" id="login-msg"></div>
+  </div>
+
+  <!-- VM DETAILS FORM; unhide when login successful -->
+  <div class="container" id="vm-schedule-block" hidden>
+    <!-- header -->
+    <div class="row">
+      <div class="col s12">
+<!--
+        <div>
+          <center><h1>VM Details</h1></center>
+        </div>
+-->
+
+        <!-- Select task: Create or Delete Vms -->
+        <center>
+          <div class="extra-bottom-padding-section">
+            <div class="switch">
+              <h1>Which task would you like to perform?</h1>
+              <label>
+                  Create new VM(s)
+                  <input id="select-task" type="checkbox">
+                  <span class="lever"></span>
+                  Delete existing VM(s)
+              </label>
+            </div>
+          </div>
+        </center>
+
+        <div>
+        <!-- using one single form; hide/show delete or create sections of the form based on task switch -->
+        <form id="schedule-form">
+
+          <!-- Option: delete existing VMs -->
+          <div id="delete-options" hidden>
+            <div class="row">
+              <!-- list of hostnames to delete -->
+              <div class="input-field col s12">
+                <input type="text" id="delete-list" placeholder="vm-abc,vm23" class="" required="required" />
+                <label for="delete-list" class="tooltipped" data-position="bottom" data-tooltip="A single VM, or a comma separated list of VMs you wish to delete. (The name without the .int.xcalar.com on it)">List of hostnames</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Option: create new VMs -->
+          <div id="provision-options">
+
+            <!-- vm basename -->
+            <div class="row">
+              <div class="input-field col s12">
+                <!-- you need to set the placeholder attr to get the materialize label from being stuck before focusing on the element.  Even if you set it dynamically and rebind it doesn't seem to work. js is going to do something else with eithe rplaceholder or fill in the value-->
+                <!-- note: removing 'validate' class; when present, if you focus in then focus out on the field, if user hasn't supplied anything yet, 'invalid' class gets auto-added turning the elment red -->
+                <input type="text" id="vm-basename" placeholder="username" class="" required="required" />
+                <label for="vm-basename" class="tooltipped" data-position="bottom" data-tooltip="Basename for the hostname that will be assigned to the new VM(s).  It is a 'basename' as the final hostname will have a random sequence of chars appended to the value provided here, to ensure hostname uniqueness.  If more than one VM is requested, a counter will be appended as well. (i.e., yourbasename-vm0, yourbasename-vm1, etc.)  Don't stress; you will be notified with all of these details via email once your request is complete!" >VM Basename</label>
+                <span id="vm-basename-label" class="helper-text" for="vm-basename" data-error="" data-success="">Please enter a name for your VM.</span>
+              </div>
+            </div>
+
+            <!-- dev machine? (installer section should only show if not dev machine) -->
+
+            <div id="Q-dev-machine" class="extra-bottom-padding">
+              <label class="tooltipped" data-position="top" data-tooltip="A 'dev machine' would be a VM you will use to check out git repos on for development purposes.  Xcalar will NOT be installed for you; you will need to build Xcalar manually from the repos you check out.  If your goal is just to test out/familiarize yourself with XD, you probably do not want this option.">
+                <input id="dev-machine-check" type="checkbox" class="filled-in" />
+                <span id="dev-machine-label">This will be a dev machine.</span>
+              </label>
+            </div>
+
+            <!-- INSTALLER -->
+            <div id="install-section-wrap" class="row no-row-bottom" />
+              <div id="inst-type" class="input-field col s12">
+                <fieldset id="group1">
+                  <legend>Installer</legend>
+
+                  <p>
+                    <label class="tooltipped" data-position="bottom" data-tooltip="Will install the prod version of the most recent BuildTrunk build without version mismatch.">
+                      <input id="install-type-latest-stable" name="install-type" type="radio" value="latest-stable" />
+                      <span id="install-type-latest-stable-label">Install the latest stable BuildTrunk</span>
+                    </label>
+                  </p>
+
+                  <p>
+                    <label>
+                      <input id="install-type-own" name="install-type" type="radio" value="own" required />
+                      <span>I'll provide my own installer</span>
+                    </label>
+                  </p>
+
+                  <!-- user installer input; unhide if radio button above selected -->
+                  <div id="my-installer-wrap" hidden>
+                    <div class="input-field col s12">
+                      <input type="text" id="own-installer" placeholder="/netstore/<path to an RPM installer to install>" />
+                      <label for="own-installer" class="tooltipped" data-position="bottom" data-tooltip="An absolute path on netstore to an RPM installer, for example: /netstore/builds/byJob/BuildCustom/10638/prod/xcalar-2.0.0-10638-installer">Installer path</label>
+                      <span class="helper-text" for="own-installer" data-error="" data-success=""></span>
+                    </div>
+                  </div>
+
+                  <p>
+                    <label>
+                      <input id="install-type-rc" name="install-type" type="radio" value="get-rc"/>
+                      <span>I'll pick from a list of Release Candidates</span>
+                    </label>
+                  </p>
+
+                  <!-- section containing dropdowns for RC installers; unhide first dropdown if install-type-rc selected -->
+                  <div id="rc-installer-wrap" hidden>
+                    <div id="rc-installer-main-dropdown" class="input-field col s12">
+                      <!-- dropdown with all RC installers -->
+                      <select id="rc-installer"> <!-- js will get list of curr installers; make sure server has netstore! -->
+                      </select>
+                    </div>
+                    <!-- dropdown with build flavors for an RC; unhide if an option selected in above dropdown -->
+                    <div id="rc-flavor-wrap" class="input-field col s12" hidden>
+                      <select id="rc-flavor">
+                      <!-- js will populate based on what builds are available -->
+                      </select>
+                    </div>
+                  </div>
+
+                  <p>
+                    <label>
+                      <input id="install-type-none" name="install-type" type="radio" value="no-inst" />
+                      <span id="install-type-none-label">I don't want to install Xcalar on this VM</span>
+                     </label>
+                  </p>
+                </fieldset>
+              </div>
+            </div>
+
+            <!-- SELECT NUMBER OF VMS -->
+            <div class="row no-row-bottom">
+              <div class="input-field col s12">
+                <select id="count-vms" required class="validate"> <!-- required isn't working -->
+                </select>
+                <label for="count-vms">Number of VMs</label>
+              </div>
+            </div>
+
+            <!-- checkbox option to form in to cluster; unhide if count > 1 and installing -->
+            <div id="Q-form-cluster" class="extra-bottom-padding" hidden>
+              <label>
+                <input id="cluster-check" type="checkbox" class="filled-in" checked="checked" />
+                <span>Form in to Cluster?</span>
+              </label>
+            </div>
+
+            <!-- RAM AND CORES -->
+            <div class="row">
+              <div class="input-field col s12">
+                <select id="count-ram">
+                </select>
+                <label id="ram-label" for="count-ram">RAM</label>
+              </div>
+            </div>
+            <div class="row">
+              <div class="input-field col s12">
+                <select id="count-cores">
+                </select>
+                <label id="cores-label" for="count-cores">Cores</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- form options common to both selection -->
+
+          <!-- email on completion -->
+          <div class="row">
+            <div class="input-field col s12">
+              <!-- you need to set the placeholder attr to get the materialize label from being stuck before focusing on the element.  Even if you set it dynamically and rebind it doesn't seem to work. js is going to do something else with eithe rplaceholder or fill in the value-->
+
+              <!-- do not add the 'validate' class on this input!  It is preventing invalid class from being updated (i.e., can't fail the div).  This needs to be explored why it only occurs here but for now, removing the class works! -->
+              <input type="text" id="notify-list" class="" placeholder="" required="required" />
+              <label for="notify-list" class="tooltipped" data-position="bottom" data-tooltip="A single email, or comma-separated list of emails, for users you'd like to notify with the result of your VM request." >Notify upon completion</label>
+              <span id="notify-list-label" class="helper-text" for="notify-list" data-error="" data-success=""></span>
+            </div>
+          </div>
+
+          <!-- submit button to submit request -->
+          <div class="row">
+            <div class="input-field col s8 offset-s2">
+              <button type="submit" id="schedule-button" class="btn waves-effect waves-light" >
+              Submit VM Request.
+              </button>
+            </div>
+          </div>
+
+        </form>
+        </div>
+
+        <!-- message to user if there's an error on the form -->
+        <div class="msg" id="schedule-msg"></div>
+      </div>
+    </div>
+  </div>
+
+  <!--JavaScript at end of body for optimized loading-->
+  <script type="text/javascript" src="./assets/3rd/materialize/js/materialize.min.js"></script>
+
+<!-- dont bind/initialize the materialize elements in here,
+do it in javascript document ready, as you might need to dynamically populated
+some elelments which will take some time.
+-->
+</body>
+</html>
+

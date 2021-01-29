@@ -1,0 +1,4 @@
+ansible_user: jyen
+ansible_ssh_pass: b3JmJfdb
+given_name: trial-jyen-01.westus2.cloudapp.azure.com
+desired_name: xdp-preview-106.xcalar.io.

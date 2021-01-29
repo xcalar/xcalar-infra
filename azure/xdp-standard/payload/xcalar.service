@@ -1,0 +1,20 @@
+[Unit]
+Documentation=https://xcalar.com/about.html
+Description=Xcalar Compute Engine
+Wants=local-fs.target remote-fs.target network-online.target network.target
+After=local-fs.target remote-fs.target network-online.target network.target
+Conflicts=shutdown.target
+
+[Service]
+Type=forking
+TimeoutSec=15min
+IgnoreSIGPIPE=no
+KillMode=process
+GuessMainPID=no
+RemainAfterExit=yes
+ExecStartPre=/bin/bash /usr/local/bin/xcalar-startpre.sh
+ExecStart=/etc/rc.d/init.d/xcalar start
+ExecStop=/etc/rc.d/init.d/xcalar stop
+
+[Install]
+WantedBy=multi-user.target

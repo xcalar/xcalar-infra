@@ -1,0 +1,15 @@
+From: Manoj Joshi <mjoshi@xcalar.com>
+To: Systems Engineering <sys-eng@xcalar.com>, Manoj Joshi <mjoshi@xcalar.com>, Xiao Ma <xma@xcalar.com>
+Subject: %s %s - %s - Automation Dashboard
+
+Host: %s
+Date: %s
+Build: %s
+Dashboard: %s
+Jenkins: %s
+
+param(s):
+%s
+
+gdbserver(s):
+%s

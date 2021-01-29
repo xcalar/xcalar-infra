@@ -1,0 +1,12 @@
+{
+  "request_id": "4580f78e-b445-be76-1e63-c8ced86ded56",
+  "lease_id": "aws/creds/deploy/42df5275-3974-80ad-a7fc-e69630a573aa",
+  "lease_duration": 3600,
+  "renewable": true,
+  "data": {
+    "access_key": "AKIAIXKURGJLRDVRABNA",
+    "secret_key": "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",
+    "security_token": null
+  },
+  "warnings": null
+}

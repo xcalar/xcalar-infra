@@ -1,0 +1,160 @@
+#!/bin/bash
+
+xsed() {
+    if command -v gsed >/dev/null; then
+        gsed "$@"
+    elif [[ "$OSTYPE" =~ ^darwin ]]; then
+        echo >&2 "ERROR: OSX requires the gnu-sed brew package. Please install it via 'brew install gnu-sed'!"
+        exit 1
+    else
+        sed "$@"
+    fi
+}
+
+
+ssh_version() {
+    ssh -V 2>&1 | xsed -r 's/^OpenSSH_([0-9])\.([0-9]).*$/\1\2/g'
+}
+
+
+vssh() {
+    # try to guess the user's intentions
+    local -a sshargs=()
+    local mode=ca role='' id=''
+    local cmd='' userhost=''
+    if [ -z "$VAULT_ADDR" ]; then
+        export VAULT_ADDR=https://vault.service.consul:8200
+        echo >&2 "vssh: WARNING: VAULT_ADDR is not setting. Defaulting to $VAULT_ADDR"
+    fi
+    if ! vault read auth/token/lookup-self | grep policies; then
+        echo >&2 "There was an error talking to vault. Try to login first: vault login -method=ldap username=emailalias-without-at-xcalar.com"
+        return 1
+    fi
+
+    while [ $# -gt 0 ]; do
+        cmd="$1"
+        case "$cmd" in
+            -mode=*)
+                mode=${cmd#*=}
+                shift
+                ;;
+            -v)
+                sshargs+=(-v)
+                shift
+                ;;
+            -role=*)
+                role=${cmd#*=}
+                shift
+                ;;
+            -i)
+                id="$2"
+                shift 2
+                ;;
+            --) shift; break;;
+            *)
+                break;;
+#            -* | --*)
+#                sshargs+=("$cmd")
+#                ;;
+#            ^[a-z][a-z0-9\.\-]+)
+#                sshargs+=("$cmd")
+#                ;;
+#            *)
+#                sshargs+=("$cmd")
+#                ;;
+        esac
+    done
+    VDIR="${VDIR:-$HOME/.local/vssh}"
+    if ! test -d "$VDIR"; then
+        mkdir -m 0700 -p "$VDIR"
+    fi
+    chmod 0700 "$VDIR"
+    [ -r "$id" ] || id="$VDIR"/id_ed25519
+
+    if ! test -e "${id}"; then
+        test -d "$(dirname "$id")" || mkdir "$(dirname "$id")"
+        chmod 0700 "$(dirname "$id")"
+        echo >&2 "vssh: Generating a new vault key ..."
+        ssh-keygen -t ed25519 -a 100 -N '' -q -f "$id" -C "vault-$USER@$HOSTNAME"
+    fi
+    if [ -z "$role" ]; then
+        if [[ "$*" =~ amazonaws ]]; then
+            user=ec2-user
+            role=cloud
+        elif [[ "$*" =~ azure ]]; then
+            user=azureuser
+            role=cloud
+        elif [[ "$*" =~ ec2 ]]; then
+            user=ec2-user
+            role=cloud
+        elif [[ "$*" =~ root@ ]]; then
+            role=admin
+            user=root
+        elif [[ "$*" =~ jenkins ]]; then
+            user=jenkins
+            role=jenkins
+        elif [[ "$*" =~ int.xcalar.com ]]; then
+            role=jenkins
+            user=jenkins
+        else
+            role=jenkins
+            user=jenkins
+        fi
+        echo >&2 "vssh: No role specified, guessing user=$user, role=$role ..."
+    fi
+
+    CERT="${id}-cert.pub"
+    # let's not worry about caching for now
+    local now=$(date +%s) expires='0'
+    expires=$(test -e $CERT && date -d $(ssh-keygen -Lf $CERT | awk '/Valid: from/{print $(NF)}') +%s || echo 0)
+    if [[ $expires -eq 0 ]] || [[ $(( expires - now )) -lt 100 ]]; then
+        if ! vault write -field=signed_key ssh/sign/$role public_key=@${id%.pem}.pub > ${CERT}.tmp; then
+            echo >&2 "There was an error talking to vault. Try to login first: vault login -method=ldap username=emailalias-without-at-xcalar.com"
+            return 1
+        fi
+        mv ${CERT}.tmp ${CERT}
+    fi
+    chmod 0600 ${CERT}
+
+    export SSH_AUTH_SOCK="$VDIR"/agent.sock
+    if ! SSH_AGENT_PID=$(cat "$VDIR"/agent.pid 2>/dev/null); then
+        rm -f "$SSH_AUTH_AGENT" $VDIR/agent.pid
+    fi
+
+    if test -n "$SSH_AGENT_PID" && kill -0 "$SSH_AGENT_PID" && test -S "$SSH_AUTH_SOCK"; then
+        :
+    else
+        if test -n "$SSH_AGENT_PID" && kill -0 "$SSH_AGENT_PID"; then
+           export SSH_AGENT_PID
+           ssh-agent -k
+        fi
+        rm -f $SSH_AUTH_SOCK "$VDIR"/agent.pid
+        eval $(ssh-agent -t 4h -a "$VDIR"/agent.sock -s) || return 1
+        echo "$SSH_AGENT_PID" > "$VDIR"/agent.pid
+    fi
+    if [ -n "$SSH_AGENT_PID" ] && test -S "$SSH_AUTH_SOCK" && kill -0 "$SSH_AGENT_PID"; then
+        export SSH_AGENT_PID SSH_AUTH_SOCK
+    else
+        return 1
+    fi
+    if ! ssh-add -l | grep -q "$(ssh-keygen -l -f ${id}.pub | awk '{print $2}')"; then
+        ssh-add "$id"
+    fi
+    sshargs+=(-oStrictHostKeyChecking=no)
+    sshargs+=(-oUserKnownHostsFile=/dev/null)
+    sshargs+=(-oCertificateFile=$CERT)
+    sshargs+=(-oIdentityFile=${id})
+    sshargs+=(-oCheckHostIP=no)
+    sshargs+=(-oIdentitiesOnly=yes)
+    sshargs+=(-oForwardAgent=yes)
+    sshargs+=(-oLogLevel=ERROR)
+    if [ -n "$user" ]; then
+        sshargs+=(-oUser=${user})
+    fi
+    if ! ssh "${sshargs[@]}" "$@"; then
+        return 2
+    fi
+    return 0
+}
+
+vssh "$@"

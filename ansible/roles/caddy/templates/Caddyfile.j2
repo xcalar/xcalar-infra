@@ -1,0 +1,68 @@
+# vim: ft=jinja2
+:443, https://{{ given_name }}:443, https://{{ desired_name }}:443 {
+    redir 301 {
+        if {>X-Forwarded-Proto} is http
+        /  https://{host}{uri}
+    }
+
+    # timeouts are long because letting proxy connections
+    # die and retry causes unpredictable results during
+    # long events like data loads
+    timeouts {
+        read 4h
+        write 4h
+    }
+
+    tls /etc/xcalar/cert.pem /etc/xcalar/cert.key
+    root /opt/xcalar/xcalar-gui
+    proxy /thrift/service http://127.0.0.1:9090/thrift/service {
+        without /thrift/service
+        max_fails 5
+        fail_timeout 10s
+        transparent
+    }
+    proxy /app  http://127.0.0.1:12124 {
+        without /app
+        max_fails 5
+        fail_timeout 10s
+        transparent
+    }
+    proxy /socket.io http://127.0.0.1:12124/socket.io {
+        without /socket.io
+        websocket
+        max_fails 5
+        fail_timeout 10s
+        transparent
+    }
+    log stdout
+    errors stderr
+}
+:8889 {
+    redir 301 {
+        if {>X-Forwarded-Proto} is http
+        /  https://{host}{uri}
+    }
+
+    # timeouts are long because letting proxy connections
+    # die and retry causes unpredictable results during
+    # long events like data loads
+    timeouts {
+        read 4h
+        write 4h
+    }
+
+    tls /etc/xcalar/cert.pem /etc/xcalar/cert.key
+
+    proxy / http://127.0.0.1:8890 {
+        websocket
+        max_fails 5
+        fail_timeout 10s
+        transparent
+    }
+
+    log stdout
+    errors stderr
+}
+:80, http://{{ given_name }}:80, http://{{ desired_name }}:80 {
+  redir https://{host}{uri}
+}

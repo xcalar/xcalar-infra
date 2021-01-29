@@ -1,0 +1,72 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Deny",
+            "Action": "*",
+            "Resource": "*",
+            "Condition": {
+                "StringNotEquals": {
+                    "aws:RequestedRegion": [
+                        "us-west-1",
+                        "us-west-2",
+                        "us-east-1",
+                        "us-east-2"
+                    ]
+                }
+            }
+        },
+        {
+            "Effect": "Deny",
+            "Action": [
+                "ec2:CreateKeyPair",
+                "ec2:DeleteKeyPair"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "NotAction": [
+                "iam:*",
+                "kms:*"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "kms:ListKeys",
+                "kms:ListAliases",
+                "kms:DescribeKey",
+                "kms:ListKeyPolicies",
+                "kms:GetKeyPolicy",
+                "kms:GetKeyRotationStatus"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "kms:Encrypt",
+                "kms:Decrypt",
+                "kms:ReEncrypt*",
+                "kms:GenerateDataKey*",
+                "kms:DescribeKey"
+            ],
+            "Resource": "arn:aws:kms:*:559166403383:key/*
+        },
+        {
+            "Action": [
+                "iam:ChangePassword",
+                "iam:ResyncMFADevice",
+                "iam:UpdateSSHPublicKey",
+                "iam:UploadSSHPublicKey",
+                "iam:DeleteSSHPublicKey",
+                "iam:DeleteAccessKey",
+                "iam:CreateAccessKey",
+                "iam:UpdateAccessKey"
+            ],
+            "Resource": "arn:aws:iam::559166403383:user/${aws:username}"
+        }
+    ]
+}

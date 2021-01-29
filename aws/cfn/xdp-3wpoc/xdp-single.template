@@ -1,0 +1,387 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Xcalar Data Platform. This template deploys a single node XDP instance.
+Parameters:
+  InstanceType:
+    Type: String
+    Description: Xcalar node instance type
+    AllowedValues:
+      - c5d.2xlarge
+      - c5d.4xlarge
+      - c5d.9xlarge
+      - c5d.18xlarge
+      - r5d.large
+      - r5d.xlarge
+      - r5d.2xlarge
+      - r5d.4xlarge
+      - r5d.12xlarge
+      - r5d.24xlarge
+      - m5d.large
+      - m5d.xlarge
+      - m5d.2xlarge
+      - m5d.4xlarge
+      - m5d.12xlarge
+      - m5d.24xlarge
+      - i3.xlarge
+      - i3.2xlarge
+      - i3.4xlarge
+      - i3.8xlarge
+      - c5.4xlarge
+      - c5.9xlarge
+      - c5.18xlarge
+      - m5.2xlarge
+      - m5.4xlarge
+      - m5.12xlarge
+      - m5.24xlarge
+      - r4.xlarge
+      - r4.2xlarge
+      - r4.4xlarge
+      - r4.8xlarge
+      - r4.16xlarge
+    ConstraintDescription: Choose an instance type.
+    Default: r5d.large
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: id_rsa_aws
+    ConstraintDescription: Must be the name of an existing EC2 KeyPair.
+  Subnet:
+    Description: ID of the private subnet of servers (e.g., subnet-xxxxxxxx)
+    Type: AWS::EC2::Subnet::Id
+  LicenseKey:
+    Description: Optional. Xcalar License. Leave blank to enter via GUI.
+    MinLength: '0'
+    MaxLength: '4096'
+    Default: ''
+    NoEcho: true
+    Type: String
+  VpcId:
+    Description: VPC ID
+    Type: AWS::EC2::VPC::Id
+  SSHLocation:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
+    Description: CIDR Block that should have access SSH access to this cluster. For
+      example, your Bastion host or Office IP.
+    Type: String
+    Default: 0.0.0.0/0
+  HTTPLocation:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
+    Description: CIDR Block that should have access HTTP access to this cluster. For
+      example, your office.
+    Type: String
+    Default: 0.0.0.0/0
+  AdminUsername:
+    Description: XD Administrator name
+    Type: String
+    MinLength: '5'
+    MaxLength: '128'
+  AdminPassword:
+    Description: XD Administrator password
+    NoEcho: true
+    Type: String
+    MinLength: '5'
+    MaxLength: '128'
+  AdminEmail:
+    Description: Email of the administrator
+    Type: String
+  HostedZoneId:
+    Description: HostedZone to update
+    Type: String
+    Default: ZGHV0FVJ28G7N
+  Domain:
+    Description: Domain of hosted zone
+    Type: String
+    Default: 3wpoc.xcalar.com
+  CertBucket:
+    Description: Certificates bucket
+    Type: String
+    Default: cfn-364047378361
+  CertKey:
+    Description: Certificates
+    Type: String
+    Default: cfn/certs/3wpoc.xcalar.com.tgz
+  RootSize:
+    Description: Size of Root Disk
+    MinValue: 32
+    MaxValue: 4095
+    Default: 100
+    Type: Number
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Instance Configuration
+        Parameters:
+          - InstanceType
+      - Label:
+          default: Xcalar Configuration
+        Parameters:
+          - LicenseKey
+          - AdminEmail
+          - AdminUsername
+          - AdminPassword
+      - Label:
+          default: Network Configuration
+        Parameters:
+          - VpcId
+          - Subnet
+          - KeyName
+          - HTTPLocation
+          - SSHLocation
+      - Label:
+          default: Advanced
+        Parameters:
+          - Domain
+          - HostedZoneId
+          - CertBucket
+          - CertKey
+          - RootSize
+    ParameterLabels:
+      LicenseKey:
+        default: 'XCE License Key:'
+      InstanceType:
+        default: 'Server size:'
+      KeyName:
+        default: 'Key pair:'
+      SSHLocation:
+        default: 'SSH CIDR range:'
+      HTTPLocation:
+        default: 'HTTP CIDR range:'
+Mappings:
+  AWSAMIRegionMap:
+    AMI:
+      AMZN1HVM: amazon/amzn-ami-hvm-2018.03.0.20180811-x86_64-gp2
+    us-east-1:
+      AMZN1HVM: ami-0828bd1a8173c1830
+    us-west-2:
+      AMZN1HVM: ami-096a6e696ad6fa827
+Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: Private
+      BucketName: !Sub 'xcalar-${AWS::StackName}-data'
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to instance via HTTPS/SSH from the given CIDR.
+      VpcId: !Ref 'VpcId'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref 'SSHLocation'
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: !Ref 'HTTPLocation'
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref 'HTTPLocation'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-InstanceSecurityGroup'
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Metadata:
+      AWS::CloudFormation::Init:
+        configSets:
+          default:
+            - config1
+            - config2
+        config1:
+          files:
+            /etc/xcalar/certs.tgz:
+              source: !Sub 'https://s3.amazonaws.com/${CertBucket}/${CertKey}'
+              group: root
+              owner: root
+              mode: '000600'
+              authentication: rolebased
+            /usr/bin/r53update.sh:
+              source: https://s3.amazonaws.com/cfn-364047378361/cfn/scripts/r53update.sh
+              group: root
+              owner: root
+              mode: '000755'
+            /var/lib/cloud/scripts/per-boot/r53update.sh:
+              content: !Sub |
+                #!/bin/bash
+                /usr/bin/r53update.sh --zone-id "${HostedZoneId}" --record "$(curl --fail --silent http://169.254.169.254/2018-09-24/meta-data/public-hostname)" --fqdn ${AWS::StackName}.${Domain}
+              group: root
+              owner: root
+              mode: '000755'
+          sources:
+            /etc/xcalar: !Sub 'https://s3.amazonaws.com/${CertBucket}/${CertKey}'
+        config2:
+          commands:
+            01_route53:
+              command: /var/lib/cloud/scripts/per-boot/r53update.sh
+              env:
+                AWS_DEFAULT_REGION: !Sub '${AWS::Region}'
+              cwd: '~'
+            02_certs:
+              command: sed -i.bak 's@tls.*$@tls    /etc/xcalar/cert.crt /etc/xcalar/cert.key@g'
+                Caddyfile
+              cwd: /etc/xcalar
+      AWS::CloudFormation::Authentication:
+        rolebased:
+          type: S3
+          buckets:
+            - !Sub '${CertBucket}'
+          roleName: !Ref 'IamClusterRole'
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT15M
+    Properties:
+      InstanceType: !Ref 'InstanceType'
+      IamInstanceProfile: !Ref 'IamClusterProfile'
+      SecurityGroupIds:
+        - !GetAtt 'InstanceSecurityGroup.GroupId'
+      KeyName: !Ref 'KeyName'
+      ImageId: !FindInMap
+        - AWSAMIRegionMap
+        - !Ref 'AWS::Region'
+        - AMZN1HVM
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: !Ref 'RootSize'
+            VolumeType: gp2
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-node'
+        - Key: FQDN
+          Value: !Sub '${AWS::StackName}.${Domain}'
+        - Key: Email
+          Value: !Sub '${AdminEmail}'
+      UserData: !Base64
+        Fn::Sub:
+          - |-
+            #!/bin/bash
+            ensure_xcalar() {
+              sed -i '/# Provides:/a# Should-Start: cloud-final' /etc/init.d/xcalar
+              chkconfig xcalar off
+              chkconfig xcalar on
+            }
+            genDefaultAdmin() {
+              local crypted=$(/opt/xcalar/bin/node -e 'var crypto=require("crypto"); var hmac=crypto.createHmac("sha256", "xcalar-salt").update("${AdminPassword}").digest("hex"); process.stdout.write(hmac+"\n")')
+              cat <<EOF
+              {"username": "${AdminUsername}", "password": "$crypted", "email": "${AdminEmail}", "defaultAdminEnabled": true}
+            EOF
+            }
+            /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource "${Resource}" --region ${AWS::Region}
+            if [ "${ClusterSize}" = 1 ] && rpm -q xcalar; then
+              if [ -n "${LicenseKey}" ]; then
+                echo "${LicenseKey}" | base64 -d | gzip -dc > /etc/xcalar/XcalarLic.key
+              fi
+              mkdir -p /var/opt/xcalar/config
+              chmod 0700 /var/opt/xcalar/config
+              genDefaultAdmin > /var/opt/xcalar/config/defaultAdmin.json
+              chmod 0600 /var/opt/xcalar/config/defaultAdmin.json
+              chown xcalar:xcalar /etc/xcalar/XcalarLic.key /var/opt/xcalar/config /var/opt/xcalar/config/*
+              ensure_xcalar
+              /sbin/service xcalar start
+              rc=$?
+              /opt/aws/bin/cfn-signal -e $rc  --stack ${AWS::StackName} --resource ${Resource} --region ${AWS::Region}
+              exit $rc
+            fi
+            echo >&2 "Only ClusterSize=1 with xcalar pre-installed is supported"
+          - ClusterSize: '1'
+            EfsMount: ''
+            CustomScriptUrl: ''
+            Resource: EC2Instance
+            Ec2RetryTagKey: aws:cloudformation:stack-name
+            Ec2RetryTagValue: ''
+  IamClusterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Principal:
+              Service: ec2.amazonaws.com
+            Effect: Allow
+            Sid: ''
+  IamClusterPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      Roles:
+        - !Ref 'IamClusterRole'
+      PolicyName: PocAccess
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: 1allowall
+            Effect: Allow
+            Action:
+              - s3:ListAllMyBuckets
+              - route53:GetChange
+            Resource:
+              - '*'
+          - Sid: 2listourbuckets
+            Effect: Allow
+            Action:
+              - s3:ListBucket
+              - s3:GetBucketLocation
+            Resource:
+              - !Sub 'arn:aws:s3:::${S3Bucket}'
+              - arn:aws:s3:::xcalar-trial-shared
+          - Sid: 3readourbuckets
+            Effect: Allow
+            Action:
+              - s3:ListBucket
+              - s3:GetObject
+            Resource:
+              - !Sub 'arn:aws:s3:::${S3Bucket}/*'
+              - arn:aws:s3:::xcalar-trial-shared/*
+          - Sid: 3readourbuckets2
+            Effect: Allow
+            Action:
+              - s3:GetObject
+            Resource:
+              - !Sub 'arn:aws:s3:::${CertBucket}/${CertKey}'
+          - Sid: 4writemybucket
+            Effect: Allow
+            Action:
+              - s3:PutObject
+            Resource:
+              - !Sub 'arn:aws:s3:::${S3Bucket}/*'
+          - Sid: 6allowec2
+            Effect: Allow
+            Action:
+              - ec2:DescribeInstances
+            Resource:
+              - '*'
+          - Sid: 8allowroute53
+            Effect: Allow
+            Action:
+              - route53:GetHostedZone
+              - route53:ListResourceRecordSets
+              - route53:ChangeResourceRecordSets
+            Resource:
+              - !Sub 'arn:aws:route53:::hostedzone/${HostedZoneId}'
+  IamClusterProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref 'IamClusterRole'
+Outputs:
+  VanityURL:
+    Value: !Sub 'https://${AWS::StackName}.${Domain}'
+    Description: Vanity URL of public address of newly created XD instance
+  UserName:
+    Value: !Ref 'AdminUsername'
+    Description: Default administrator username for XD
+  PublicURL:
+    Value: !Sub 'https://${EC2Instance.PublicDnsName}'
+    Description: Public address of newly created XD instance
+  SSH:
+    Value: !Sub 'ssh -i ~/.ssh/${KeyName}.pem ec2-user@${EC2Instance.PublicDnsName}'
+    Description: SSH instructions
+  S3Bucket:
+    Value: !Sub 's3://${S3Bucket}'
+    Description: S3 Bucket
+  InstanceID:
+    Description: The Instance ID
+    Value: !Ref 'EC2Instance'
+# vim: ft=yaml

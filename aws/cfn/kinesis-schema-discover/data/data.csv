@@ -1,0 +1,6 @@
+year,month,state,producer_type,energy_source,units,consumption
+2001,1,AK,TotalElectricPowerIndustry,Coal,ShortTons,47615
+2001,1,AK,ElectricGeneratorsElectricUtilities,Coal,ShortTons,16535
+2001,1,AK,CombinedHeatandPowerElectricPower,Coal,ShortTons,22890
+2001,1,AL,TotalElectricPowerIndustry,Coal,ShortTons,3020601
+2001,1,AL,ElectricGeneratorsElectricUtilities,Coal,ShortTons,2987681

@@ -1,0 +1,14 @@
+<configuration>
+
+<property>
+   <name>hive.server2.async.exec.threads</name>
+   <value>1000</value>
+</property>
+
+<property>
+   <name>hive.server2.async.exec.wait.queue.size</name>
+   <value>1000</value>
+</property>
+
+</configuration>
+

@@ -1,0 +1,19 @@
+:443 {
+    header / {
+        Strict-Transport-Security "max-age=31536000;"
+        X-XSS-Protection "1; mode=block"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Content-Security-Policy "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.xcalar.com https://*.mxpnl.com http://*.mxpnl.com;  font-src data: 'self' ;  img-src data: 'self' ; form-action 'self'; connect-src 'self' ws: https://api.mixpanel.com https://*.amazonaws.com https://proxy-test.xcalar.cloud; frame-ancestors 'self' https://*:*"
+    }
+    gzip
+    tls ssl/xcalar.cloud.crt ssl/xcalar.cloud.key
+    proxy / http://127.0.0.1:9000/ {
+        websocket
+        max_fails 5
+        fail_timeout 10s
+        transparent
+    }
+    log stdout
+    errors stderr
+}

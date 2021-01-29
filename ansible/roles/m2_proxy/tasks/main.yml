@@ -1,0 +1,16 @@
+---
+
+- name: varnish package present
+  when: ansible_os_family == 'Debian'
+  apt: pkg=varnish state=present
+
+- name: varnish package present
+  when: ansible_os_family == 'RedHat'
+  yum: name=varnish state=present
+
+- name: Enable varnish to start on boot - CentOS
+  service:
+    name=varnish
+    enabled=yes
+  when: ansible_os_family == 'RedHat'
+

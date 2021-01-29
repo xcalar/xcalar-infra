@@ -1,0 +1,9 @@
+---
+- name: Generating Route53 request to set CNAME
+  become: false
+  local_action: "shell jinja2 {{ role_path }}/templates/route53.json.j2 -D NAME={{ desired_name }} -D CNAME={{ given_name }} -D AWS_HOSTED_ZONE_ID={{ hosted_zone }} > route53-{{ given_name }}.json"
+  #local_action: "shell jinja2 route53.json.j2 -D NAME={{ desired_name }} -D CNAME={{ given_name }} -D AWS_HOSTED_ZONE_ID={{ hosted_zone }} > route53.json"
+
+- name: Configure Route53
+  become: false
+  local_action: "shell aws route53 change-resource-record-sets --cli-input-json file://./route53-{{ given_name }}.json"

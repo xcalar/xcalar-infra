@@ -1,0 +1,59 @@
+createVpc: False
+retainPolicy: False
+logGroup: False
+logCopy: False
+enableBaseURL: False
+enableLicense: True
+enableSpareBucket: False
+enableScheduler: False
+samAsg: False
+enableLifecycle: False
+enableSsh: True
+enableDns: True
+customAmi: False
+maxClusterSize: 8
+instance_types:
+  - m5d.large
+  - m5dn.large
+  - r5d.large
+  - r5dn.large
+  - c5d.xlarge
+  - m5d.xlarge
+  - m5dn.xlarge
+  - r5d.xlarge
+  - r5dn.xlarge
+  - c5d.2xlarge
+  - m5d.2xlarge
+  - m5dn.2xlarge
+  - r5d.2xlarge
+  - r5dn.2xlarge
+  - c5d.4xlarge
+  - m5d.4xlarge
+  - m5dn.4xlarge
+  - r5d.4xlarge
+  - r5dn.4xlarge
+  - c5d.9xlarge
+  - m5d.8xlarge
+  - m5dn.8xlarge
+  - c5d.12xlarge
+  - r5d.8xlarge
+  - r5dn.8xlarge
+  - m5d.12xlarge
+  - m5dn.12xlarge
+  - c5d.18xlarge
+  - r5d.12xlarge
+  - m5d.16xlarge
+  - r5dn.12xlarge
+  - m5dn.16xlarge
+  - c5d.24xlarge
+  - r5d.16xlarge
+  - r5dn.16xlarge
+  - m5d.24xlarge
+  - m5dn.24xlarge
+  - r5d.24xlarge
+  - i3en.xlarge
+  - i3en.2xlarge
+  - i3en.3xlarge
+  - i3en.6xlarge
+  - i3en.12xlarge
+  - i3en.24xlarge

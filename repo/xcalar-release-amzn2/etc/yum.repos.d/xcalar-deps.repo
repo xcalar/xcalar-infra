@@ -1,0 +1,23 @@
+[xcalar-deps]
+name=Xcalar Dependencies for AMZN2
+baseurl=http://repo.xcalar.net/rpm-deps/amzn2/$basearch/
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Xcalar
+enabled=0
+priority=12
+
+[xcalar-deps-el7]
+name=Xcalar Dependencies for AMZN2 using EL7
+baseurl=http://repo.xcalar.net/rpm-deps/el7/$basearch/
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Xcalar
+enabled=0
+priority=15
+
+[xcalar-deps-amzn1]
+name=Xcalar Dependencies for AMZN2 using AMZN1
+baseurl=http://repo.xcalar.net/rpm-deps/amzn1/$basearch/
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Xcalar
+enabled=0
+priority=20

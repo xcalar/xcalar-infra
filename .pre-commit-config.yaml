@@ -1,0 +1,24 @@
+exclude: '^$'
+fail_fast: false
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v2.1.0
+  hooks:
+  - id: trailing-whitespace
+  - id: check-yaml
+  - id: end-of-file-fixer
+  - id: trailing-whitespace
+  - id: check-case-conflict
+  - id: check-merge-conflict
+- repo: local
+  hooks:
+  - id: shellcheck
+    name: Shellceck
+    language: system
+    types: [shell]
+    entry: shellcheck.sh
+  - id: shfmt
+    name: Shfmt
+    language: system
+    types: [shell]
+    entry: bin/shfmt_w.sh

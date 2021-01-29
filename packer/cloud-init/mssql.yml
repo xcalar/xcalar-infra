@@ -1,0 +1,95 @@
+packages:
+  yum:
+    # for installing MSSQL driver from pecl
+    php7-pear: []
+    php71-devel.x86_64: []
+    gcc: []
+commands:
+  010_sqlSrvDriver:
+    # Uses hardcoded public key from MS since CDN is down
+    command: |
+      # Import public keys
+      yum-config-manager --add-repo https://apt-mo.trafficmanager.net/yumrepos/mssql-rhel7-release/ ;
+      yum-config-manager --enable mssql-rhel7-release ;
+      rpm --import /opt/dpgswdist.v1.asc || (echo \"Could not import key\" ; exit 1) ;
+
+      # Remove unixODBC, which conflicts
+      yum remove -y unixODBC ;
+      yum update ;
+
+      # Install the unixODBC version required for mssql driver
+      ACCEPT_EULA=Y yum install -y msodbcsql unixODBC-utf16-devel;
+
+      # This sections stops pecl7 from overwriting php.ini, which breaks things.
+      /bin/cp -f "/etc/php.ini" "/tmp/php.ini.bk" ;
+      pecl7 install pdo_sqlsrv-4.0.5 ;
+      /bin/cp -f "/tmp/php.ini.bk" "/etc/php.ini" ;
+      pecl7 install sqlsrv-4.0.5 ;
+      /bin/cp -f "/tmp/php.ini.bk" "/etc/php.ini" ;
+
+      # Manually add the extensions to the proper php.ini.d file
+      echo "extension=pdo_sqlsrv.so" > /etc/php-7.1.d/99-sqlsrv.ini ;
+      echo "extension=sqlsrv.so" >> /etc/php-7.1.d/99-sqlsrv.ini ;
+
+      # Restart Apache to use new driver
+      service httpd restart;
+files:
+  # Public key for MSSQL Driver
+  "/opt/dpgswdist.v1.asc" :
+    mode: "000644"
+    owner: root
+    group: root
+    content: |
+      -----BEGIN PGP PUBLIC KEY BLOCK-----
+      Version: GnuPG v1
+
+      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
+      =zPkW
+      -----END PGP PUBLIC KEY BLOCK-----
+

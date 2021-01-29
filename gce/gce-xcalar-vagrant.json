@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "angular-expanse-99923",
+  "private_key_id": "515b4b9c44f548c2a3a6ee425846c53e17e8f990",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCJbpaQlnrR69u8\nt3qbRK8+1sHnC2Mz2EJD0APpfKiCXJ7JbdjKBSRC81nfPdeM2s1zKHUAchThQ/0v\niiMfCg9znMSLlYS6F5qSJOdRgLIItYGOdarsT9fdyeleRD7iTHbOKZEZGJmzntA3\n5c5DKM6koFfqsYurZofd9mtRwuf9AeKrMKPp3abIxxCNFrijQUXGi8WOvYKBPPTf\nJNvzMlhxi4CPvUuQQU+K4rusggshmgpVCOSVoOMpqAWkGP2FPNzEewJrihscnE4o\nDuus5hV3fGqDw8pmY9ENiCH+dq9sGrf77HAFoZeH3+3UGo/uE1YNTbTzToAzBZqj\nHQ3fAHqRAgMBAAECggEABJ6mCwgz6riN82MLiQqfBXK8o+KbHBQJ7jOg3glltLQe\nVlEN94SCuolpnPp8M2zreRKEFFbBYu0hJqbzFUkGSfGcHcER7Bt9A6qf5/p2gZpw\nV3SXIUhxzi/KW3PZ1UuSts1o5joQeJw/DZH5BALsJ1aIfggn1MQmjwyIgQAXQkbw\nS/2ZgDs4OJGDoBxrOZ2IOGkE831VN7kie9vUkgM+ttHpH1RrR1nlr7LR30UfCKZ4\nDpVMOnJmz7qMSCn8+Rbpf+RFbQFknohVszkj0ZHj4rsBL479WD+IPKH4hHO09FUA\nYC19Qh1YwMwGji2BmPZDK59ZliUMmH/0OdLYEtdkDQKBgQDLPn8micOhTik9kK6j\nc9Py5HnpagA2V6khaQyFJRszGWcqy/TPQ41CBMDvtsIE4ixaqWLFM7/VZSovdKLd\n2HArjBrdLsdV5D2eeCbpjbCA59DXCUuT3x8PXxtWrP/p+gCFIIwNDFZyc71mnAbL\nFRId3c2G+pvP8DyAv0xneKH21wKBgQCtGuWb1z6SzyDhjh9qXBP7J6YYgtUnUaCV\npBNomkjMF1fSE42dcd5Y3zPbwOCki7eCsWr+/aMWHoJAUG6rsXYNC4wIvCSK5NLd\nSnpORSBDB32Rjb1AB5LKQuk7hfZu/AsCfqkUlNJsS7Tn4MzLLz7K91ApnUlv0cUu\nmasC74201wKBgDvGnsjr3cC0Z0a3JdXm/CBE+GIhDfztnU25QrhqKGzH/OLGZ7MJ\n0CLpmQEnxDqBdsAXb3hGdxZBEb4xVLFgteTo6QHCf1gQr9rKxc8NICtZgr+r+TF9\nfvobY8QDT6U2JS8CWo5/4XD5/2uNWiYihViJYqhfTrJCmtjW6pbIEQKzAoGBAIMQ\ny2q8hYc4xueg6U5pm0NdmNgUL3nOxyymB3/62UWWIwtPfLkKH1Tg4u3vUuejVfXh\niWa5+kJkJTC29aSQABcOeB+g/HYhnTqqCoK6uhumTz/mtrUFRvJXySolWxpbQabI\n6hJIQC54/+dVgRoSkpOwv4RSr+i3RnnrJd1aLcwPAoGBAL3RaasMePXdhnftRTb6\nAWbVfb6zo1ylAP0Lplibzq8id3G5LcC09OHBRk3uhFkjzA0+sgKfCUWNNhyyOFNr\ntYdN6t3SAV/i7iNY/r/SxEp02U8rWGYqM/INloLIMe47gTSNxZQzOUOIWyiraNnO\nVqY4NDnHA/ZkEqfAdpqSJDoI\n-----END PRIVATE KEY-----\n",
+  "client_email": "xcalar-vagrant@angular-expanse-99923.iam.gserviceaccount.com",
+  "client_id": "103418322037295826955",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://accounts.google.com/o/oauth2/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/xcalar-vagrant%40angular-expanse-99923.iam.gserviceaccount.com"
+}

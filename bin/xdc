@@ -1,0 +1,145 @@
+#!/bin/bash
+#
+# xdc - Xcalar Dev CLI
+#
+# This tool is a front-end to the various scripts that are needed during development. The
+# idea is that having a 'single pane of glass' (à la git) makes the random bunch  of scripts
+# seem more cohesive and easier to remember. It also serves to encapsulate functionality
+# allowing the underlying implementation to change without breaking existing workflows/scripts.
+# The emphasis is on exposing a very simple interface that is (possibly) implemented by a bunch
+# of more complicated scripts/steps.
+#
+#
+OPTS_SPEC="\
+xdc subcommand [options]
+
+subcommands:
+
+gce      - Google Compute Engine
+cluster  - Operate on a cluster
+mkbundle - generate a bundle with the game tar and config relative to the servers / dir
+mkrpm    - generate a rpm from the given tar-file
+push     - push out a tar to the specified servers
+deploy   - calls mkbundle and push to deploy to servers
+lgrep    - Distributed log grep
+
+options for 'gce':
+  create-image  - create an image from a running instance
+
+--
+h,help        show the help
+version       show version info (v@VERSION@)
+q             quiet
+d             show debug messages
+tag-key=      specify a tag to filter for tag-value
+tag-value=    what value to look for when used with --tag-key
+env=          environment
+branch=       create a new branch from the split subtree
+prod=         production deploy (default from env)
+sha1=         use specific sha1
+git-dir=      local git repo to deploy
+git-repo=     remote git url to deploy
+no-fetch      don't run git fetch in repo
+comments=     (for deploy.pl compat.)
+env-file=     environment file
+o,output=     output tar file
+tag=          tag to use
+ssh-opts=     extra ssh options
+timeout=      timeout in seconds for locks (default: 120 seconds)
+provider=     provider to use (libvirt, gce, ec2, etc)
+disk-size=    Size of primary/boot disk in gb (default: 10)
+disk-type=    Type of primary/boot disk (default: ssd)
+zone=         datacenter region or zone (default: us-central1-f)
+instance-id=  instance-id or name
+image-name=   image name
+"
+
+NONGIT_OK=1 source $(git --exec-path)/git-sh-setup
+
+say () {
+    echo >&2 "$*"
+}
+
+die () {
+    say "ERROR: $@"
+    exit 2
+}
+
+debug () {
+    if [ "$DEBUG" = "1" ]; then
+        say "debug: $*"
+    fi
+}
+
+xc2_setup_all () {
+    BINDIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    SRCROOT="$(cd "$BINDIR/.." && pwd)"
+    UNIXTS="$(date +%s)"
+    DATETIME="$(date +'%Y%m%d%H%M')"
+
+    disk_size=10 disk_type='ssd' zone='us-central1-f'
+}
+
+xc2_gce () {
+    [ -n "${instance_id}" ] || die "Must specify --instance-id"
+    [ -n "${image_name}" ] || die "Must specify --image-name"
+    if [ "$1" = "create-image" ]; then
+        boot_disk="$(gcloud compute instances describe ${instance_id} --format=text | grep '^disks\[0\].deviceName' | awk '{print $2}')"
+        if [ -z "$boot_disk" ]; then
+            die "Unable to determine the boot disk for ${instance_id}"
+        fi
+        debug "Using disk[0] = ${boot_disk}"
+        disk_base="${boot_disk%%-[0-9]*}"
+        snapshot="${disk_base}-snapshot-$DATETIME"
+        disk="${image_name%%-[0-9]*}-disk-$DATETIME"
+        gce_image="${image_name%%-[0-9]*}-$DATETIME"
+        say "Creating snapshot => ${snapshot}"
+        gcloud compute disks snapshot ${boot_disk} --snapshot-names ${snapshot} || \
+            die "Failed to snapshot ${boot_disk}"
+
+        say "Creating disk => ${disk}"
+        gcloud compute disks create ${disk} --type pd-${disk_type} --source-snapshot ${snapshot} --description "For ${gce_image}. Created by $(git config user.name) <$(git config user.email)>" || \
+            die "Failed to create disk $disk from $snapshot"
+
+        say "Creating image => ${gce_image}"
+        gcloud compute images create "${gce_image}" --source-disk ${disk} --description "Based on ${instance_id}. Created by $(git config user.name) <$(git config user.email)>" || \
+            die "Failed to create image ${gce_image}"
+    else
+        die "Unknown command: $1"
+    fi
+}
+
+xc2_main () {
+    xc2_setup_all
+
+    if [ $# -eq 0 ]; then
+        set -- -h
+    fi
+
+    eval "$(echo "$OPTS_SPEC" | git rev-parse --parseopt -- "$@" || echo exit $?)"
+    unset OPTS_SPEC
+
+    while [ $# -gt 0 ]; do
+        opt="$1"
+        shift
+        case "$opt" in
+            -d) export DEBUG=1;;
+            --image-name) image_name="$1"; shift;;
+            --instance-id) instance_id="$1"; shift;;
+            --disk-size) disk_size="$1"; shift;;
+            --disk-type) disk_type="$1"; shift;;
+            --zone) zone="$1"; export CLOUDSDK_COMPUTE_ZONE="$1"; shift;;
+            --) break;;
+            *) die "Unexpected option: $opt"
+        esac
+    done
+    command="$1"
+    shift
+    [ -n "$command" ] || die "No subcommand specified."
+    debug "command: $command"
+    [ $# -gt 0 ] && debug "rest: $@"
+    xc2_${command} "$@"
+}
+
+xc2_main "$@"
+# vim: ai ts=4 sw=4 et sts=4 tw=80 ft=sh

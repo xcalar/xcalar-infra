@@ -1,0 +1,9 @@
+{
+  "instance_name": "jenkins-agent",
+  "role": "jenkins_slave",
+  "cluster": "jenkins-slave",
+  "location": "westus2",
+  "owner": "jenkins",
+  "ssh_user": "jenkins",
+  "shared_image_name": "jenkins-agent"
+}

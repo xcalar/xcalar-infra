@@ -1,0 +1,341 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.MultiVm.json#",
+  "handler": "Microsoft.Compute.MultiVm",
+  "version": "0.1.2-preview",
+  "parameters": {
+    "basics": [
+        {
+            "name": "appName",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Name",
+            "defaultValue": "xdp-standard",
+            "toolTip": "",
+            "constraints": {
+                "required": true,
+                "regex": "^[a-z0-9A-Z-]{1,54}$",
+                "validationMessage": "Only alphanumeric characters are allowed, and the value must be 1-54 characters long."
+            },
+            "visible": true
+        },
+        {
+        "name": "licenseKey",
+        "type": "Microsoft.Common.TextBox",
+        "label": "License Key",
+        "defaultValue": "",
+        "toolTip": "Contact Xcalar at info@xcalar.com to request for a trial license if you don't have one. You may access Xcalar's customer portal at https://myxcalar.zendesk.com, to access your license keys.",
+        "constraints": {
+          "required": false,
+          "regex": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$",
+          "validationMessage": "Must specify a valid license key matching ^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
+        },
+        "visible": true
+      },
+      {
+        "name": "adminEmail",
+        "type": "Microsoft.Common.TextBox",
+        "label": "Email address",
+        "toolTip": "Enter an email address to which notifications about the deployment will be sent",
+        "constraints": {
+          "required": true,
+          "regex": "^\\S+@\\S+[\\.][0-9a-z]+$",
+          "validationMessage": "Must be a valid email"
+        },
+        "visible": true
+      },
+      {
+        "name": "scaleNumber",
+        "type": "Microsoft.Common.DropDown",
+        "label": "Number of nodes",
+        "defaultValue": "1",
+        "toolTip": "Xcalar Data Platform Standard Edition supports up to 16 nodes",
+        "constraints": {
+          "allowedValues": [{
+              "label": "1",
+              "value": "1"
+            },
+            {
+              "label": "2",
+              "value": "2"
+            },
+            {
+              "label": "3",
+              "value": "3"
+            },
+            {
+              "label": "4",
+              "value": "4"
+            },
+            {
+              "label": "5",
+              "value": "5"
+            },
+            {
+              "label": "6",
+              "value": "6"
+            },
+            {
+              "label": "7",
+              "value": "7"
+            },
+            {
+              "label": "8",
+              "value": "8"
+            },
+            {
+              "label": "9",
+              "value": "9"
+            },
+            {
+              "label": "10",
+              "value": "10"
+            },
+            {
+              "label": "11",
+              "value": "11"
+            },
+            {
+              "label": "12",
+              "value": "12"
+            },
+            {
+              "label": "13",
+              "value": "13"
+            },
+            {
+              "label": "14",
+              "value": "14"
+            },
+            {
+              "label": "15",
+              "value": "15"
+            },
+            {
+              "label": "16",
+              "value": "16"
+            }
+          ]
+        },
+        "visible": true
+      },
+      {
+        "name": "appUsername",
+        "type": "Microsoft.Compute.UserNameTextBox",
+        "label": "Xcalar Username",
+        "toolTip": "You will use the username entered here to login to Xcalar Design",
+        "constraints": {
+          "required": true,
+          "regex": "^[A-Za-z][A-Za-z0-9_\\.-]+[A-Za-z0-9]$",
+          "validationMessage": "Must be a valid user name matching ^[A-Za-z][A-Za-z0-9_\\.-]+[A-Za-z0-9]$"
+        },
+        "osPlatform": "Linux",
+        "visible": true
+      },
+      {
+        "name": "appPassword",
+        "type": "Microsoft.Common.PasswordBox",
+        "label": {
+          "password": "Xcalar Password",
+          "confirmPassword": "Confirm password"
+        },
+        "toolTip": "You will use the password entered here to login to Xcalar Design",
+        "constraints": {
+          "required": true
+        },
+        "options": {
+          "hideConfirmation": false
+        },
+        "visible": true
+      },
+      {
+        "name": "installerUrl",
+        "type": "Microsoft.Common.TextBox",
+        "label": "Custom Installer URL",
+        "defaultValue": "",
+        "toolTip": "If Xcalar Support gave you a custom URL for an installer, please specify here",
+        "constraints": {
+          "required": false,
+          "regex": "^https://",
+          "validationMessage": "Must specify a valid https url"
+        },
+        "visible": true
+      },
+      {
+        "name": "bootDiagnostics",
+        "type": "Microsoft.Common.DropDown",
+        "label": "Enable boot diagnostics",
+        "defaultValue": "Disabled",
+        "toolTip": "",
+        "constraints": {
+          "allowedValues": [
+            {
+              "label": "Enabled",
+              "value": "true"
+            },
+            {
+              "label": "Disabled",
+              "value": "false"
+            }
+          ]
+        },
+        "visible": true
+      }
+    ],
+    "steps": [
+      {
+      "name": "firstStep",
+      "label": "Settings",
+      "bladeTitle": "Settings",
+      "subLabel": {
+        "preValidation": "Configure additional options",
+        "postValidation": "Done"
+      },
+      "elements": [
+        {
+          "name": "adminUsername",
+          "type": "Microsoft.Common.TextBox",
+          "label": "VM Administrator UserName",
+          "defaultValue": "",
+          "toolTip": "This is used to create the UNIX user for the underlying Virtual Machine running Xcalar Data Platform. You will use this credentials to gain SSH access into the virtual machine.",
+          "constraints": {
+            "required": true,
+            "regex": "^[a-z0-9A-Z]{3,30}$",
+            "validationMessage": "Only alphanumeric characters are allowed, and the value must be 1-30 characters long."
+          },
+          "visible": true
+        },
+        {
+          "name": "authType",
+          "type": "Microsoft.Compute.CredentialsCombo",
+          "label": {
+            "authenticationType": "VM Administrator Authentication type",
+            "password": "Password",
+            "confirmPassword": "Confirm password",
+            "sshPublicKey": "SSH public key"
+          },
+          "toolTip": {
+            "authenticationType": "",
+            "password": "",
+            "sshPublicKey": ""
+          },
+          "constraints": {
+            "required": true,
+            "customPasswordRegex": "^[A-Za-z\\d\\W_]{12,20}$",
+            "customValidationMessage": "Passwords must be 12 - 20 characters in length and meet 3 out of the following 4 complexity requirements: Have lower characters, upper characters, a digit a special character."
+          },
+          "options": {
+            "hideConfirmation": false,
+            "hidePassword": false
+          },
+          "osPlatform": "Linux",
+          "visible": true
+        },
+        {
+          "name": "vmSize",
+          "type": "Microsoft.Compute.SizeSelector",
+          "label": "Size",
+          "toolTip": "",
+          "recommendedSizes": [
+            "Standard_DS13_v2",
+            "Standard_E8s_v3",
+            "Standard_E16s_v3"
+          ],
+          "count": "[basics('scaleNumber')]",
+          "osPlatform": "Linux",
+          "visible": true
+        },
+        {
+          "name": "vmDiskType",
+          "type": "Microsoft.Common.OptionsGroup",
+          "label": "VM disk type",
+          "defaultValue": "SSD",
+          "toolTip": "Premium disks (SSD) are backed by solid state drives and offer consistent, low-latency performance. They provide the best balance between price and performance, and are ideal for I/O-intensive applications and production workloads. Standard disks (HDD) are backed by magnetic drives and are preferable for applications where data is accessed infrequently.",
+          "constraints": {
+            "allowedValues": [{
+                "label": "SSD",
+                "value": "Premium_LRS"
+              },
+              {
+                "label": "HDD",
+                "value": "Standard_LRS"
+              }
+            ]
+          },
+          "visible": true
+        },
+        {
+          "name": "storageAccount",
+          "type": "Microsoft.Storage.StorageAccountSelector",
+          "label": "Storage account",
+          "toolTip": "This storage account hosts both an Azure File storage and an Azure Blob storage. The Azure File storage is used to store metadata created by Xcalar Data Platform, such as users' workbooks. The Azure Blob storage may be used to store data uploaded by users to be processed by Xcalar Data Platform. You may also connect Xcalar Data Platform to your own Azure Blob Storage and/or data-lake after you've deployed Xcalar Data Platform from Azure Marketplace.",
+          "defaultValue": {
+            "name": "",
+            "type": "Standard_LRS"
+          },
+          "constraints": {
+            "allowedTypes": [
+              "Standard_LRS",
+              "Standard_GRS",
+              "Standard_RAGRS"
+            ]
+          },
+          "options": {
+            "hideExisting": false
+          },
+          "visible": true
+        },
+        {
+          "name": "publicIP",
+          "type": "Microsoft.Network.PublicIpAddressCombo",
+          "label": {
+            "publicIpAddress": "Public IP address",
+            "domainNameLabel": "Domain name label"
+          },
+          "toolTip": {
+            "publicIpAddress": "",
+            "domainNameLabel": ""
+          },
+          "defaultValue": {
+            "publicIpAddressName": "XcalarIP",
+            "domainNameLabel": ""
+          },
+          "constraints": {
+            "required": {
+              "domainNameLabel": true
+            }
+          },
+          "options": {
+            "hideNone": true,
+            "hideDomainNameLabel": false,
+            "hideExisting": false
+          },
+          "visible": true
+        }
+      ]
+    }],
+    "outputs": {
+      "location": "[location()]",
+      "appName": "[basics('appName')]",
+      "licenseKey": "[basics('licenseKey')]",
+      "adminEmail": "[basics('adminEmail')]",
+      "scaleNumber": "[int(basics('scaleNumber'))]",
+      "appUsername": "[basics('appUsername')]",
+      "appPassword": "[basics('appPassword')]",
+      "installerUrl": "[basics('installerUrl')]",
+      "bootDiagnostics":"[bool(basics('bootDiagnostics'))]",
+      "authenticationType": "[steps('firstStep').authType.authenticationType]",
+      "adminUsername": "[steps('firstStep').adminUsername]",
+      "adminPassword": "[steps('firstStep').authType.password]",
+      "adminSSHPublicKey": "[steps('firstStep').authType.sshPublicKey]",
+      "vmDiskType": "[steps('firstStep').vmDiskType]",
+      "domainNameLabel": "[steps('firstStep').publicIP.domainNameLabel]",
+      "publicIpAddressName": "[steps('firstStep').publicIP.name]",
+      "publicIpAddressRG": "[steps('firstStep').publicIP.resourceGroup]",
+      "publicIpAddressNewOrExisting": "[steps('firstStep').publicIP.newOrExistingOrNone]",
+      "vmSize": "[steps('firstStep').vmSize]",
+      "storageAccountNewOrExisting": "[steps('firstStep').storageAccount.newOrExisting]",
+      "storageAccountName": "[steps('firstStep').storageAccount.name]",
+      "storageAccountRG": "[steps('firstStep').storageAccount.resourceGroup]",
+      "storageAccountType": "[steps('firstStep').storageAccount.type]"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+vsts_image: microsoft/vsts-agent:ubuntu-14.04-docker-17.06.0-ce-standard
+vsts_account: xcalar
+vsts_pool: Default
+vsts_id: vsts-{{ vsts_account }}
+vsts_agent: "{{ vsts_id }}-{{ ansible_hostname }}"
+vsts_root_dir: /ephemeral/data/{{ vsts_id }}
+vsts_token_file: "{{ vsts_root_dir}}/vsts-token"
+vsts_work_dir: "{{ vsts_root_dir}}/work"

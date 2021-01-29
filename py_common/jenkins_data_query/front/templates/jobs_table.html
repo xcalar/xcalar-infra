@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+<head>
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.20/css/jquery.dataTables.min.css">
+    <style type="text/css" class="init"></style>
+    <script type="text/javascript" language="javascript" src="https://code.jquery.com/jquery-3.3.1.js"></script>
+    <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js"></script>
+</head>
+
+<body>
+<script type="text/javascript" class="init">
+$(document).ready( function () {
+    $('#jobs_table').DataTable();
+    } );
+</script>
+
+<table id="jobs_table" class="display">
+        <thead>
+            <tr>
+                <th>Start Time</th>
+                <th>Duration (s)</th>
+                <th>Job Name</th>
+                <th>Build Number</th>
+                <th>Result</th>
+                <th>Built On</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in jobs %}
+            <tr>
+                <td>{{item.start_time_fmt}}</td>
+                <td align='right'>{{item.duration_s}}</td>
+                <td>{{item.job_name}}</td>
+                <td align='right'>{{item.build_number}}</td>
+                <td>{{item.result}}</td>
+                <td>{{item.built_on}}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</body>
+</html>
+
+

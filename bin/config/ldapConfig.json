@@ -1,0 +1,6 @@
+{"ldap_uri":"ldap://10.128.0.5:389",
+  "userDN":"mail=%username%,ou=People,dc=int,dc=xcalar,dc=com",
+  "useTLS":"false",
+  "searchFilter":"(memberof=cn=xceUsers,ou=Groups,dc=int,dc=xcalar,dc=com)",
+  "activeDir":"false",
+  "serverKeyFile":"/etc/pki/ca-trust/extracted/openssl/ca-bundle.trust.crt"}

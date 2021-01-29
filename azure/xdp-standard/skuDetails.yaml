@@ -1,0 +1,27 @@
+SKU Settings:
+  SKU ID: xdp-standard
+SKU Details:
+  Title: Xcalar Data Platform Standard Edition
+  Summary: Supports up to 16 nodes
+  Description: '<p> Xcalar Data Platform (XDP) Standard Edition provides a powerful
+    tool for data engineers, data scientists and business analysts to perform data
+    preparation, interactive discovery and analysis on their data. </p>
+
+    <p> Users can export their data in a variety of formats to different databases,
+    applications and storage. Xcalar also supports direct export to Tableau. </p>
+
+    <p> The XDP Standard Edition includes the following modules: <ul> <li>Xcalar Design
+    (XD)</li> <li>Xcalar Compute Engine (XCE)</li> </ul> </p>
+
+    <p> The XDP Standard Edition can support up to 16 Xcalar Compute Engine (XCE)
+    nodes. This edition includes the Xcalar Processing Unit (XPU) SDK which can be
+    used to develop User Defined Functions (UDFs) for extending Xcalar. </p>'
+  SKU Type: Managed Application (Preview)
+Package Details:
+  Package:
+    - Version: 1.2.1
+      Package file (.zip): xdp-standard-package.zip
+      Tenant Id: 7bbd3477-af8b-483b-bb48-92976a1f9dfb
+      Authorization:
+        Principal Id: a015a485-ab1c-4e03-b275-3505e2b12249
+        Role Definition: Owner

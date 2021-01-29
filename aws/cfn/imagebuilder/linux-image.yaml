@@ -1,0 +1,239 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  InstallerBucket:
+    Type: String
+    Default: 'xcrepo'
+  KeyName:
+    Type: String
+    Default: 'xcalar-us-west-2'
+  Installer:
+    Type: String
+    Default: 's3://xcrepo/builds/prod/xcalar-2.4.1-4829-installer'
+  Playbook:
+    Type: String
+    Default: 's3://xcrepo/playbooks/test.yaml'
+
+Conditions:
+  NoKey: !Equals [!Ref 'KeyName', '']
+
+Resources:
+  ImageBuilderLogBucket:
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Type: AWS::S3::Bucket
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      Comment: Role to be used by instance during image build.
+    Properties:
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilder'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - sts:AssumeRole
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+      Path: /executionServiceEC2Role/
+  InstanceRoleLoggingPolicy:
+    Type: AWS::IAM::Policy
+    DependsOn: ImageBuilderLogBucket
+    Metadata:
+      Comment: Allows the instance to save log files to an S3 bucket.
+    Properties:
+      PolicyName: ImageBuilderLogBucketPolicy
+      Roles:
+        - !Ref 'InstanceRole'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:GetBucketLocation
+            Resource:
+              - !Sub
+                - arn:${AWS::Partition}:s3:::${BUCKET}
+                - BUCKET: !Ref 'ImageBuilderLogBucket'
+          - Effect: Allow
+            Action:
+              - s3:PutObject
+              - s3:PutObjectAcl
+            Resource:
+              - !Sub
+                - arn:${AWS::Partition}:s3:::${BUCKET}/*
+                - BUCKET: !Ref 'ImageBuilderLogBucket'
+
+  InstallerDownloadPolicy:
+    Type: AWS::IAM::Policy
+    Metadata:
+      Comment: Allows the instance to download installers.
+    Properties:
+      PolicyName: InstallerDownloadPolicy
+      Roles:
+        - !Ref 'InstanceRole'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:GetBucketLocation
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:s3:::${InstallerBucket}'
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+            Resource:
+              - !Sub 'arn:${AWS::Partition}:s3:::${InstallerBucket}/*
+                '
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /executionServiceEC2Role/
+      Roles:
+        - !Ref 'InstanceRole'
+
+  AmazonLinux2ImageInfrastructureConfiguration:
+    Type: AWS::ImageBuilder::InfrastructureConfiguration
+    Properties:
+      Name: XcalarLinux-Image-Infrastructure-Configuration
+      KeyPair: !If [ NoKey, !Ref 'AWS::NoValue', !Ref 'KeyName' ]
+      InstanceProfileName: !Ref 'InstanceProfile'
+      Logging:
+        S3Logs:
+          S3BucketName: !Ref 'ImageBuilderLogBucket'
+      TerminateInstanceOnFailure: true
+
+  AnsibleComponent:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Version: 1.0.0
+      Description: Install Ansible
+      Name: AnsibleComponent
+      ChangeDescription: First version
+      Platform: Linux
+      Data: !Sub |
+        name: 'Ansible Playbook Execution on Amazon Linux 2'
+        description: 'This is a sample component that demonstrates how to download and execute an Ansible playbook against Amazon Linux 2.'
+        schemaVersion: 1.0
+        phases:
+          - name: build
+            steps:
+              - name: InstallAnsible
+                action: ExecuteBash
+                inputs:
+                  commands:
+                  - sudo amazon-linux-extras install -y ansible2
+                  - sudo amazon-linux-extras install -y epel
+                  - sudo amazon-linux-extras install -y docker
+                  - sudo yum localinstall -y http://repo.xcalar.net/xcalar-release-amzn2.rpm
+                  - sudo yum update -y
+                  - sudo yum install -y ec2-utils amazon-efs-utils
+                  - sudo yum install -y ephemeral-disk --enablerepo='xcalar-*'
+                  - sudo yum clean all --enablerepo='*'
+                  - sudo rm -rf /var/cache/yum/* /var/tmp/yum*
+                  - exit 0
+              - name: DownloadPlaybook
+                action: S3Download
+                inputs:
+                  - source: '${Playbook}'
+                    destination: '/tmp/playbook.yml'
+              - name: InvokeAnsible
+                action: ExecuteBinary
+                inputs:
+                  path: ansible-playbook
+                  arguments:
+                    - '{{build.DownloadPlaybook.inputs[0].destination}}'
+              - name: DeletePlaybook
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - rm '{{build.DownloadPlaybook.inputs[0].destination}}'
+          - name: validate
+            steps:
+              - name: ValidateResponse
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - ansible --version | head -1 | grep -E '^ansible 2'
+          - name: test
+            steps:
+              - name: ValidateResponse
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - ansible --version | head -1 | grep -E '^ansible 2'
+  XcalarComponent:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Version: 2.4.2
+      Description: Install Xcalar
+      Name: XcalarComponent
+      ChangeDescription: First version
+      Platform: Linux
+      Data: !Sub |
+        name: 'Install Xcalar'
+        description: 'This component installs Xcalar on AmazonLinux2'
+        schemaVersion: 1.0
+        phases:
+          - name: build
+            steps:
+              - name: DownloadInstaller
+                action: S3Download
+                inputs:
+                  - source: '${Installer}'
+                    destination: '/tmp/xcalar-install.sh'
+              - name: InvokeInstaller
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - |
+                      chmod +x '{{build.DownloadInstaller.inputs[0].destination}}'
+                      sudo bash '{{build.DownloadInstaller.inputs[0].destination}}'
+                      exit 0
+              - name: DeleteInstaller
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - sudo rm -rf '{{build.DownloadInstaller.inputs[0].destination}}'
+          - name: validate
+            steps:
+              - name: ValidateResponse
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - test -e /opt/xcalar/bin/xccli
+          - name: test
+            steps:
+              - name: ValidateResponse
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - test -e /opt/xcalar/etc/default/xcalar
+
+  XcalarAmazonLinux2ImageRecipe:
+    Type: AWS::ImageBuilder::ImageRecipe
+    Properties:
+      Name: XcalarAL2Recipe
+      Version: 0.0.5
+      ParentImage: !Sub 'arn:aws:imagebuilder:${AWS::Region}:aws:image/amazon-linux-2-x86/2020.9.22'
+      Components:
+        - ComponentArn: !Ref 'AnsibleComponent'
+        - ComponentArn: !Ref 'XcalarComponent'
+
+  XcalarAmazonLinux2Image:
+    Type: AWS::ImageBuilder::Image
+    Properties:
+      ImageRecipeArn: !Ref 'XcalarAmazonLinux2ImageRecipe'
+      InfrastructureConfigurationArn: !Ref 'AmazonLinux2ImageInfrastructureConfiguration'
+
+  AmazonLinux2ImageParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: Image Id for AmazonLinux2 With Xcalar
+      Name: /Test/Images/AmazonLinux2Image
+      Type: String
+      Value: !GetAtt 'XcalarAmazonLinux2Image.ImageId'

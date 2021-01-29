@@ -1,0 +1,10 @@
+{
+  "instance_name": "infra",
+  "role": "infra",
+  "cluster": "infra",
+  "datacenter": "azure-westus2",
+  "location": "westus2",
+  "owner": "azureuser",
+  "ssh_user": "azureuser",
+  "shared_image_name": "infra"
+}

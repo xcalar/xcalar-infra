@@ -1,0 +1,2 @@
+#!/bin/bash
+docker build --no-cache -f $XLRINFRADIR/py_common/jenkins_aggregators/update/Dockerfile --rm -t jenkins-aggregators-update $XLRINFRADIR

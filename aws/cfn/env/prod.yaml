@@ -1,0 +1,10 @@
+retainPolicy: True
+s3RetainPolicy: Delete
+efsRetainPolicy: Delete
+workBucketRetainPolicy: Delete
+licenseArg: True
+logCopy: False
+samAsg: False
+enableSpareBucket: False
+enableLifecycle: False
+customAmi: False

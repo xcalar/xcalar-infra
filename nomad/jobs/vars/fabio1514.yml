@@ -1,0 +1,6 @@
+---
+fabio:
+  command: 'fabio-1.5.14-go1.15-linux_amd64'
+  url: 'http://repo.xcalar.net/deps/fabio-1.5.14-go1.15-linux_amd64.tar.gz'
+  checksum: 'sha256:c933fa6d5df052558f395e45b181f126494ebbe596f82a6a1366f3c6adb4c023'
+

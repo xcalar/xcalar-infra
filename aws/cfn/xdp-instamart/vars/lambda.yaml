@@ -1,0 +1,16 @@
+lambdabucket_region: '!Sub "sharedinf-lambdabucket-559166403383-${AWS::Region}"'
+lambdalayer_region: '!Sub "arn:aws:lambda:${AWS::Region}:559166403383:layer:instamart:5"'
+
+lambda:
+  'us-west-2':
+    lambdabucket: 'sharedinf-lambdabucket-559166403383-us-west-2'
+    lambdalayer: 'arn:aws:lambda:us-west-2:559166403383:layer:instamart:5'
+  'us-west-1':
+    lambdabucket: 'sharedinf-lambdabucket-559166403383-us-west-1'
+    lambdalayer: 'arn:aws:lambda:us-west-1:559166403383:layer:instamart:1'
+  'us-east-2':
+    lambdabucket: 'sharedinf-lambdabucket-559166403383-us-east-2'
+    lambdalayer: 'arn:aws:lambda:us-east-2:559166403383:layer:instamart:1'
+  'us-east-1':
+    lambdabucket: 'sharedinf-lambdabucket-559166403383-us-east-1'
+    lambdalayer: 'arn:aws:lambda:us-east-1:559166403383:layer:instamart:1'

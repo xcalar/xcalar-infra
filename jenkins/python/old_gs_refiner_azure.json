@@ -1,0 +1,14 @@
+{
+    "name": "Old Customer Refiner (Azure)",
+    "workbook_path": "/netstore/customer-info/valueasset-compute.conc.xlrwb.tar.gz",
+    "workbook_name": "valueasset-compute",
+    "data_target_name": "gs",
+    "data_target_type_id": "shared",
+    "data_target_params": {"mountpoint":"/netstore/datasets/customer-info/cust_csv"},
+    "dataflow_name": "Accrual Enricher",
+    "dataflow_params": {"asOfCutOffDate" : "1520049600000000",
+                        "currentBusinessDate" : "1527825600000000",
+                        "fromDate" : "1527825600000000",
+                        "infinityTimestamp" : "253370764800000000",
+                        "toDate" : "1527825600000000"}
+}

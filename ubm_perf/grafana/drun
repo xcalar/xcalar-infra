@@ -1,0 +1,2 @@
+#!/bin/bash
+exec docker run --detach --init --restart always --name ubm-perf-grafana-datasource --hostname ubm-perf-grafana-datasource -p 3331:80 -v /netstore/qa/jenkins/UbmTest:/netstore/qa/jenkins/UbmTest ubm-perf-grafana-datasource

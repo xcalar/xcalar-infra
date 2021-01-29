@@ -1,0 +1,2 @@
+SessionMgr::Session::writeSession
+__libc_csu_init

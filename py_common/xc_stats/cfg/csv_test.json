@@ -1,0 +1,24 @@
+{
+    "figsize": [22,5],
+    "figures": [
+        {
+            "title": "Some Random Values",
+            "y1label": "Value",
+            "y2label": "CPU Usr Pct.",
+            "metrics": [
+                {
+                    "source": "csv:mycsv",
+                    "color": "b",
+                    "label": "stuff"
+                },
+                {
+                    "source": "_SYSTEM_STATS",
+                    "xy_expr": "cpustats[?CPU='all'][timestamp, usr]",
+                    "color": "g",
+                    "label": "usr",
+                    "ploty2": true
+                }
+            ]
+        }
+    ]
+}

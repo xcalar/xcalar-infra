@@ -1,0 +1,29 @@
+version: 0.1
+log:
+  level: "info"
+  formatter: "json"
+  fields:
+    service: "registry"
+redis:
+  addr: redis:6379
+  db: 0
+storage:
+  filesystem:
+    rootdirectory: /var/lib/registry
+  #s3:
+  #  region: "us-west-2"
+  #  bucket: "xcnexus"
+  #  rootdirectory: "registryv2/"
+http:
+  addr: :5000
+  host: localhost
+  secret: "asekr3t"
+  debug:
+    addr: :5001
+  headers:
+    X-Content-Type-Options: [nosniff]
+health:
+  storagedriver:
+    enabled: true
+    interval: "10s"
+    threshold: 3

@@ -1,0 +1,719 @@
+#!/bin/bash
+#
+# Collection of random shell functions
+#
+# shellcheck disable=SC1091,SC2015,SC2086,SC1090,SC2164,SC2046,SC2162,SC2038
+
+if ((XTRACE)) || [[ $- == *x* ]]; then
+    export XTRACE=1
+    export PS4='# [${PWD}] ${BASH_SOURCE#$PWD/}:${LINENO}: ${FUNCNAME[0]}() - ${container:+[$container] }[${SHLVL},${BASH_SUBSHELL},$?] '
+    set -x
+fi
+
+if [ -z "$XLRINFRADIR" ]; then
+    export XLRINFRADIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/".. && pwd)"
+    export PATH="$XLRINFRADIR/bin:$PATH"
+fi
+
+export DEFAULT_REGISTRY="${DEFAULT_REGISTRY:-registry.int.xcalar.com}"
+
+# When a script is sourced, you can use this function to get the caller / origin
+env_script_file() {
+    echo "${BASH_SOURCE[${#BASH_SOURCE[@]} - 1]}"
+}
+
+say() {(set +x 2>/dev/null
+    echo >&2 "$*"
+    )
+}
+
+debug_run() {
+    if [ "${DEBUG-1}" = "1" ]; then
+        local rc
+        say "debug: $*"
+        "$@"
+        rc=$?
+        if [ $rc -ne 0 ]; then
+            say "debug: Returned code $rc"
+        fi
+        return $rc
+    fi
+    "$@"
+}
+
+debug() {
+    test "${DEBUG-1}" = "1" && say "debug: $*" || :
+}
+
+traceon() {
+    export XTRACE=1
+    export PS4='# [${PWD}] ${BASH_SOURCE#$PWD/}:${LINENO}: ${FUNCNAME[0]}() - ${container:+[$container] }[${SHLVL},${BASH_SUBSHELL},$?] '
+    set -x
+}
+
+info() {(set +x
+    if test -t 2; then
+        GREEN='\e[32m'
+        RESET='\e[0m'
+        echo >&2 -e "${GREEN}[INFO]${RESET} " "$@"
+    else
+        echo >&2 '[INFO] ' "$@"
+    fi
+)}
+
+warn() {(set +x
+    if test -t 2; then
+        YELLOW='\e[33m'
+        RESET='\e[0m'
+        echo >&2 -e "${YELLOW}[WARN]${RESET} " "$@"
+    else
+        echo >&2 '[WARN] ' "$@"
+    fi
+)}
+
+error() {(set +x
+    if test -t 2; then
+        RED='\e[31m'
+        RESET='\e[0m'
+        echo >&2 -e "${RED}[ERROR]${RESET} " "$@"
+    else
+        echo >&2 '[ERROR] ' "$@"
+    fi
+)}
+
+gpgcrypt() {
+    local password="$1" input="$2" output="$3" tmpdir='' rc=''
+    if [ -z "$output" ]; then
+        say "Must specify password, input, output"
+    fi
+    tmpdir=$(mktemp -d /tmp/encrypt.XXXXXX)
+    echo "$password" | gpg --no-use-agent --homedir=$tmpdir --passphrase-fd=0 --armor --output="$output" --cipher-algo=AES256 --symmetric "$input"
+    rc=${PIPESTATUS[1]}
+    rm -rf $tmpdir
+    return $rc
+}
+
+resource() {
+    . $XLRINFRADIR/.envload
+}
+
+please_use_puppet() {
+    if [[ $OSTYPE =~ darwin ]]; then
+        error "$1. Please install homebrew https://brew.sh/ for Mac"
+    else
+        error "$1. Please enroll in puppet: http://wiki.int.xcalar.com/mediawiki/index.php/Puppet"
+    fi
+}
+
+die_with_status() {
+    local rc=$1
+    shift
+    error "$*"
+    exit $rc
+}
+
+die() {
+    error "$*"
+    exit 1
+}
+
+# a,b,c,d -> a b c d
+csv() {
+    echo "${1//,/ }"
+}
+
+strjoin() {
+    local IFS="$1"
+    shift
+    echo "$*"
+}
+
+path_remove() {
+    # Delete path by parts so we can never accidentally remove sub paths
+    while [ $# -gt 0 ]; do
+        PATH=${PATH//":$1:"/":"} # delete any instances in the middle
+        PATH=${PATH/#"$1:"/}     # delete any instance at the beginning
+        PATH=${PATH/%":$1"/}     # delete any instance in the at the end
+        shift
+    done
+}
+
+# Return the age of a file in seconds
+file_age() {
+    if ! test -f "$1"; then
+        echo 9999999
+        return 1
+    fi
+    echo $(($(date +%s) - $(stat -c '%Y' "$1")))
+}
+
+# $1 'key="value"' $2 json document
+json_set() {
+    local tmp="${2}.$$"
+    jq -r "$1" "$2" >"$tmp" && mv "$tmp" "$2" && return 0 || return 1
+}
+
+json_param() {
+    if [ -z "$2" ] && [ -z "$PARAMETERS" ]; then
+        die "Need to pass a parameters.json or set PARAMETERS"
+    fi
+    local v=
+    if v="$(jq -r ".parameters${1}" "${2:-$PARAMETERS}")" && [ "$v" != null ]; then
+        echo $v
+    elif v="$(jq -r "${1}" "${2:-$PARAMETERS}")" && [ "$v" != null ]; then
+        echo $v
+    else
+        return 1
+    fi
+}
+
+# Convert a json object to shell compatible K=V pairse
+json_tokv() {
+    jq -r "to_entries|map(\"\(.key)=\(.value|tostring)\")|.[]"
+}
+
+json_parameters_merge() {
+    jq -r -s '.[0] * .[1] | .parameters | {
+                                           adminEmail, adminUsername, adminPassword, licenseKey, scaleNumber, dataDiskSize,
+                                           dnsLabelPrefix: {value:"'$GROUP'"},
+                                           installerUrl: {value:"'$INSTALLER_URL'"},
+                                           bootstrapUrl: {value:"'$BOOTSTRAP_URL'"}
+                                           }|tojson' "$@" --output json
+}
+
+## Generic helpers
+have_command() {
+    command -v "$1" >/dev/null
+}
+
+preflight() {
+    if ! jq --version | grep -q '^jq-1.[56]'; then
+        please_use_puppet 'Need jq version 1.5 or 1.6 Please see https://stedolan.github.io/jq/download/'
+    fi
+    if ! have_command sshpass; then
+        please_use_puppet 'Need to have sshpass installed.'
+    fi
+    return 0
+}
+
+safe_curl() {
+    debug_run curl -4 --location --retry 20 --retry-delay 5 --retry-max-time 60 "$@"
+}
+
+check_url() {
+    local code
+    if code=$(curl "$@" -L -s -r 0-255 -o /dev/null -w '%{http_code}\n'); then
+        if [[ $code =~ ^20 ]]; then
+            return 0
+        fi
+        return 1
+    fi
+    return 2
+}
+
+pyvenv3() {
+    local venv="${1:-.venv}"
+    local prompt="${2:-$(basename $(realpath $venv))}"
+    local py
+    if ! py=$(PATH=/opt/xcalar/bin:/usr/local/bin:/usr/bin:/bin /bin/bash -c "command -v python3"); then
+        say "Unable to find python3"
+        return 1
+    fi
+    [ -z "$VIRTUAL_ENV" ] || deactivate 2>/dev/null || true
+    test -d "$venv" || ($py -m venv --prompt "$prompt" "$venv" || return 1) \
+        || return 1
+    source "$venv"/bin/activate
+    hash -r
+    "$venv"/bin/python -m pip install -U pip setuptools wheel
+}
+
+s3_exists() {
+    local bucket_key="${1#s3://}"
+    local bucket="${bucket_key%%/*}"
+    local key="${bucket_key#*/}"
+    aws s3api head-object --bucket $bucket --key "$key"
+}
+
+get_sha1() {
+    shasum $1 | cut -d' ' -f1 | cut -c1-8
+}
+
+if [ "$(uname -s)" = Darwin ]; then
+    readlink_f() {
+        (
+            target="$1"
+            cd "$(dirname $target)"
+            target="$(basename $target)"
+            while [ -L "$target" ]; do
+                target="$(readlink $target)"
+                cd "$(dirname $target)"
+                target="$(basename $target)"
+            done
+            echo "$(pwd -P)/$target"
+        )
+    }
+else
+    readlink_f() {
+        readlink -f "$@"
+    }
+fi
+
+file_sizemb() {
+    echo $(stat -c %b "$1")'/(2*1024)' | bc
+}
+
+file_pkg() {
+    if command -v dpkg >/dev/null 2>&1; then
+        dpkg -S "$@"
+    else
+        rpm -qf "$@"
+    fi
+}
+
+file_deps() {
+    local infile
+    while read infile; do
+        ldd $infile \
+            | grep -v '^/'
+    done | sort \
+        | uniq \
+        | grep -Eow ' /(usr|lib)/([^ ]+)' \
+        | uniq \
+        | while read MYLIB; do file_pkg $MYLIB; done \
+        | awk -F':' '{print $1}' \
+        | sort \
+        | uniq
+}
+
+filedir_deps() {
+    find $1 -maxdepth 1 -executable -type f \
+        | xargs -n1 -I{} ldd {} \
+        | grep -v '^/' \
+        | sort \
+        | uniq \
+        | grep -Eow ' /(usr|lib)/([^ ]+)' \
+        | uniq \
+        | while read MYLIB; do file_pkg $MYLIB; done \
+        | awk -F':' '{print $1}' \
+        | sort \
+        | uniq
+}
+
+ip_network() {
+    ip route get 8.8.8.8 | head -1 | awk '{print $3}'
+}
+
+ip_localaddr() {
+    hostname -i
+}
+
+ip_cidr() {
+    ip -o -f inet addr show | awk '/scope global/ {print $4}' | head -1
+}
+
+urlencode() {
+    if [ $# -gt 0 ]; then
+        printf '%s' "$1" | tr -d '\n' | jq -s -R -r '@uri'
+    else
+        tr -d '\n' | jq -s -R -r '@uri'
+    fi
+}
+
+#
+# Consul Helpers
+#
+CONSUL_HTTP_ADDR=${CONSUL_HTTP_ADDR-http://127.0.0.1:8500}
+
+#
+# consul_node_meta_host returns all nodes with the specified
+# role in ansible hosts format ([groupname]\nIP hostname\n... )
+#
+#  consul_node_meta_hosts 'role=jenkins_slave'
+#
+consul_node_meta_hosts() {
+    local filter="$1"
+    if [ "${filter[0]}" != '-' ]; then
+        filter="-node-meta=$1"
+    fi
+    local name="${filter##*=}"
+    name="${name//-/_}"
+
+    consul catalog nodes "$filter" \
+        | tail -n+2 \
+        | (
+            echo "[${name}]"
+            awk '{printf("%s  ansible_host=%s\n", $1, $3)}'
+        )
+}
+
+consul_session() {
+    if [ $# -lt 2 ]; then
+        say "ERROR: Must specify session name"
+        return 1
+    fi
+    echo '{"Node": "'$(hostname -s)'", "Name":"'${1}'","TTL":"'${2:-60s}'"}' \
+        | curl -fsS --request PUT --data @- http://127.0.0.1:8500/v1/session/create \
+        | jq -r .ID
+}
+
+# consul_resolve_service takes a service name and resolves it to an IP + PORT
+# number. Optionally it can take a printf format specifier
+#
+# consul_resolve_service postgres.service.consul "-H %s -p %s"
+# -H 10.10.3.101 -p 28846
+consul_resolve_service() {
+    local PORT_HOST HOST PORT
+    PORT_HOST=($(
+        set -o pipefail
+        dig SRV $1 +short | cut -d' ' -f3-4
+    )) \
+        && HOST=$(dig A ${PORT_HOST[1]} +short) \
+        && PORT=${PORT_HOST[0]} \
+        && printf -- "${2:-%s %s}\n" $HOST $PORT
+}
+
+acquire_lock() {
+    local session_id=$1 task_name=$2 result
+    echo "Trying to acquire the lock..."
+    result=$(curl -s -XPUT "${CONSUL_HTTP_ADDR}/v1/kv/locks/${task_name}/.lock?acquire=${session_id}")
+    [ "${result}" == "true" ] && echo "Lock acquired"
+}
+
+release_lock() {
+    local session_id=$1 task_name=$2 result
+    echo "Releasing the lock..."
+    result=$(curl -s -XPUT "${CONSUL_HTTP_ADDR}/v1/kv/locks/${task_name}/.lock?release=${session_id}")
+    [ "${result}" == "true" ] && echo "Lock released"
+}
+
+destroy_session() {
+    local session_id=$1 result
+    echo "Destroying the session..."
+    result=$(curl -s -XPUT "${CONSUL_HTTP_ADDR}/v1/session/destroy/${session_id}")
+    [ "${result}" == "true" ] && echo "Session destroyed"
+}
+
+with_lock() {
+    local session_id task_name="$1"
+    shift
+    session_id=$(curl -s -XPUT "${CONSUL_HTTP_ADDR}/v1/session/create" -d "{\"Name\": \"${task_name}\"}" | jq -r '.ID')
+    if ! acquire_lock "${session_id}"; then
+        destroy_session "${session_id}"
+        echo "Unable to acquire the lock."
+        echo "The job is probably already running on an other server."
+        return
+    fi
+
+    eval "$@"
+    release_lock "${session_id}"
+    destroy_session "${session_id}"
+}
+
+tmpdir_with_cleanup() {
+    local tmpdir
+    if ! tmpdir="$(mktemp -d -t "${1:-${BASH_SOURCE[0]}}.XXXXXX")"; then
+        return 1
+    fi
+    export TMPDIR="$tmpdir"
+    # shellcheck disable=SC2064
+    trap "rm -rf $TMPDIR" EXIT
+}
+
+##
+## Docker registry API
+##
+registry_repos() {
+    curl -s https://${REGISTRY:-$DEFAULT_REGISTRY}/v2/_catalog | jq -r '.repositories[]' 2>/dev/null
+}
+
+registry_repo_tags() {
+    local repo
+    for repo in $(registry_repos); do
+        curl -s https://${REGISTRY:-$DEFAULT_REGISTRY}/v2/"$repo"/tags/list | jq -r . 2>/dev/null
+    done | jq -s -r '.' 2>/dev/null
+}
+
+registry_repo_mf() {
+    local repo="$1" tag="$2"
+    local registry=${REGISTRY:-$DEFAULT_REGISTRY}
+    local v1compat
+    local scheme=https
+    if [[ $registry =~ localhost:5000 ]]; then
+        scheme=http
+    fi
+
+    if v1compat=$(
+        set -o pipefail
+        curl -fLs ${scheme}://${registry}/v2/"$repo"/manifests/"$tag" | jq -r '.history[0].v1Compatibility'
+    ); then
+        if [ "${#v1compat}" -gt 0 ]; then
+            echo "${registry}"/"$repo":"$tag"
+            return 0
+        fi
+    fi
+    return 1
+}
+
+##
+##
+## Jenkins helpers
+##
+JENKINS_URL="${JENKINS_URL:-https://jenkins.int.xcalar.com}"
+
+jenkins_node_online() {
+    curl -L --silent "$JENKINS_URL/computer/$1/api/json" | grep --silent '"temporarilyOffline":false'
+}
+
+jenkins_node_busy() {
+    curl -L --silent "$JENKINS_URL/computer/$1/api/json" | grep --silent '"idle":false'
+}
+
+jenkins_toggle_node_online() {
+    curl -L --silent "$JENKINS_URL/computer/$1/toggleOffline" --request 'POST' --data 'offlineMessage=Pending node re-image'
+}
+
+jenkins_deregister_node() {
+    curl -L --silent "$JENKINS_URL/computer/$1/doDelete" --request 'POST' --data ''
+}
+
+jenkins_wait_for_node() {
+    while jenkins_node_busy $1; do
+        sleep 20
+        echo -n "."
+    done
+    echo ""
+}
+
+# Attempt to convert a string into a legal hostname
+# Makes the string lowercase, replaces [._ ] with dashes.
+# Removes dashes at the start and end
+cleanhostname() {
+    if [ $# -gt 0 ]; then
+        local name
+        for name; do
+            echo "$name" | sed -r 's/_/-/g; s/([A-Z])/\L\1/g; s/\./-/g; s/^-//; s/-$//;'
+        done
+    else
+        sed -r 's/_/-/g; s/([A-Z])/\L\1/g; s/\./-/g; s/^-//; s/-$//;'
+    fi
+}
+
+interface_ip() {
+    local cidr mask ip iface=$1
+    if cidr=$(ip -o -4 addr list $iface | head -1 | awk '{print $4}'); then
+        mask="${cidr#*/}"
+        ip="${cidr%/$mask}"
+        if [ -n "$ip" ]; then
+            echo "$ip"
+            return 0
+        fi
+    fi
+    return 1
+}
+
+hashilatest() {
+    local version
+    if version="$(curl -fsSL https://releases.hashicorp.com/$1/ | grep -Eow "${1}_[0-9\.]+" | sort -rV | head -1)"; then
+        echo "${version#${1}_}"
+        return 0
+    fi
+    return 1
+}
+
+hashiurl() {
+    local tool="$1" version="$2"
+    shift 2
+    if [ -z "$version" ]; then
+        if ! version="$(hashilatest $tool)"; then
+            return 1
+        fi
+    fi
+    local target="$(uname -s)"
+    target="${target,,}"
+    local arch="amd64"
+    case "$(uname -m)" in
+        x86_64) arch=amd64;;
+        *) echo >&2 "Unknown architecture: $(uname -m)"; return 1;;
+    esac
+    echo "https://releases.hashicorp.com/${tool}/${version}/${tool}_${version}_${target}_${arch}.zip"
+}
+
+download_hashitool() {
+    local tool="$1"
+    local version="$2"
+    if test -e "$tool"; then
+        echo >&2 "$tool already exists"
+        return 1
+    fi
+    local target="$(uname -s)"
+    target="${target,,}"
+    local arch="amd64"
+    case "$(uname -m)" in
+        x86_64) arch=amd64;;
+        *) echo >&2 "Unknown architecture: $(uname -m)"; return 1;;
+    esac
+
+    if ! curl -fsSL "http://repo.xcalar.net/deps/${tool}_${version}_${target}_${arch}.zip" -o ${tool}-$$.zip >/dev/null 2>&1; then
+        if ! curl -fsSL "$(hashiurl "$tool" $version)" -o ${tool}-$$.zip; then
+            return 1
+        fi
+    fi
+    unzip -o -q ${tool}-$$.zip >&2 \
+    && rm -vf ${tool}-$$.zip
+}
+
+download_packer() {
+    export PACKER_VERSION=${PACKER_VERSION:-1.4.3}
+    export PACKER=${PACKER:-$HOME/bin/packer-${PACKER_VERSION}}
+    if test -x $PACKER; then
+        return 0
+    fi
+    mkdir -p $(dirname $PACKER)
+    (
+        cd $(dirname $PACKER)
+        rm -f packer
+        download_hashitool packer $PACKER_VERSION
+        mv packer $PACKER
+        ln -sfn packer-${PACKER_VERSION} packer
+    )
+    if [ "$($PACKER --version)" != "$PACKER_VERSION" ]; then
+        echo "$PACKER version is $($PACKER --version)"
+        return 1
+    fi
+    echo "Packer version $($PACKER version)"
+    return 0
+}
+
+packer_query_manifest() {
+    local builder="$1"
+    local manifest=${2:-packer-manifest.json}
+    local uuid="$3"
+    if [ -z "$uuid" ]; then
+        if ! uuid=$(jq -r ".last_run_uuid" <$manifest); then
+            return 1
+        fi
+    fi
+    jq -r '.builds[]|select(.name == "'$builder'")|select(.packer_run_uuid == "'$uuid'") .artifact_id' <$manifest
+}
+
+packer_ami_from_manifest() {
+    local builder="$1"
+    local manifest=${2:-packer-manifest.json}
+    local region="${3:-$AWS_DEFAULT_REGION}"
+    local uuid="$4"
+    local ami_id
+    if ami_id=$(packer_query_manifest "$builder" "$manifest" "$uuid" | grep "$region" | tr ',' '\n' | grep "$region"); then
+        echo "${ami_id#$region:}"
+        return 0
+    fi
+    return 1
+}
+
+# Returns this format (for a given run):
+#
+# amazon-ebs-amzn2	us-west-2:ami-004b056a4d647b2cf
+# amazon-ebs-amzn1	us-west-2:ami-0d3b49b78e43bc5b9
+# amazon-ebs-amzn1	us-east-1:ami-043c49b58e63bc598
+packer_manifest_all() {
+    local manifest="${1:-packer-manifest.json}"
+    local uuid="${2:-}"
+
+    if [ -z "${uuid:-}" ]; then
+        if ! uuid=$(jq -r ".last_run_uuid" <$manifest); then
+            return 1
+        fi
+    fi
+    declare -A names=(['amazon-ebs-amzn1']='AMZN1HVM' ['amazon-ebs-amzn2']='AMZN2HVM')
+    local name artifact_id region
+    local tmpdir=$(mktemp -d -t packer.XXXXXX)
+    # shellcheck disable=SC2129,SC2207
+    while read name artifact_id; do
+        local region_split
+        for region_split in ${artifact_id//,/ }; do
+            region="${region_split%:*}"
+            local ami_id="${region_split#*:}"
+            echo "$region" >>$tmpdir/regions
+            echo "${names[$name]}: $ami_id" >>"$tmpdir/$region"
+            local concat_ami_id="ami_${region//-/_}_${names[$name]%HVM}"
+            echo "${concat_ami_id,,}: ${ami_id}" >>$tmpdir/allamis.yaml
+            echo "ami_${region//-/_}: ${ami_id}" >>$tmpdir/allamis.yaml
+            echo "ami_id: ${ami_id}" >>$tmpdir/allamis.yaml
+        done
+    done < <(jq -r '.builds[]|select(.packer_run_uuid == "'$uuid'")|[.name,.artifact_id]|@tsv' <$manifest)
+    echo "images:"
+    for region in $(sort $tmpdir/regions | uniq); do
+        echo "  $region:"
+        sed 's/^/    /' $tmpdir/$region
+    done
+    cat $tmpdir/allamis.yaml
+    rm -rf $tmpdir
+}
+
+packer_uuid_from_ami() {
+    jq -r ".builds[]|select(.artifact_id | contains('$1'))|.packer_run_uuid" < "${2:-packer_manifest.json}"
+}
+
+# Reformats packer_manifest_all to be more CloudFormation/yaml friendly:
+#
+# us-east-1:
+#  amazon-ebs-amzn1: ami-111149b78e43bc5b9
+#  amazon-ebs-amzn2: ami-2222056a4d647b2cf
+# us-west-2:
+#  amazon-ebs-amzn1: ami-0d3b49b78e43bc5b9
+#  amazon-ebs-amzn2: ami-004b056a4d647b2cf
+#
+# shellcheck disable=SC2207
+packer_manifest_to_yaml() {
+    local tmp region builder builders
+    tmp=$(mktemp -t packer.XXXXXX)
+    cat - >$tmp
+    builders=($(awk '{print $1}' $tmp | sort | uniq))
+    for region in us-east-1 us-west-2; do
+        grep -q "$region:" $tmp || continue
+        echo "$region:"
+        for builder in "${builders[@]}"; do
+            grep $region $tmp | awk "/^$builder/{print \$2}" | sed 's/'$region':/  '$builder': /'
+        done
+    done
+}
+
+filename_from_url() {
+    basename "$1" | sed -e 's/\?.*$//g'
+}
+
+version_build_from_filename() {
+    local vbf rc
+    vbf="$(grep -Eow '([0-9\.]+)-([0-9a-z]+)' <<<"$1" | tr '-' ' ' | sed 's/[a-z]//g')"
+    rc=$(grep -Eow '(RC[0-9]+)' <<<"$1")
+    if [ -n "$vbf" ]; then
+        echo $vbf $rc
+        return 0
+    fi
+    return 1
+}
+
+version_build_from_filename2() {
+    local x="$1"
+    x="${x##*/}"
+    x="${x//[A-Za-z_]/}"
+    echo ${x//-/ }
+}
+
+build_type_from_installer_path() {
+    case "$1" in
+        */prod/*) echo "prod" ;;
+        */debug/*) echo "debug" ;;
+        *) echo "unknown" ;;
+    esac
+}
+
+build_is_rc() {
+    if [[ $1 =~ /ReleaseCandidates/ ]]; then
+        return 0
+    fi
+    return 1
+}
+
+dimages_list() {
+    docker images --format '{{.Size}}\t{{.ID}}\t{{.Repository}}:{{.Tag}} {{.Repository}}@{{.Digest}} {{.CreatedSince}}' | sort -h | column -t
+}

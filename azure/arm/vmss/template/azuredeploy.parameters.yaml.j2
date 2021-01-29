@@ -1,0 +1,61 @@
+$schema: https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#
+contentVersion: 1.0.0.0
+parameters:
+  location:
+    value: {{ region }}
+    #  vmssName:
+    # value: {{ vmssName }}
+  vmSku:
+    value: {{ vmSku }}
+  sshPublicKey:
+    value: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCkSfi00gfzVoaqLs/Col/kNNg2jGHNhP3LA6OykWt1ev04CbNCiGB01+wgPy6Jx0aKvA7Mx7a4cUCJs8NvgH0wfgzLo0HAcAdMoXHl7ZE6psOR5/w7WJEFZ4xd7v9WanAsONtgS5iLwuzHkMvrImO6aOz2YxzYoNRpVbsJ5PViD9EkRyaEPLRI0A9/DFY96o/xRT/EXxT2ekjJ9loIkeU2Cxs1k0R0TYxPORAvuaM2HHQ12fG51wSNkc3WQ7ehLlULjnxyanptLTDGlU6CwN0i7YEbqr8gpCw510KJg75TqxB8pBxBuN0RHacsf6Lgz/rSw97ryox/ynCzQT9hrE9b azureuser@xdp-standard
+  adminUsername:
+    value: azureuser
+  instanceCount:
+    value: {{ instanceCount }}
+  singlePlacementGroup:
+    value: false
+  priority:
+    value: Regular
+  pipName:
+    value: ''
+  pipLabel:
+    value: ''
+  ipAllocationMethod:
+    value: Static
+  skuType:
+    value: Standard
+  vnetName:
+    value: {{ vnetName }}
+  subnetResourceGroup:
+    value: {{ subnetResourceGroup }}
+  subnetName:
+    value: {{ subnet }}
+  enableAcceleratedNetworking:
+    value: {{ enableAcceleratedNetworking }}
+  publicIpAddressPerInstance:
+    value: false
+  upgradeMode:
+    value: Manual
+  customData:
+    value: H4sICBNoA14AA2Nsb3VkLWluaXQtc2VjdXJlLnltbAB9VM1ymzAQvvsptm5mwG1AySSddujk1EteoNMjI4sFqxYSlYSx2+TduwLjKD/OBbTa79v/1UehTF9lwuhaNouOiy1vsOy7xvIKC/C2x/nWFQuADHQj9X46mQp/u+nYtYvBSo9lLdWMNINGW8AwDFnFPS/mAykBOu43BTD0go0WmSO2y/iOS8XXClmFNe+VH8EUnkftC3gYRQCHdocW/h1FACUdIeDb1feXV7e3N+CceronoRRovayl4B6fxeAUaw9BmYfPWU65xcMZXmd3UQiG0NJoYFGolLs1+0PZcedg431XMBaAamOcL26urqIcZmyAlZSxC8au8+vXCIe+3CA1zcLPqXtwMbKOvXyX8cNojWKMdIvYZVzJ3fuMe4qVHND3NUxwscFyfRgTPBPE4+Lpf5oU/re32FNvi9MpnpWNaZGdNFRw3nVM6gr3+TiGb8zJjlvAfWeRIrkDi396aTFNjlfJKoKRMYIcNWmsMc+4hmhzHsTJG/RpwpJLqHs9lTAl7CUR3CrqOom5Q12lyT0qZeCXsaqC2poWQhUhgc/kKA9nzVtMVyQnH04RPq4il9Nkp2FUYrexO6qEMwpzZZrZ4zB6DGlOfKkbIFpnrIdg6pkzS1bbatpjh8KidyGsu4u0pooDo7owJdds4PQyaM8gC2pYfgoLsIQHEL2HTED25etqNNJuK2lf7MyoEB1cRB5yQeGcX8k3KeTy/DYeU7A7KXB6vEIvPJ9tVbB8c7KW88MGUksfCcRV6jRV2SF6C+E0jf8BSqd0v1gFAAA=
+  image:
+    value:
+      {{ image }}
+      #      publisher: OpenLogic
+      #offer: CentOS-CI
+      #sku: 7-CI
+      #version: latest
+  spreadingAlgorithmPlatformFaultDomainCount:
+    value: 3
+  osDiskSize:
+    value: {{ osDiskSize }}
+  osDiskType:
+    value: StandardSSD_LRS
+  loadBalancerFrontEndPort:
+    value: {{ lbPort }}
+  loadBalancerBackEndPort:
+    value: {{ lbPort }}
+  overprovision:
+    value: false
+# vim: ft=yaml.j2

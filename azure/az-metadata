@@ -1,0 +1,26 @@
+#!/bin/bash
+
+API_VERSION=${API_VERSION:-2018-04-02}
+
+meta_field() {
+    curl -fsSL -H Metadata:true "http://169.254.169.254/metadata/instance/${1}?api-version=${API_VERSION}&format=text" && echo
+}
+
+if [ -z "$1" ]; then
+    curl -fsSL -H Metadata:true "http://169.254.169.254/metadata/instance?api-version=${API_VERSION}&format=json"
+else
+    while [ $# -gt 0 ]; do
+        attr="$1"
+        shift
+        case "$attr" in
+            ipaddress) meta_field 'network/interface/0/ipv4/ipAddress/0/privateIpAddress' ;;
+            publicip) meta_field 'network/interface/0/ipv4/ipAddress/0/publicIpAddress' ;;
+            subnet) meta_field 'network/interface/0/ipv4/subnet/0/address' ;;
+            prefix) meta_field 'network/interface/0/ipv4/subnet/0/prefix' ;;
+            cidr) echo "$(meta_field 'network/interface/0/ipv4/subnet/0/address')/$(meta_field 'network/interface/0/ipv4/subnet/0/prefix')" ;;
+            location | region) meta_field 'compute/location' ;;
+            tags) meta_field "compute/tags" | tr ';' '\n' | sed -r 's/^(.*):(.*)$/\U\1\E="\2"/' ;;
+            *) meta_field "$attr" ;;
+        esac
+    done
+fi

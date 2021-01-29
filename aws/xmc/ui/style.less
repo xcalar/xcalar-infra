@@ -1,0 +1,940 @@
+/* ========== Xcalar Management Console ========== */
+#xcmDiv {
+    @font-face {
+        font-family: 'Open Sans';
+        src: url('fonts/OpenSans-Regular.ttf');
+    }
+    /*COMMON*/
+    font-size: 16px;
+    @userButtonWidth: 50px;
+    font-family: "Open Sans";
+    box-sizing: border-box;
+    /*LAYER ORDER  (z-index)*/
+    @bottom-layer : -1;
+    @middle-layer : 0;
+    @lock-layer : 9;
+    @lock-layer-two : 13;
+    @modal-layer: 11;
+    @top-layer: 14;
+    /* COLORS */
+    @white: rgba(255,255,255,255);
+    @windows-blue-two: #378cb3;
+    @windows-blue-one: #0d8bb2;
+    @white-eight: #eaeaea;
+    @gray: #999999;
+    @shadow-color: rgba(141,141,141,0.5);
+    @shadow-color-two: rgba(0,0,0,0.2);
+    @white-two: #fbfbfb;
+    @gray-two: #4a4a4a;
+    @gray-three : #4a4a46;
+    @white-three: #e2e0e0;
+    @white-four: #f2f2f2;
+    @white-five: #e6e6e6;
+    @gray-four: #4f4f4f;
+    @blue-two: #cccccc;
+    @white-six: #f8f8f8;
+    @gray-five: #9b9b9b;
+    @white-seven: #dcdbdb;
+    @blue-two: #378cb4;
+    @gray-seven: #bcbec0;
+    @blue-three: #2196F3;
+    /* CLASSES */
+    .modal-button-blue {
+        width: 196px;
+        height: 40px;
+        background-color: @windows-blue-one;
+        display: flex;
+        align-items: center;
+        margin-top: 17px;
+        margin-left: 10px;
+        justify-content: center;
+        box-sizing: border-box;
+        cursor: pointer;
+    }
+    .restore-previous-button {
+        width: 150px;
+        height: 36px;
+        background-color: @gray;
+        font-size: 14px;
+        font-weight: bold;
+        text-align: center;
+        color: @white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        margin-right: 10px;
+        box-sizing: border-box;
+    }
+    .save-settings-button {
+        width: 150px;
+        height: 36px;
+        font-size: 14px;
+        font-weight: bold;
+        text-align: center;
+        color: @white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        background-color: @windows-blue-one;
+        box-sizing: border-box;
+    }
+    .modal-button-white {
+        width: 196px;
+        height: 36px;
+        background-color: @white;
+        border: solid 2px @windows-blue-two;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        margin-top: 17px;
+        text-align: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+    .clickable {
+        cursor: pointer;
+    }
+    .content-caption {
+        height: 24px;
+        font-size: 18px;
+        font-weight: bold;
+        color: @white;
+        margin: 5px;
+    }
+    .band {
+        width: 100%;
+        display: flex;
+        align-items: center;
+    }
+    .band-center {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .band-space {
+        direction: rtl;
+        display: flex;
+        padding: 20px;
+    }
+    #btnSaveSettings {
+        margin-right: 40px;
+    }
+    .header {
+        height: 65px;
+        background-color: @white;
+        box-shadow: 0 2px 4px 0 @shadow-color-two;
+        display: flex;
+        align-items: center;
+        /* align vertical */
+    }
+    .main-title {
+        width: 396px;
+        height: 33px;
+        font-size: 24px;
+        font-weight: bold;
+        padding-left: 51px;
+        color: #9f9f9f;
+    }
+    .xcm-inner-div {
+        /*divs in the main container*/
+        margin: 15px;
+    }
+    .cluster-content-header {
+        height: 40px;
+        background-color: @windows-blue-two;
+    }
+    .cluster-content-wrapper {
+        margin: 13px;
+    }
+    .inner-container {
+        background-color: @white-two;
+        box-shadow: 0 1px 4px 0 @shadow-color;
+    }
+    .licensed-nodes {
+        width: 181px;
+        height: 20px;
+        font-size: 15px;
+        font-weight: bold;
+        margin-right: 7px;
+        margin-left: 6px;
+        color: @gray-two;
+    }
+    .licensed-nodes .text-style-1 {
+        color: @gray-three;
+    }
+    .cluster-content-subHeader {
+        padding-bottom: 17px;
+        border-bottom: solid 1px @white-three;
+    }
+    .cluster-content-sub-subHeader {
+        padding: 16px 16px 27px 0px;
+    }
+    .cluster-content {
+        padding-bottom: 23px;
+    }
+    .cluster-action-menu {
+        width: 200px;
+        height: 36px;
+        object-fit: contain;
+        background-color: @white-four;
+        border: solid 1px @white-five;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+    }
+    .cluster-action-wrapper {
+        padding-left: 13px;
+        width: 200px;
+    }
+    .update-license-btn {
+        width: 196px;
+        height: 36px;
+        background-color: @white;
+        border: solid 2px @windows-blue-two;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        box-sizing: border-box;
+        cursor: pointer;
+    }
+    .update-license-btn-text {
+        font-size: 14px;
+        font-weight: bold;
+        text-align: center;
+        color: @windows-blue-two;
+    }
+    .provision-cluster-button {
+        width: 258px;
+        height: 36px;
+        background-color: @windows-blue-one;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+    .provision-cluster-button-text {
+        width: 185px;
+        height: 19px;
+        font-size: 14px;
+        font-weight: bold;
+        text-align: center;
+        color: white;
+        cursor: pointer;
+    }
+    .cluster-row-check {
+        height: 34px;
+        font-size: 14px;
+        color: @gray-four;
+        display: flex;
+        align-items: center;
+        border-color: rgba(0, 0, 0, 0.2);
+        border-style: solid;
+        border-width: 0px 1px 0px 0px;
+        justify-content: center;
+    }
+    .cluster-row-cell {
+        height: 30px;
+        font-size: 14px;
+        color: @gray-four;
+        display: flex;
+        align-items: center;
+        border-color: rgba(0, 0, 0, 0.2);
+        border-style: solid;
+        border-width: 0px 1px 0px 0px;
+        direction: ltr;
+        justify-content: space-between;
+        height: 34px;
+    }
+    .cluster-row-cell-no-space {
+        height: 34px;
+        font-size: 14px;
+        color: @gray-four;
+        display: flex;
+        align-items: center;
+        border-color: rgba(0, 0, 0, 0.2);
+        border-style: solid;
+        border-width: 0px 1px 0px 0px;
+        direction: ltr;
+    }
+    .cluster-row-cell-header {
+        border-style: solid;
+        border-top: solid 1px rgba(0, 0, 0, 0.2);
+        font-weight: 600;
+        background-color: @white-six;
+        height: 36px;
+        cursor: pointer;
+    }
+    .cluster-name {
+        cursor: pointer;
+    }
+    .cluster-row-cell-inner {
+        padding-left: 10px;
+    }
+    .cluster-column-one {
+        width: 30px;
+    }
+    .cluster-column-two {
+        width: 238px;
+    }
+    .cluster-column-three {
+        width: 151px;
+    }
+    .cluster-column-four {
+        width: 114px;
+    }
+    .cluster-column-five {
+        width: 109px;
+    }
+    .cluster-column-six {
+        width: 122px;
+    }
+    .cluster-column-seven {
+        width: 120px;
+    }
+    .cluster-column-rest {
+        width: calc(100% - 1013px);
+    }
+    .cluster-row {
+        border-left: solid 1px rgba(0, 0, 0, 0.2);
+        border-bottom: solid 1px rgba(0, 0, 0, 0.2);
+        display: flex;
+        align-items: center;
+        width: 100%;
+    }
+    .generic-cell-class {
+        border-right: solid 1px rgba(0, 0, 0, 0.2);
+        display: flex;
+        align-items: center;
+        padding: 5px;
+    }
+    .section-icon {
+        margin-left: auto
+    }
+    .header-cell {
+        height: 36px;
+        background-color: @white-six;
+        box-shadow: inset 0 -1px 0 0 @shadow-color-two;
+        border-right: solid 1px rgba(0, 0, 0, 0.2);
+        border-top: solid 1px rgba(0, 0, 0, 0.2);
+        display: flex;
+        align-items: center;
+        font-size: 14px;
+        font-weight: 600;
+        color: @gray-two;
+        font-style: normal;
+        font-stretch: normal;
+        line-height: normal;
+        letter-spacing: normal;
+        padding-left: 9px; //        padding: 5px;
+    } 
+    //settings grid
+    .settings-row {
+        display: flex;
+        align-items: center;
+        width: 100%;
+    }
+    .settings-cell {
+        display: flex;
+        align-items: center;
+        padding: 5px;
+    }
+    .default-values {
+        padding-bottom: 5px;
+    }
+    .setting-spacer-div {
+        height: 20px;
+        ;
+    }
+    .settings-group-label {
+        padding-left: 7px;
+        margin-bottom: 14px;
+        font-size: 14px;
+        font-weight: 600;
+        color: @gray-two;
+    }
+    .setting-label {
+        font-weight: 300;
+        width: 120px;
+    }
+    .setting-help-icon {
+        font-size: 12;
+        color: @windows-blue-two;
+        margin-right: 10px;
+        margin-bottom: 2px;
+    }
+    .setting-text {
+        width: calc(100% - 238px);
+        height: 30px;
+        background-color: @white-four;
+        border: solid 1px @white-five;
+        color: @gray-four;
+        font-size: 14px;
+    }
+    .setting-container {
+        margin-left: 26px;
+        margin-bottom: 9px;
+    }
+    .btn {
+        background-color: DodgerBlue;
+        border: none;
+        color: white;
+        font-size: 16px;
+        cursor: pointer;
+    }
+    .awesome-btn-large {
+        background-color: DodgerBlue;
+        border: none;
+        color: white;
+        cursor: pointer;
+        font-size: 36px;
+    }
+    .awesome-btn-small {
+        background-color: DodgerBlue;
+        border: none;
+        color: white;
+        cursor: pointer;
+        font-size: 16px;
+    }
+    .generic-row-class {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        border-bottom: 1px solid blue;
+    }
+    .action-selected {
+        width: 200px;
+        height: 36px;
+        object-fit: contain;
+        background-color: @white-four;
+        border: solid 1px @white-five;
+        padding-left: 13px;
+        font-size: 14px;
+        font-weight: 600;
+        color: @gray-five;
+        box-sizing: border-box;
+    }
+    .custom-drop-selected {
+      width: 200px;
+      height: 36px;
+      object-fit: contain;
+      background-color: @white-four;
+      border: solid 1px @white-five;
+      padding-left: 13px;
+      font-size: 14px;
+      font-weight: 600;
+      color: black;
+      box-sizing: border-box;
+    }
+    .drop-arrow-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 34px;
+        height: 34px;
+        background-color: @windows-blue-one;
+        border: solid 1px @white-five;
+        cursor: pointer;
+    }
+    .select-items-container {
+        display: none;
+        position: absolute;
+        left: 313px;
+        top: 272px;
+        background-color: @white-four;
+        border: solid 1px @white-five;
+        width: 197px;
+    }
+    .custom-select-items-container {
+        position: absolute;
+        left: 50px;
+        top: 272px;
+        background-color: @white-four;
+        border: solid 1px @gray-five;
+        width: 107px;
+        z-index: @top-layer;
+    }
+    .select-item {
+        margin: 5px;
+        color: @gray-three;
+        cursor: pointer;
+    }
+    .select-item-hover {
+        margin: 5px;
+        color: white;
+        background-color: @windows-blue-one;
+        cursor: pointer;
+    } //styles for generated content 
+    .gridTextBox {
+        height: 30px;
+        box-shadow: inset 0 -1px 0 0 @shadow-color-two;
+        background-color: @white-four;
+        border: solid 1px @white-five;
+        width: 100%;
+    }
+    .fill-all {
+        width: 100%;
+    }
+    .fill-all2 {
+        width: 100%;
+        display: inline-block;
+    }
+    .close-button {
+        background-size: contain;
+        height: 22px;
+        width: 22px;
+        float: right;
+        position: absolute;
+        top: 9px;
+        right: 9px;
+        font-size: 19px;
+        cursor: pointer;
+    }
+    .cluster-provision-dialog {
+        height: 342px;
+        width: 776px;
+    }
+    .provision-model-content {
+        height: 500px;
+        margin-top: 25px;
+    } // Cluster Details Dialog
+    .cluster-detail-key {
+        margin-right: 11px;
+    }
+    .cluster-detail-dialog {
+        height: 318px;
+        width: 412px;
+        overflow-y: auto;
+    }
+    .detail-model-content {
+        padding-left: 20px;
+        padding-top: 18px;
+        padding-right: 20px;
+        overflow-y: auto;
+    }
+    .cluster-detail-item {
+        padding-top: 10px;
+        padding-bottom: 10px;
+        border-bottom: solid 0.5px @white-seven;
+    }
+    .cluster-detail-item-list {
+        background-color: @white-eight;
+        width: 392px;
+        margin-left: -20px;
+        margin-top: -1px;
+        padding-left: 20px;
+        padding-top: 8px;
+    }
+    .cluster-detail-item-list2 {
+        background-color: @white-eight;
+        width: 392px;
+        margin-left: -20px;
+        margin-top: -1px;
+        padding-left: 20px;
+        padding-top: 6px;
+        padding-bottom: 6px;
+        font-size: 13px;
+        color: @blue-two;
+    }
+    .generic-right-icon {
+        margin-left: 4px;
+        margin-top: 2px;
+        font-size: 14px;
+        cursor: pointer;
+    }
+    .open-close-nodes {
+        margin-left: 4px;
+        margin-top: 2px;
+        font-size: 8px;
+        cursor: pointer;
+        color: @blue-two;
+    } // FONTS
+    .font-dialog-key {
+        font-size: 14px;
+        font-weight: 600;
+        color: @gray-two;
+    }
+    .font-dialog-value {
+        font-size: 14px;
+        color: @gray-two;
+    }
+    .font-dialog-valuec2 {
+        font-size: 14px;
+        color: @blue-two;
+    }
+    .modal-dialog {
+        display: none;
+        position: fixed;
+        top: 0px;
+        background-color: white;
+        z-index: @modal-layer;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+    }
+    .message-dialog {
+        display: none;
+        position: fixed;
+        top: 0px;
+        background-color: white;
+        z-index: @top-layer;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        padding-bottom: 15px;
+    }
+    .license-dialog {
+        width: 804px;
+        height: 533px;
+    }
+    .license-text-container {
+        padding-top: 0px;
+        padding-bottom: 0px;
+    }
+    .license-preview-button {
+        width: 150px;
+        height: 36px;
+        margin: 0px;
+        margin-left: 10px;
+    }
+    .license-update-button {
+        width: 150px;
+        height: 36px;
+        margin: 0px;
+    }
+    .dialog-header {
+        font-size: 18px;
+        font-weight: bold;
+        font-style: normal;
+        font-stretch: normal;
+        line-height: normal;
+        letter-spacing: normal;
+        text-align: center;
+        color: @white;
+        height: 38px;
+        background-color: @blue-two;
+    }
+    .provision-dlg-button {
+        position: absolute;
+        width: 258px;
+        height: 36px;
+        background-color: @windows-blue-one;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        right: 10px;
+        bottom: 10px;
+        cursor: pointer;
+    }
+    .dialog-inner-content {
+        padding-left: 0px;
+        padding-top: 0px;
+    }
+    .text-area {
+        height: 358px;
+        width: 748px;
+        border: solid 0.5px @gray-seven;
+        margin: 28px;
+        margin-top: 0px;
+    }
+    .your-xcalar-license-div {
+        margin-top: 22px;
+        margin-left: 28px;
+        margin-bottom: 11px;
+    }
+    .license-preview {
+        display: none;
+        position: absolute;
+        left: 50%;
+        top: 38px;
+        width: 50%;
+        height: calc(100% - 38px);
+        background-color: @white-eight;
+    }
+    .license-details-caption {
+        margin-left: 30px;
+        margin-top: 24px;
+        margin-bottom: 9px;
+        font-size: 15px;
+        font-weight: bold;
+        color: @gray-two;
+    }
+    .license-details-data {
+        margin-left: 30px;
+        margin-bottom: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        color: @gray-two;
+    }
+    #ajax_loading {
+        opacity: 0.75;
+        -moz-opacity: 0.75;
+        filter: alpha(opacity=75);
+        background-image: url(ajax-blue-loader.gif);
+        background-repeat: no-repeat;
+        background-position: center;
+        position: absolute;
+        height: 100%;
+        width: 100%;
+        z-index: @top-layer;
+        top: 0px;
+    }
+    #lock_background {
+        display: none;
+        opacity: 0.75;
+        -moz-opacity: 0.75;
+        filter: alpha(opacity=75);
+        background-color: black;
+        position: absolute;
+        ;
+        height: 100%;
+        width: 100%;
+        z-index: @lock-layer;
+        top: 0px;
+    }
+    #lock_background_trans {
+        display: none;
+        opacity: 0.75;
+        -moz-opacity: 0.75;
+        filter: alpha(opacity=75);
+        background-color: black;
+        position: absolute;
+        height: 100%;
+        width: 100%;
+        z-index: @lock-layer-two;
+        top: 0px;
+    }
+    #hintBox {
+        display: none;
+        opacity: 0.95;
+        -moz-opacity: 0.95;
+        filter: alpha(opacity=95);
+        background-color: @blue-two;
+        position: absolute;
+        width: 300px;
+        z-index: @middle-layer;
+        top: 0px;
+        text-align: center;
+        border: solid 1px @white-five;
+        color: @white;
+        box-shadow: 4px 4px 8px @shadow-color-two;
+       // box-shadow: inset 0 -1px 0 0 @shadow-color-two;
+    }
+    .cluster-provision-content {
+        margin-top: 18px;
+    }
+    .cluster-help-icon {
+        color: @windows-blue-two;
+        margin-left: 19px;
+        margin-right: 10px;
+        font-size: 12px;
+    }
+    .cluster-text {
+        font-size: 14px;
+        font-weight: 600;
+        color: @gray-two;
+        width: 105px;
+    }
+    .cluster-input {
+        width: 613px;
+        height: 30px;
+        object-fit: contain;
+        background-color: @white-four;
+        border: solid 1px @white-five;
+        font-size: 14px;
+        color: @blue-two;
+    }
+    .cluster-input2 {
+        width: 544px;
+        height: 30px;
+        object-fit: contain;
+        background-color: @white-four;
+        border: solid 1px @white-five;
+        margin-right: 10px;
+        font-size: 14px;
+        color: @blue-two;
+    }
+    .cluster-data {
+        font-size: 14px;
+        color: @blue-two;
+    }
+    .max-10 {
+        color: red;
+        font-size: 14px;
+    }
+    .helpButton {
+        cursor: pointer;
+        color: @windows-blue-two;
+    }
+    @font-face {
+        font-family: 'icomoon';
+        src: url('fonts/icomoon.eot?210vm0');
+        src: url('fonts/icomoon.eot?210vm0#iefix') format('embedded-opentype'), url('fonts/icomoon.ttf?210vm0') format('truetype'), url('fonts/icomoon.woff?210vm0') format('woff'), url('fonts/icomoon.svg?210vm0#icomoon') format('svg');
+    }
+    [class^="icon-"],
+    [class*=" icon-"] {
+        /* use !important to prevent issues with browser extensions that change fonts */
+        font-family: 'icomoon' !important;
+        speak: none;
+        text-transform: none;
+        line-height: 1;
+        /* Better Font Rendering =========== */
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+    .font-button-show-hide {
+        color: white;
+        margin-left: 13px;
+        margin-bottom: 7px;
+        margin-right: 5px;
+        font-size: 12px;
+        cursor: pointer;
+    }
+    .font-button-plus {
+        cursor: pointer;
+        color: white;
+        margin-bottom: 5px;
+        font-size: 12px;
+    }
+    .green-light {
+        margin-top: 18px;
+        color: green;
+        width: 20px;
+        height: 30px;
+    }
+    .red-light {
+        margin-top: 18px;
+        color: red;
+        width: 20px;
+        height: 30px;
+    }
+    .yellow-light {
+        margin-top: 18px;
+        color: orange;
+        width: 20px;
+        height: 30px;
+    }
+    .sorted-asc {
+        cursor: pointer;
+        color: black;
+        padding: 10px;
+        margin-bottom: 5px;
+        font-size: 8px;
+    }
+    .sorted-des {
+        cursor: pointer;
+        color: black;
+        padding: 10px;
+        margin-bottom: 5px;
+        font-size: 8px;
+    }
+    /* The container */
+    .container {
+        display: block;
+        position: relative;
+        cursor: pointer;
+        font-size: 22px;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+    /* Hide the browser's default checkbox */
+    .container input {
+        position: absolute;
+        opacity: 0;
+        cursor: pointer;
+    }
+    /* Create a custom checkbox */
+    .checkmark {
+        position: absolute;
+        top: -7px;
+        left: -7px;
+        height: 12px;
+        min-width: 12px;
+        width: 12px;
+        object-fit: contain;
+        background-color: @white;
+        border: solid 1px @blue-two;
+    }
+    /* On mouse-over, add a grey background color */
+    .container:hover input~.checkmark {
+        background-color: #ccc;
+    }
+    /* When the checkbox is checked, add a blue background */
+    .container input:checked~.checkmark {
+        background-color: @blue-three;
+    }
+    /* Create the checkmark/indicator (hidden when not checked) */
+    .checkmark:after {
+        content: "";
+        position: absolute;
+        display: none;
+    }
+    /* Show the checkmark when checked */
+    .container input:checked~.checkmark:after {
+        display: block;
+    }
+    /* Style the checkmark/indicator */
+    .container .checkmark:after {
+        left: 4px;
+        width: 3px;
+        height: 7px;
+        border: solid white;
+        border-width: 0 2px 2px 0;
+        -webkit-transform: rotate(45deg);
+        -ms-transform: rotate(45deg);
+        transform: rotate(45deg);
+    }
+    .green-text {
+        color: green;
+    }
+    .red-text {
+        color: red;
+    }
+    .orange-text {
+        color: orange;
+    }
+    .icon-xi-arrow-up:before {
+        content: "\e93a";
+    }
+    .icon-xi-arrow-down:before {
+        content: "\e93c";
+    }
+    .icon-xi-success:before {
+        content: "\e9c6";
+    }
+    .icon-xi-error:before {
+        content: "\e9c8";
+    }
+    .icon-xi-data-out:before {
+        content: "\e955";
+    }
+    .icon-xi-help-outline:before {
+        content: "\e991";
+    }
+    .icon-xi-down:before {
+        content: "\e900";
+    }
+    .icon-xi-up:before {
+        content: "\e901";
+    }
+    .icon-xi-download:before {
+        content: "\e98c";
+        color: white;
+    }
+    .icon-xi-help-outline:before {
+        content: "\e991";
+    }
+    .icon-xi-help:before {
+        content: "\e992";
+    }
+    .icon-xi-success:before {
+        content: "\e9c6";
+    }
+    .icon-xi-close22:before {
+        content: "\ea10";
+    }
+}

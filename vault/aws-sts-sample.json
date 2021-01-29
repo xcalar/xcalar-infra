@@ -1,0 +1,13 @@
+{
+  "request_id": "9f8f7133-e341-5cfb-437f-f98646bf8d0f",
+  "lease_id": "aws/sts/deploy/d177f27b-9251-d261-956d-66b59428e79c",
+  "lease_duration": 3599,
+  "renewable": false,
+  "data": {
+    "access_key": "ASIAJEGZPHIMPZHJHIMQ",
+    "secret_key": "6chW+auMR53SFjrlhknxQohogp5xe7BFYuC8Kk23",
+    "security_token": "FQoDYXdzENj//////////wEaDNSxT0hN2kESqT1U/iL6AVrZFwmD0VWbNui+salnSrEuNTeVKwQacSzlQmlg4uCpuMSmhZb81GRn1mbkAE7iT/nr7TRJUoHBC75mMovLfjWBTNGfFSv8+Vq4plbHbKbigKznucSic+9o/TmzvxUtjvjEmHqYOQWPbvix6krSWVxbinL29AVpgV4A6hUro0FuGaQNGfjAPrb3D0xYgDt2UXV65v0ufiRcS0Ql4o8Rtepx9p8QUIZnMcbVlYWO+//Fh1A/SqBJQIMWIppZrtwHfjnNHqlqQLGI3Nz6rPCttTbhaZ7FJMW6TJ3jWrsQXCo68zdarVeDsjjVeTqsppr7jOpBzMT2+Ment9EopP6t1gU="
+  },
+  "warnings": null
+}
+

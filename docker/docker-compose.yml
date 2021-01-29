@@ -1,0 +1,160 @@
+gerrit:
+    restart: always
+    build: gerrit
+    hostname: gerrit
+    domainname: int.xcalar.com
+    ports:
+        - "29418:29418"
+    environment:
+        - VIRTUAL_HOST=gerrit.int.xcalar.com,gerrit
+        - VIRTUAL_PORT=8080
+        - AUTH_TYPE=oauth
+        - GERRIT_SITE=/home/gerrit2/gerrit
+        - CERT_NAME=gerrit
+    volumes:
+        - "gerrit:/home/gerrit2/gerrit"
+
+graphite:
+    restart: always
+    image: hopsoft/graphite-statsd
+    hostname: statsd
+    domainname: int.xcalar.com
+    ports:
+        - "2003:2003"
+        - "2004:2004"
+        - "2023:2023"
+        - "2024:2024"
+        - "8125:8125/udp"
+        - "8126:8126"
+    environment:
+        - VIRTUAL_HOST=graphite.int.xcalar.com,graphite,statsd.int.xcalar.com,statsd
+        - VIRTUAL_PORT=80
+    volumes:
+        - graphite_stat_storage:/opt/graphite/storage
+
+backuppc:
+    restart: always
+    image: alvaroaleman/backuppc
+    hostname: backuppc
+    domainname: int.xcalar.com
+    volumes:
+        - backuppc_data:/var/lib/backuppc
+        - backuppc_config:/etc/backuppc
+    environment:
+        - VIRTUAL_HOST=backuppc.int.xcalar.com,backuppc
+
+grafana:
+    restart: always
+    image: grafana/grafana
+    hostname: grafana
+    domainname: int.xcalar.com
+    links:
+        - graphite:graphite
+    environment:
+        - VIRTUAL_HOST=grafana.int.xcalar.com,grafana
+        - VIRTUAL_PORT=3000
+    volumes:
+        - grafana_storage:/var/lib/grafana
+        - grafana_config:/etc/grafana
+
+cloud9:
+    restart: always
+    image: kdelfour/cloud9-docker
+    environment:
+        - VIRTUAL_HOST=cloud9.int.xcalar.com,cloud9
+        - VIRTUAL_PORT=80
+
+
+#docker run -it -d -p 80:80 kdelfour/cloud9-docker
+#
+hdfs:
+    build: hadoop
+    restart: always
+    environment:
+        - VIRTUAL_HOST=hdfs-sanity.int.xcalar.com,hdfs-sanity
+        - VIRTUAL_PORT=8088
+    hostname: hdfs-sanity
+    ports:
+        - "2122:2122"
+        - "8020:9000"
+        - "8088:8088"
+        - "50010:50010"
+        - "50020:50020"
+        - "50070:50070"
+        - "50075:50075"
+
+
+#- VIRTUAL_PORT=50070
+
+wetty:
+    restart: always
+    image: nathanleclaire/wetty
+    environment:
+        - VIRTUAL_HOST=wetty.int.xcalar.com,wetty
+        - VIRTUAL_PORT=3000
+    hostname: wetty
+    domainname: int.xcalar.com
+
+jenkins2:
+    image: jenkins:2.7.1
+    hostname: jenkins2
+    domainname: int.xcalar.com
+    ports:
+        - "50000:50000"
+    environment:
+        - VIRTUAL_HOST=jenkins2.int.xcalar.com,jenkins2
+        - VIRTUAL_PORT=8080
+    volumes:
+        - "jenkins2:/var/jenkins_home"
+
+# reviewdb:
+# - AUTH_TYPE=development_become_any_account
+#     restart: always
+#     build: gerrit/reviewdb
+#     environment:
+#         - PGDATA=/var/lib/postgresql/data/pgdata
+#     volumes:
+#         - "reviewdb:/var/lib/postgresql/data"
+
+nproxy:
+    restart: always
+    image:  jwilder/nginx-proxy
+    volumes:
+        - "/var/run/docker.sock:/tmp/docker.sock:ro"
+        - "./nproxy/certs:/etc/nginx/certs:ro"
+    ports:
+        - "80:80"
+        - "443:443"
+
+certified:
+    build: certified
+    volumes:
+        - "xcalar_root_ca:/var/lib/certified"
+    working_dir: "/var/lib/certified"
+
+gitlab:
+    build: gitlab
+    restart: always
+    volumes:
+        - "gitlab:/var/opt/gitlab"
+        - "gitlab_etc:/etc/gitlab"
+    environment:
+        - VIRTUAL_HOST=gitlab,gitlab.int.xcalar.com
+        - VIRTUAL_PORT=80
+    ports:
+        - "2022:22"
+
+
+phabricator_db:
+    restart: always
+    image: yesnault/docker-phabricator-mysql
+
+phabricator:
+    image: yesnault/docker-phabricator
+    restart: always
+    links:
+        - phabricator_db:database
+    expose:
+        - "80"
+    environment:
+        - VIRTUAL_HOST=phabricator.int.xcalar.com,phabricator

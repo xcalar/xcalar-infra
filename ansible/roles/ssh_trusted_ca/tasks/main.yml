@@ -1,0 +1,15 @@
+---
+- name: Copy {{ ca_pem_src }} to {{ ca_pem_dest }}
+  copy:
+    src: "{{ ca_pem_src }}"
+    dest: "{{ ca_pem_dest }}"
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Add TrustedUserCAKeys to sshd_config
+  lineinfile:
+    path: "{{ sshd_config }}"
+    regexp:  '^[#]?TrustedUserCAKeys.*$'
+    line: 'TrustedUserCAKeys {{ ca_pem_dest }}'
+  notify: restart sshd

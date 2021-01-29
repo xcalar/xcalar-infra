@@ -1,0 +1,64 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+Description: Xcalar Management Console UI
+Parameters:
+  Environment:
+    Type: String
+  LambdaRole:
+    Type: String  
+    Default: arn:aws:iam::${AWS::AccountId}:role/XMCRole
+  BucketName:
+    Type: String   
+    Default: PLEASE_INSERT_A_BUCKET_NAME  
+  CodeKeyInit: 
+    Type: String  
+    Default: xmc/initXmc.zip  
+Resources:
+  initLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub initDep-${Environment}
+      Handler: index.handler
+      Runtime: nodejs6.10
+      Code:
+        ZipFile: !Sub |
+
+            var AWS = require('aws-sdk');
+            var cloudformation = new AWS.CloudFormation();
+        
+            var response = require('cfn-response');
+            exports.handler = function(event, context) {
+                var params = {};
+                if (event.nextToken) {
+                    params["NextToken"] = event.nextToken
+                }
+                cloudformation.listExports(params, function(err, data) {
+                    if (err) {
+                        response.send(event, context, response.FAILED, {"error":err});   
+                        }
+                    else {
+                        var s3 = new AWS.S3();
+                        var params = {
+                            Bucket: "${BucketName}",
+                            Key: "xmc/ui/api.json",
+                            Body: JSON.stringify(data)
+                        }
+                        s3.putObject(params, function(err, data) {
+                            if (err) {
+                                response.send(event, context, response.FAILED, err);                           
+                            }
+                            else {
+                                response.send(event, context, response.SUCCESS, null);   
+                            }
+                        });
+
+                    }
+                });     
+            };           
+      MemorySize: 128 
+      Timeout: 30
+      Role: !Sub ${LambdaRole}
+  CustomResource:
+      Type: Custom::CustomResource
+      Properties:
+        ServiceToken: !GetAtt 'initLambda.Arn'                

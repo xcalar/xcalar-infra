@@ -1,0 +1,26 @@
+---
+- hosts: all
+  become: no
+  vars:
+    _no_pending_retries: 5
+    _no_pending_delay: 2
+    pending_allocs_count_cmd: >-
+      curl --silent localhost:4646/v1/allocations | jq -r '[ .[] | {state: .TaskStates[].State} | select(.state == "pending") ] | length'
+  tasks:
+    - name: Display all variables/facts known for a host
+      debug:
+        var: hostvars[inventory_hostname]
+        verbosity: 4
+    - name: Save hostvars to hostname.json
+      local_action: copy content="{{ hostvars[inventory_hostname] }}" dest="{{ inventory_dir }}/{{ inventory_hostname }}.json"
+    - name: Wait for no pending allocations
+      shell: "{{ pending_allocs_count_cmd }}"
+      args:
+        warn: no
+      register: _allocs_pending_count
+      changed_when: false
+      until: _allocs_pending_count.stdout | int == 0
+      retries: "{{ _no_pending_retries }}"
+      delay: "{{ _no_pending_delay }}"
+    - debug:
+        var: _allocs_pending_count

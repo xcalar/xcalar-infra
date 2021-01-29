@@ -1,0 +1,10 @@
+vcenter_server: vcenter
+username: root
+password: Password1
+datastore: datastore1
+folder: Templates
+host: node8
+cluster: QA
+network: VM Network
+ssh_username: jenkins
+ssh_password: Welcome1

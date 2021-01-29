@@ -1,0 +1,89 @@
+#@yaml/text-templated-strings
+---
+#@ def docker_builder(builder,name,osid):
+name: #@ "{}-{}-{}".format(builder,name,osid)
+type: (@= builder @)
+image: '{{user `(@= name @)_image`}}'
+commit: true
+exec_user: root
+run_command:
+  - --security-opt
+  - seccomp=unconfined
+  - --cap-add
+  - sys_ptrace
+  - --cap-add
+  - ipc_lock
+  - --ulimit=core=0:0
+  - --ulimit=nofile=128000:128000
+  - --ulimit=nproc=140960:140960
+  - --ulimit=memlock=-1:-1
+  - --ulimit=stack=-1:-1
+  - --shm-size={{user `shm_size`}}
+  - --memory-swappiness=10
+  - --tmpfs=/run
+  - --tmpfs=/run/lock
+  - -v
+  - '/sys/fs/cgroup:/sys/fs/cgroup:ro'
+  - -d
+  - -it
+  - --dns
+  - '{{user `dns1`}}'
+  - --add-host
+  - 'netstore:{{user `netstore_ip`}}'
+  - --add-host
+  - 'netstore.int.xcalar.com:{{user `netstore_ip`}}'
+  - -e
+  - container=docker
+  - --
+  - '{{.Image}}'
+  - /bin/sh
+volumes:
+  "/netstore": "/netstore"
+#@ if name == "xcalar":
+  "/bin/true": "/is_container:ro"
+#@ end
+changes:
+  - 'USER root'
+  - 'WORKDIR /'
+  - 'LABEL xcalar_uid={{user `xcalar_uid`}}'
+  - 'LABEL xcalar_username={{user `xcalar_username`}}'
+  - 'LABEL ssh_uid={{user `ssh_uid`}}'
+  - 'LABEL ssh_username={{user `ssh_username`}}'
+  - 'LABEL build_name={{ build_name }}'
+  - 'LABEL build_type={{ build_type }}'
+  - 'LABEL build_date={{user `today`}}'
+  - 'LABEL build_number={{user `build_number`}}'
+  - 'LABEL installer_version={{user `installer_version`}}'
+  - 'LABEL installer_build_number={{user `installer_build_number`}}'
+  - 'LABEL installer_build_type={{user `installer_build_type`}}'
+  - 'LABEL installer_xce_branch={{user `installer_xce_branch`}}'
+  - 'LABEL installer_xce_sha1={{user `installer_xce_sha1`}}'
+  - 'LABEL installer_xd_branch={{user `installer_xd_branch`}}'
+  - 'LABEL installer_xd_sha1={{user `installer_xd_sha1`}}'
+  - 'LABEL installer_byjob={{user `installer_byjob`}}'
+  - 'LABEL installer_rc={{user `installer_rc`}}'
+  - 'LABEL installer_tag={{user `installer_tag`}}'
+  - 'ENV container=docker'
+  - 'ENV PATH=/opt/xcalar/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+  - 'ENV XLRDIR=/opt/xcalar'
+  - 'CMD ["/usr/sbin/init"]'
+#@ if name == "base":
+  - 'ENTRYPOINT []'
+#@ else:
+  - 'ENTRYPOINT ["/docker-entrypoint.sh"]'
+  - 'EXPOSE 443 10000 22'
+  - 'VOLUME ["/mnt/xcalar"]'
+  - 'VOLUME ["/ephemeral/data"]'
+  - 'LABEL image_build_number={{user `image_build_number`}}'
+  - 'LABEL xcalar_volume_version={{user `xcalar_volume_version`}}'
+#@ end
+#@ end
+
+#@ def docker_push(repository,tag):
+  - type: docker-tag
+    repository: (@= repository @)
+    tag: (@= tag @)
+    keep_input_artifact: true
+  - docker-push
+#@ end
+

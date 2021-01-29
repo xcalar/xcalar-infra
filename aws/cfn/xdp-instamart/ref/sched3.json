@@ -1,0 +1,7 @@
+{
+  "command": "xc2 workbook run --workbook-file /xcfield/dataflows/bucketsmart.xlrapp.tar.gz --query-name f6660982-706d-4eca-8e2c-00808f6bcf42 --non-optimized --params myfile=/xcfield/data/%m-%d-%Y/,myfilter=7a,output=/xcfield/output/%m-%d-%Y-%hh-%mm-%ss --sync",
+  "schedule": "cron(0 8 ? * MON-FRI *)",
+  "input": "dataFlow.xlrwb.tar.gz",
+  "output": "exportDemo/dataFlowOut.txt",
+  "script": "s3://sharedinf-lambdabucket-559166403383-us-west-2/xdp-instamart/batch.py"
+}

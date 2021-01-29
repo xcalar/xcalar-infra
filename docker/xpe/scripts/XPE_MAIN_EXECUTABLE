@@ -1,0 +1,316 @@
+#!/usr/bin/env bash
+
+# This is the entrypoint for the 'Xcalar Desktop Edition' Mac app.
+# When the app is launched, this script is run by the Operating System
+# (note:: older versions of OSX will sometimes pass cmd args in that call)
+#
+# NOTE:::
+# The entrypoint for a MacOS app, must be located in the app's MacOS dir,
+# and must be the same name as the app itself.
+# This is how Mac knows what file to run when the app is double-clicked.
+# To allow changing the name of this app easily, have given this executable
+# a generic name - therefore, if you are trying to build this app manually,
+# make sure to rename this file, to whatever you are calling the app.
+# (makeapp.sh does the rename for you)
+#
+# OVERVIEW OF EXECUTABLE::
+# nwjs is what provides the GUI for the app.
+# This script simply determines which GUI nwjs should open when it starts,
+# and then starts nwjs.
+#
+# ** Default behavior:
+#        If file .installed exists in this script's dir --> sets XD to open.
+#        else --> sets installer to open.
+#
+# ** Supplying command arg to this script can force a GUI (for testing):
+#
+# bash Xcalar\ Design -a install    // forces installer to open
+# bash Xcalar\ Design -a uninstall  // forces uninstaller to open
+# bash Xcalar\ Design -a revert     // forces revert tool to open
+# bash Xcalar\ Design -a xd         // forces xd to open
+#
+# ** Having a file named .launch in script dir can also force a particular GUI.
+#    (this is used by the GUIs to restart app to a particular Window)
+#    The content of .launch will instruct which GUI to open:
+#
+# install              // forces installer to open
+# uninstall            // forces uninstaller to open
+# revert               // forces revert tool to open
+# xd                   // forces XD to open
+# <URL/filepath>       // opens the URL, or local file path, specified
+#
+# (cmd param takes precedence over the launchfile)
+
+set -e
+export PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/sbin:/bin
+
+########## SETUP #############
+
+trap cleanup EXIT
+trap 'exit' 1 2 3 4 5 6
+
+# get top level app dir abs path
+SCRIPT_DIR="$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+APP_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+RESOURCE_DIR="$APP_DIR/Contents/Resources"
+
+NWJSBIN="$RESOURCE_DIR/Bin/nwjs-sdk-v0.29.3-osx-x64/nwjs.app/Contents/MacOS/nwjs"
+NODEBIN="$RESOURCE_DIR/Bin/node-v8.11.1-darwin-x64/bin/node"
+APPLOGDIR="$APP_DIR/Contents/Logs"
+
+INSTALLSERVER="$APP_DIR/Contents/Resources/server/xpeServer.js"
+
+LAUNCHFILEPATH="$APP_DIR/Contents/MacOS/.launch"
+INSTALLEDFILE="$APP_DIR/Contents/MacOS/.installed"
+GRAFANAMARK="$APP_DIR/Contents/MacOS/.grafana"
+DEVBLDMARK="$APP_DIR/Contents/MacOS/.dev"
+
+NWJSROOT="$APP_DIR/Contents/Resources/nwjs_root"
+
+# var for setting an app action.  unset from previous runs
+APPACTIONVAR=XPESTARTACTION
+unset "$APPACTIONVAR"
+
+# set timestamp env to be used by various processes that will be called for writing log
+ts=$(date +%FT%T%z)
+export TIMESTAMP="$ts"
+echo "timestamp: $ts" >&2
+
+## export env vars for the nwjs entrypoint (starter.js) and server ##
+
+# vars for server app GUIs will make calls to
+export XPE_SERVER_HOSTNAME="${XPE_SERVER_HOSTNAME:-127.0.0.1}"
+export XPE_SERVER_PORT="${XPE_SERVER_PORT:-8388}"
+export XPE_SERVER_PROTOCOL="${XPE_SERVER_PROTOCOL:-http}"
+export XPE_SERVER_URL="$XPE_SERVER_PROTOCOL://$XPE_SERVER_HOSTNAME:$XPE_SERVER_PORT"
+echo "XPE_SERVER_URL=$XPE_SERVER_URL"
+
+# vars for GUI roots (can be URL or filepath rel nwjs root (where package.json is)
+export XD_URL="${XD_URL:-https://127.0.0.1:8818}" # give 'index.html' and it will take local to package.json
+export XPE_INSTALLER_URL="${XPE_INSTALLER_URL:-guis/xpeInstaller.html}"
+export XPE_UNINSTALLER_URL="${XPE_UNINSTALLER_URL:-guis/xpeUninstaller.html}"
+export XPE_IMT_URL="${XPE_IMT_URL:-guis/xpeImageManagementTool.html}"
+export DOCKER_STARTER_URL="${DOCKER_STARTER_URL:-guis/xpeDockerStarter.html}"
+export XPE_GRAFANA_URL="${XPE_GRAFANA_URL:-http://127.0.0.1:8082}"
+
+# if app should build a Grafana container during install, set INSTALL_GRAFANA var
+# for the api server to detect
+
+# customer scenario:
+# set INSTALL_GRAFANA if .grafana config file present (gets set at bld time)
+if [ -z "$INSTALL_GRAFANA" ] && [ -e "$GRAFANAMARK" ]; then
+    export INSTALL_GRAFANA=true
+elif [ -n "$INSTALL_GRAFANA" ] && [ "$INSTALL_GRAFANA" != true ]; then
+    # debug scenario:
+    # env var was pre-set as true/false to overwrite config file behavior
+    # only keep 'true' - unset for rest (the js that that relies on this env variable
+    # does not care what it's value is, only if it exists;
+    # it considers the env var existing as 'true' scenario and it not existing as 'false' scenario)
+    unset INSTALL_GRAFANA
+fi
+
+# if app is a dev bld (will display GUIs diff for dev vs. non-dev blds), set XPE_IS_DEV env var
+# for GUI code to pick up on
+
+# (same logic here for customer vs. dev scenario)
+if [ -z "$XPE_IS_DEV" ] && [ -e "$DEVBLDMARK" ]; then
+    export XPE_IS_DEV=true
+elif [ -n "$XPE_IS_DEV" ] && [ "$XPE_IS_DEV" != true ]; then
+    unset XPE_IS_DEV
+fi
+
+# file to save server pid in so can kill it if needed
+SERVERPIDFILE=/tmp/XPE-${USER}.pid
+
+# check for presence of previous pid and kill if required
+if MYAPP_PID="$(cat $SERVERPIDFILE 2>/dev/null)"; then
+    kill -TERM "$MYAPP_PID" || true
+    rm -f "$SERVERPIDFILE"
+fi
+
+# waits for the XPE express server to come up
+waitForServer() {
+    local timeout=10
+    local pauseTime=1
+    until curl "$XPE_SERVER_URL" >/dev/null 2>&1 || [ "$timeout" -eq "0" ]; do
+        echo "server not up yet!" >&2
+        sleep "$pauseTime"
+        timeout=$((timeout - pauseTime))
+    done
+
+    if ! curl "$XPE_SERVER_URL" >/dev/null 2>&1; then
+        echo "Timed out waiting for server to come up!" >&2
+        exit 1
+    fi
+}
+
+# will sometimes need to close the app and restart to a particular GUI
+# (example: re-install, uninstaller)
+# in these cases, the GUI creates a 'launchfile', w/ requrested next action
+# and then terminates nwjs (which will quit this script and trigger cleanup)
+# so in cleanup if launchfile present, restart app -
+# when this script runs again when the app restarts, it will
+# read the launchfile and open to the requested action/URL
+#
+# [[NOTE: do like this, instead of just re-launching nwjs itself from
+# this script, because when last nwjs window closes, the app icon will disappear
+# from the dock, even if this script is still running, and re-launching nwjs
+# will cause nwjs icon to appear, not the app's]]
+cleanup() {
+    if [[ "$SERVER_PID" ]]; then
+        kill -TERM $SERVER_PID
+        rm $SERVERPIDFILE
+    fi
+
+    if [[ -e "$LAUNCHFILEPATH" ]]; then
+        open -a "$APP_DIR" &
+    fi
+}
+
+# start XPE express server
+
+serverLogPath="$APPLOGDIR"/"$TIMESTAMP"_serverLog
+"$NODEBIN" "$INSTALLSERVER" > "$serverLogPath" 2>&1 &
+SERVER_PID=$!
+echo "server pid: $SERVER_PID" >&2
+echo "$SERVER_PID" > "$SERVERPIDFILE" >&2
+waitForServer
+# put a link to the log so can keep track of latest, for multiple app runs
+ln -sf "$serverLogPath" "$APPLOGDIR"/latest_serverLog
+# export as an env variable so the GUis have access, and can print the path in failure msgs
+export XPE_CURR_LOG_PATH_SERVER="$serverLogPath"
+
+########## SET WHICH GUI SHOULD OPEN WHEN NWJS IS STARTED  ##########
+
+# app action:
+# open installer/uninstaller/revert tool/XD/<specific URL/path> based on order of precedence:
+#    1. cmdline param (install/uninstall/revert/xd)
+#    2. launchFile content (insatll/uninstall/revert/xd/<URL/path>)
+#    3. in absence of either:
+#        (a) if no .installed file (gets set by GUI after successful install) --> installer
+#        (b) else --> xd
+#
+# Works as follows:
+# nwjs process is started at very end of this script.
+# nwjs's entrypoint is a js file: assets/js/xpe/starter.js -
+# that js file opens the initial window based on value of env var XPESTARTACTION
+# (opens XD by default if the var isn't set)
+# so this section detects if a particular GUI should open first and if so, sets
+# XPESTARTACTION before starting nwjs
+
+# wrapper functions in case additional settings need to be set in future
+# to prepare for specific GUIs.
+
+setInstallerLaunch() {
+    export "$APPACTIONVAR=install"
+}
+setUninstallerLaunch() {
+    export "$APPACTIONVAR=uninstall"
+}
+setReverterLaunch() {
+    export "$APPACTIONVAR=revert"
+}
+setXdLaunch() {
+    export "$APPACTIONVAR=xd"
+}
+# takes one arg: an URL, or local filepath to an HTML file (abs. or rel to nwjs root)
+# and sets env var so that nwjs will open a Window with that content when it starts.
+# (note: still need the GUI specific options, i.e., XPESTARTACTION=install,
+# rather than calling this function w/ their URLs, because if nwjs finds one of those
+# specific actions, will open the Window with settings specific to that GUI;
+# whatever is set to open via this function will open w/ default Window settings)
+setOtherLaunch() {
+    if [ -n "$1" ]; then
+        # if the URL/path is not valid nwjs will still open a window but it will have an error
+        # user will need to close for nwjs (and app) to quit.
+        # TODO: Validate valid path/URL here?
+        export "$APPACTIONVAR=$1"
+    fi
+}
+
+## SET ACTION BASED ON CMD PARAM -a ##
+
+# some older versions of Mac will launch the app executable
+# with cmd params we don't care about
+# so not sufficient just to check if there are cmd params present; use
+# named param and make sure it's valid
+foundAction=false
+# note; getopts will hault if unnamed params given before named
+while getopts ":a:" opt && ! $foundAction; do
+    case $opt in
+        a)
+            # -a arg was detected; make sure it's valid option
+            foundAction=true
+            case "$OPTARG" in
+                install)
+                    setInstallerLaunch
+                    ;;
+                uninstall)
+                    setUninstallerLaunch
+                    ;;
+                revert)
+                    setReverterLaunch
+                    ;;
+                xd)
+                    setXdLaunch
+                    ;;
+                # don't do anything on default
+                # in case they gave a bad param ignore it
+            esac
+            ;;
+        :)
+            echo "WARNING: -$opt requires an arg! Ignoring! App will exhibit default behavior..." >&2
+            ;;
+    esac
+done
+
+## SET ACTION BASED ON LAUNCHFILE: (only if cmd params didn't set a launch behavior)
+if ! printenv $APPACTIONVAR && [ -e "$LAUNCHFILEPATH" ]; then
+    launchFileCmd=$(cat "$LAUNCHFILEPATH")
+    rm "$LAUNCHFILEPATH"
+    case "$launchFileCmd" in
+        # it can get set as these specific terms
+        install)
+            setInstallerLaunch
+            ;;
+        uninstall)
+            setUninstallerLaunch
+            ;;
+        revert)
+            setReverterLaunch
+            ;;
+        xd)
+            setXdLaunch
+            ;;
+        *)
+            # can also get set to any URL
+            # launch to URL if its not one of the terms above
+            setOtherLaunch "$launchFileCmd"
+            ;;
+    esac
+fi
+
+## DEFAULT :
+#     no -a param or launchfile:
+#     if no .installed file- open installer, else- open xd.
+# note: keep as sep. case (not else)
+# because launchfile can exist but be empty in which case no launch action would get set
+# (intention is for app to restart on close, and open w/ the ddefault behavior)
+if ! printenv $APPACTIONVAR; then
+    if [ ! -f "$INSTALLEDFILE" ]; then
+        setInstallerLaunch
+    else
+        setXdLaunch
+    fi
+fi
+
+########### LAUNCH NWJS ############
+
+# symlink to the file before you make the log
+# because want the exit result of the nwjs process to be the exit $?
+nwjsLogPath="$APPLOGDIR"/"$TIMESTAMP"_nwjsLog
+ln -sf "$nwjsLogPath" "$APPLOGDIR"/latest_nwjsLog
+# export as an env variable so the GUis have access, and can print path in failure msgs
+export XPE_CURR_LOG_PATH_NWJS="$nwjsLogPath"
+"$NWJSBIN" "$NWJSROOT" --enable-logging=stderr > "$nwjsLogPath" 2>&1
+exit $?

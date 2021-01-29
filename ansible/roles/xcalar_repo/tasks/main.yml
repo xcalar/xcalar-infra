@@ -1,0 +1,27 @@
+---
+- name: Install xcalar repo
+  yum_repository:
+    name: xcalar
+    description: Xcalar for EL{{ ansible_distribution_major_version }}
+    baseurl: http://repo.xcalar.net/rpm/el{{ ansible_distribution_major_version }}/$basearch/
+    gpgcheck: yes
+    enabled: no
+    gpgkey: https://storage.googleapis.com/repo.xcalar.net/pubkey.gpg
+
+- name: Install xcalar-deps repo
+  yum_repository:
+    name: xcalar-deps
+    description: Xcalar Dependencies for EL{{ ansible_distribution_major_version }}
+    baseurl: http://repo.xcalar.net/rpm-deps/el{{ ansible_distribution_major_version }}/$basearch/
+    gpgcheck: yes
+    enabled: no
+    gpgkey: https://storage.googleapis.com/repo.xcalar.net/pubkey.gpg
+
+- name: Install xcalar-deps-common repo
+  yum_repository:
+    name: xcalar-deps-common
+    description: Xcalar Common Dependencies for EL
+    baseurl: http://repo.xcalar.net/rpm-deps/common/$basearch/
+    gpgcheck: yes
+    enabled: no
+    gpgkey: https://storage.googleapis.com/repo.xcalar.net/pubkey.gpg

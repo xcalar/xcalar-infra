@@ -1,0 +1,140 @@
+{
+
+  "variables": {
+    "box_os":         "linux",
+    "box_ostype":     "centos",
+    "box_osversion":  "7.7-1908",
+    "box_nick":       "7",
+    "box_arch":       "x64",
+    "box_type":       "base",
+    "box_memory":     "2048",
+    "box_cpus":       "2",
+    "disk_size":       "128000",
+
+    "iso_arch":       "x86_64",
+    "iso_type":       "NetInstall",
+
+    "iso_sha256":        "9a2c47d97b9975452f7d582264e9fc16d108ed8252ac6816239a3b58cef5c53d",
+
+    "ssh_user":       "jenkins",
+    "ssh_pass":       "Welcome1",
+    "hostname":       "jenkins-slave-el7-vmware",
+    "puppet_host": "puppet",
+    "domain":         "int.xcalar.com",
+    "puppet_src": "{{env `HOME`}}/puppet",
+    "role": "jenkins_slave",
+    "cluster": "jenkins-slave",
+    "datacenter": "xcalar-sjc",
+    "http_proxy": "{{env `http_proxy`}}",
+    "osid": "el7",
+    "url": "http://netstore/isos/CentOS_ISO/CentOS-7-x86_64-Minimal-1908.iso"
+  },
+
+  "builders": [
+    {
+      "type":               "vmware-iso",
+      "vm_name":            "{{ user `box_ostype` }}-{{ user `box_osversion` }}-{{ user `box_arch` }}-{{ user `box_type` }}",
+      "guest_os_type":      "centos",
+      "disk_size":          "{{user `disk_size`}}",
+      "output_directory":   "output-vmware/{{ user `box_os` }}/{{ user `box_ostype` }}/{{ user `box_osversion` }}",
+
+      "iso_url":            "{{ user `url` }}",
+      "iso_checksum":       "{{ user `iso_sha256` }}",
+      "iso_checksum_type":  "sha256",
+
+      "http_directory":     "{{template_dir}}/../httpdir",
+
+      "ssh_username":       "root",
+      "ssh_password":       "{{ user `ssh_pass` }}",
+      "ssh_wait_timeout":   "100000s",
+      "headless": false,
+
+      "shutdown_command":   "sudo halt -p",
+
+      "tools_upload_flavor": "linux",
+
+      "vmx_data": {
+        "memsize":                    "{{ user `box_memory` }}",
+        "numvcpus":                   "{{ user `box_cpus` }}",
+        "vhv.enable":                 "true"
+      },
+
+      "boot_command": [
+        "<tab> ",
+        "text ks=http://{{ .HTTPIP }}:{{ .HTTPPort }}/ks{{ user `box_nick` }}.cfg ",
+        "lang=en_US.UTF-8 ",
+        "ROLE={{user `role`}} ",
+        "CLUSTER={{user `cluster`}} ",
+        "OWNER={{user `ssh_user`}}",
+        "<enter><wait>"
+      ]
+    }
+  ],
+  "provisioners": [
+    {
+      "type": "shell-local",
+      "inline": [
+        "ulimit -Ss 8192; cd {{ user `puppet_src` }} && make puppet.tar.gz"
+      ]
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "mkdir /tmp/scripts"
+      ]
+    },
+    {
+      "type": "file",
+      "source": "{{ user `puppet_src` }}/t/{{user `osid`}}-packages.txt",
+      "destination": "/tmp/scripts/packages.txt"
+    },
+    {
+      "type": "file",
+      "source": "{{ user `puppet_src` }}/puppet.tar.gz",
+      "generated": true,
+      "destination": "/tmp/scripts/"
+    },
+    {
+      "type": "file",
+      "source": "{{ template_dir }}/../scripts/run-puppet.sh",
+      "destination": "/tmp/scripts/"
+    },
+    {
+      "type": "file",
+      "source": "{{ template_dir }}/../scripts/cloud-init-nocloud.sh",
+      "destination": "/tmp/scripts/"
+    },
+    {
+      "type": "file",
+      "source": "{{ template_dir }}/../scripts/generalize.sh",
+      "destination": "/tmp/scripts/"
+    },
+    {
+      "type": "shell",
+      "environment_vars": [
+        "OSID={{user `osid`}}",
+        "FACTER_role={{user `role`}}",
+        "FACTER_cluster={{user `cluster`}}",
+        "FACTER_datacenter={{user `datacenter`}}",
+        "FACTER_packer=1",
+        "MYHOSTNAME={{user `hostname`}}.{{user `domain`}}",
+        "PUPPET_TAR=/tmp/scripts/puppet.tar.gz",
+        "FACTER_override=offline",
+        "NODISABLE=puppet"
+      ],
+      "execute_command": "chmod +x {{ .Path }}; {{ .Vars }} sudo -E {{.Path}}",
+      "inline": [
+        "set -x",
+        "cd /tmp/scripts",
+        "yum remove -y git perl-Git",
+        "yum install -y https://repo.ius.io/ius-release-el7.rpm",
+        "yum install -y git222 git222-core git222-perl-Git --enablerepo='ius'",
+        "bash -x run-puppet.sh || true",
+        "rm -rvf /etc/puppetlabs/puppet/ssl",
+        "bash -x generalize.sh || true",
+        "rm -rvf /tmp/scripts",
+        "rm -rvf /etc/puppetlabs/code"
+      ]
+    }
+  ]
+}

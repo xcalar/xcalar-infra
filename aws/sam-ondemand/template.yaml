@@ -1,0 +1,420 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: "Xcalar OnDemand Serverless Application\nSAM Template for sam-ondemand\n"
+Globals:
+  Function:
+    Timeout: 3
+Parameters:
+  ClusterAccessSGId:
+    Description: Security Group ID of wanting access to the Xcalar Cluster (SSH/HTTPS)
+    Type: AWS::EC2::SecurityGroup::Id
+  InstanceType:
+    Type: String
+    Description: Xcalar node instance type
+    AllowedValues:
+      - c5d.xlarge
+      - c5d.2xlarge
+      - c5d.4xlarge
+      - c5d.9xlarge
+      - c5d.18xlarge
+      - r5d.2xlarge
+      - r5d.4xlarge
+      - r5d.12xlarge
+      - r5d.24xlarge
+      - m5d.xlarge
+      - m5d.2xlarge
+      - m5d.4xlarge
+      - m5d.12xlarge
+      - m5d.24xlarge
+      - i3.xlarge
+      - i3.2xlarge
+      - i3.4xlarge
+      - i3.8xlarge
+      - c5.4xlarge
+      - c5.9xlarge
+      - c5.18xlarge
+      - m5.2xlarge
+      - m5.4xlarge
+      - m5.12xlarge
+      - m5.24xlarge
+      - r4.xlarge
+      - r4.2xlarge
+      - r4.4xlarge
+      - r4.8xlarge
+      - r4.16xlarge
+    ConstraintDescription: Choose an instance type.
+    Default: c5d.4xlarge
+  Ec2RetryTagKey:
+    Description: The Amazon EC2 instance tag key to filter on when joining to other
+      Xcalar nodes.
+    Type: String
+    Default: aws:cloudformation:stack-name
+    ConstraintDescription: Must match EC2 Tag Name requirements.
+  Ec2RetryTagValue:
+    Description: The Amazon EC2 instance tag value to filter on when joining to other
+      Xcalar nodes. Optional, leave blank to use the stack name.
+    Type: String
+    Default: ''
+    ConstraintDescription: Must match EC2 Tag Name requirements.
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: id_rsa_aws
+    ConstraintDescription: Must be the name of an existing EC2 KeyPair.
+  Subnet:
+    Description: ID of the private subnet of servers (e.g., subnet-xxxxxxxx)
+    Type: AWS::EC2::Subnet::Id
+  InstallerUrl:
+    MaxLength: '2047'
+    ConstraintDescription: Optional. HTTPS/S3 URL to installer or empty if AMI is
+      pre-baked
+    Default: ''
+    Type: String
+  BootstrapUrl:
+    MaxLength: '2047'
+    ConstraintDescription: Location of the bootstrap script. For example, https://s3.amazonaws.com/xcrepoe1/cfn/prod/v2/scripts/user-data.sh
+    Type: String
+    Default: 'https://s3.amazonaws.com/xcrepoe1/cfn/prod/xdp-standard/v9/scripts/user-data.sh'
+  CustomScriptUrl:
+    MaxLength: '2047'
+    ConstraintDescription: Optional. Location of a custom script to run after bootstrap.
+    Default: ''
+    Type: String
+  LicenseKey:
+    Description: Optional. Xcalar License. Leave blank to enter via GUI.
+    MinLength: '0'
+    MaxLength: '1024'
+    Default: ''
+    NoEcho: true
+    Type: String
+  VpcId:
+    Description: VPC ID
+    Type: AWS::EC2::VPC::Id
+  AllowedCIDR:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
+    Description: CIDR Block for the VPC that should have access to this cluster. For
+      example, your Bastion host IP address or your Office IP
+    Type: String
+    Default: 0.0.0.0/0
+  AssociatePublicIpAddress:
+    Description: Associate a Public IP address with resources
+    Default: 'false'
+    AllowedValues:
+      - 'false'
+      - 'true'
+    Type: String
+  AdminUsername:
+    Description: XD Administrator name
+    Type: String
+    MinLength: '5'
+    MaxLength: '128'
+  AdminPassword:
+    Description: XD Administrator password
+    NoEcho: true
+    Type: String
+    MinLength: '5'
+    MaxLength: '128'
+  AdminEmail:
+    Description: Email of the administrator
+    Type: String
+  RootSize:
+    Description: Size of Root Disk
+    MinValue: 32
+    MaxValue: 4095
+    Default: 100
+    Type: Number
+  ImageId:
+    Description: AMI to use for Ec2 instances
+    Default: ami-06728a4245fcf36b6
+    Type: AWS::EC2::Image::Id
+  S3Bucket:
+    Description: Existing S3 Bucket for Lambda
+    Type: String
+  S3Prefix:
+    Description: Prefix for S3 objedcts
+    Type: String
+    Default: ''
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Instance configuration
+        Parameters:
+          - InstanceType
+          - RootSize
+      - Label:
+          default: Security configuration
+        Parameters:
+          - KeyName
+      - Label:
+          default: Network configuration
+        Parameters:
+          - VpcId
+          - Subnet
+          - AssociatePublicIpAddress
+          - ClusterAccessSGId
+          - AllowedCIDR
+      - Label:
+          default: Xcalar Configuration
+        Parameters:
+          - LicenseKey
+          - AdminEmail
+          - AdminUsername
+          - AdminPassword
+      - Label:
+          default: Advanced Options
+        Parameters:
+          - InstallerUrl
+          - BootstrapUrl
+          - CustomScriptUrl
+          - Ec2RetryTagKey
+          - Ec2RetryTagValue
+    ParameterLabels:
+      InstallerUrl:
+        default: 'XCE Installer Url:'
+      LicenseKey:
+        default: 'XCE License Key:'
+      InstanceType:
+        default: 'Server size:'
+      KeyName:
+        default: 'Key pair:'
+  Version: 1.4.1
+  Release: '3'
+Resources:
+  #  lambdaauthorizerbasicauth:
+  #    Type: AWS::Serverless::Application
+  #    Properties:
+  #      Location:
+  #        ApplicationId: arn:aws:serverlessrepo:us-east-1:560348900601:applications/lambda-authorizer-basic-auth
+  #        SemanticVersion: 0.2.0
+  #
+  OnDemandFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ondemand/build
+      Handler: app.lambda_handler
+      Runtime: python3.6
+      MemorySize: 512
+      Environment:
+        Variables:
+          PARAM1: VALUE
+          S3BUCKET: !Ref S3Bucket
+          S3PREFIX: !Ref S3Prefix
+          LAUNCH_TEMPLATE_ID: !Ref LaunchTemplate
+          LAUNCH_TEMPLATE: !Sub '${AWS::StackName}-XcalarLaunchTemplate'
+      Policies:
+        - Version: '2012-10-17' # Policy Document
+          Statement:
+            - Effect: Allow
+              Action:
+                - ec2:DescribeRegions
+                - ec2:DescribeInstances
+                - ec2:RunInstances
+                - ec2:TerminateInstances
+                - ec2:StopInstances
+                - 'autoscaling:Describe*'
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+                - s3:DeleteObject
+                - s3:ListBucket
+                - s3:GetBucketLocation
+              Resource: !Sub 'arn:aws:s3:::${S3Bucket}/${S3Prefix}*'
+      Events:
+        OnDemandCluster:
+          Type: Api
+          Properties:
+            Path: /v1/cluster
+            Method: put
+        OnDemandShutdown:
+          Type: Api
+          Properties:
+            Path: /v1/shutdown
+            Method: put
+  ClusterSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access between nodes, and HTTPS/SSH from the given CIDR.
+      VpcId: !Ref 'VpcId'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref 'ClusterAccessSGId'
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref 'ClusterAccessSGId'
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref 'ClusterAccessSGId'
+        - IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: !Ref 'AllowedCIDR'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-ClusterSG'
+  ClusterMonitorIngressTCP:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref 'ClusterSG'
+      IpProtocol: tcp
+      FromPort: 8000
+      ToPort: 8000
+      SourceSecurityGroupId: !Ref 'ClusterSG'
+  ClusterMonitorIngressUDP:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref 'ClusterSG'
+      IpProtocol: udp
+      FromPort: 8000
+      ToPort: 8000
+      SourceSecurityGroupId: !Ref 'ClusterSG'
+  ClusterIngressHTTP:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref 'ClusterSG'
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      SourceSecurityGroupId: !Ref 'ClusterSG'
+  ClusterIngressSSL:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref 'ClusterSG'
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      SourceSecurityGroupId: !Ref 'ClusterSG'
+  ClusterIngressAPI:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref 'ClusterSG'
+      IpProtocol: tcp
+      FromPort: 18552
+      ToPort: 18552
+      SourceSecurityGroupId: !Ref 'ClusterSG'
+  ClusterIngressProto:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref 'ClusterSG'
+      IpProtocol: tcp
+      FromPort: 5000
+      ToPort: 5000
+      SourceSecurityGroupId: !Ref 'ClusterSG'
+  IamClusterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Principal:
+              Service: ec2.amazonaws.com
+            Effect: Allow
+            Sid: ''
+  IamClusterPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: xcalar-cluster
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action:
+              - ec2:DescribeInstances
+            Resource: '*'
+      Roles:
+        - !Ref 'IamClusterRole'
+  IamClusterProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref 'IamClusterRole'
+  EfsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EFS Mount Access Security Group
+      VpcId: !Ref 'VpcId'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 2049
+          ToPort: 2049
+          SourceSecurityGroupId: !Ref 'ClusterSG'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-EfsSecurityGroup'
+  EfsSecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref 'EfsSecurityGroup'
+      IpProtocol: '-1'
+      SourceSecurityGroupId: !Ref 'EfsSecurityGroup'
+  EfsSharedRoot:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      Encrypted: false
+      FileSystemTags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-EFS'
+  EfsMountTarget:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref 'EfsSharedRoot'
+      SubnetId: !Ref 'Subnet'
+      SecurityGroups:
+        - !Ref 'EfsSecurityGroup'
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub '${AWS::StackName}-XcalarLaunchTemplate'
+      LaunchTemplateData:
+        InstanceType: !Ref 'InstanceType'
+        SecurityGroupIds:
+          - !GetAtt 'ClusterSG.GroupId'
+        KeyName: !Ref 'KeyName'
+        ImageId: !Ref 'ImageId'
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              VolumeSize: !Ref 'RootSize'
+              VolumeType: gp2
+        IamInstanceProfile:
+          Arn: !GetAtt 'IamClusterProfile.Arn'
+        UserData: !Base64
+          Fn::Sub:
+            - |-
+              #!/bin/bash
+              genDefaultAdmin() {
+                local crypted=$(/opt/xcalar/bin/node -e 'var crypto=require("crypto"); var hmac=crypto.createHmac("sha256", "xcalar-salt").update("${AdminPassword}").digest("hex"); process.stdout.write(hmac+"\n")')
+                cat <<EOF
+                {"username": "${AdminUsername}", "password": "$crypted", "email": "${AdminEmail}", "defaultAdminEnabled": true}
+              EOF
+              }
+              mkdir -p /var/lib/xcalar-install
+              cd /var/lib/xcalar-install
+              curl -Lf "${BootstrapUrl}" -o bootstrap.sh
+              rc=$?
+              if [ $rc -eq 0 ]; then
+                /bin/bash -x bootstrap.sh --stack-name "${AWS::StackName}" --nfs-mount "${EfsMount}" --license "${LicenseKey}"
+                rc=$?
+              fi
+              exit $rc
+            - EfsMount: !Sub '${EfsSharedRoot}.efs.${AWS::Region}.amazonaws.com:/'
+
+Outputs:
+  LaunchTemplate:
+    Value: !Sub '${AWS::StackName}-XcalarLaunchTemplate'
+    Description: The launch template
+  OnDemandApi:
+    Description: API Gateway endpoint URL for Prod stage for On Demand function
+    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/v1/'
+  OnDemandFunction:
+    Description: On Demand Lambda Function ARN
+    Value: !GetAtt 'OnDemandFunction.Arn'
+  OnDemandFunctionIamRole:
+    Description: Implicit IAM Role created for On Demand function
+    Value: !GetAtt 'OnDemandFunctionRole.Arn'

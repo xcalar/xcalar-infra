@@ -1,0 +1,64 @@
+Step 0) Install Faker and psycopg2
+
+pssh -i -h clusters.host sudo /opt/xcalar/bin/pip3.6 install psycopg2
+pssh -i -h clusters.host sudo /opt/xcalar/bin/pip3.6 install faker
+
+Or if it's on a single node
+sudo /opt/xcalar/bin/pip3.6 install psycopg2; sudo /opt/xcalar/bin/pip3.6 install faker
+
+Step 1) Log in to Xcalar say as USERNAME and create a workbook called WORKBOOKNAME
+
+Step 2) You can use this script to generate imd tables for 2 cubes with base data
+python3.6 genIMD.py --exportUrl /var/opt/xcalar/export/ -d ecommercedb --env local --bases --numBaseRows 1000 --updates --numUpdateRows 10 -u admin
+
+s3 example:
+python3.6 genIMD.py --exportUrl hvr-integ-datae1/datagen/ -d ecommercedb --env local --bases --numBaseRows 1000 --updates --numUpdateRows 10 -u admin
+
+Example output:
+(xcve) vgonela@kalam:~/xcalar-infra/imdTests$ python3.6 genIMD.py -s test --exportUrl /var/opt/xcalar/export/ -c ecommTables --env local --bases --numBaseRows 1000 --updates --numUpdateRows 10
+Uploading import_udf_ecomm
+Uploading import_udf_trade
+Uploading pgdbexportudf
+Uploading s3exportudf
+All UDFs uplaoded!
+Targets created!
+Dataflow ecommTables creation done!
+Dataflow transacTables creation done!
+====================================
+
+====================================
+31 Jul 2018 10:21:11
+====================================
+Generating data for tables with ecommTables
+Data generation with ecommTables, done!
+/var/opt/xcalar/export/ customers hst
+/var/opt/xcalar/export/ customer_phone hst
+/var/opt/xcalar/export/ address hst
+/var/opt/xcalar/export/ customer_address hst
+/var/opt/xcalar/export/ orders hst
+/var/opt/xcalar/export/ order_items hst
+Creating IMD table customers
+published table customers in 0.11sec!
+Creating IMD table customer_phone
+published table customer_phone in 0.10sec!
+Creating IMD table address
+published table address in 0.10sec!
+Creating IMD table customer_address
+published table customer_address in 0.10sec!
+Creating IMD table orders
+published table orders in 0.10sec!
+Creating IMD table order_items
+published table order_items in 0.16sec!
+Publishing tables done in 0.67sec!
+====================================
+
+Generating data for tables with ecommTables
+Data generation with ecommTables, done!
+/var/opt/xcalar/export/ customers transient/1533057673
+/var/opt/xcalar/export/ customer_phone transient/1533057673
+/var/opt/xcalar/export/ address transient/1533057673
+/var/opt/xcalar/export/ customer_address transient/1533057673
+/var/opt/xcalar/export/ orders transient/1533057673
+/var/opt/xcalar/export/ order_items transient/1533057673
+Updating 6 tables: dict_keys(['customers', 'customer_phone', 'address', 'customer_address', 'orders', 'order_items'])
+Applying update for customers

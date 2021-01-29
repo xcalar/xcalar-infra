@@ -1,0 +1,35 @@
+
+[deps200]
+xcalar-deps200.westus2.cloudapp.azure.com
+xcalar-deps201.westus2.cloudapp.azure.com
+xcalar-deps202.westus2.cloudapp.azure.com
+xcalar-deps203.westus2.cloudapp.azure.com
+xcalar-deps204.westus2.cloudapp.azure.com
+xcalar-deps205.westus2.cloudapp.azure.com
+xcalar-deps206.westus2.cloudapp.azure.com
+xcalar-deps207.westus2.cloudapp.azure.com
+xcalar-deps208.westus2.cloudapp.azure.com
+xcalar-deps209.westus2.cloudapp.azure.com
+
+[el7-100]
+xcalar-el7-100.westus2.cloudapp.azure.com
+xcalar-el7-101.westus2.cloudapp.azure.com
+xcalar-el7-102.westus2.cloudapp.azure.com
+xcalar-el7-103.westus2.cloudapp.azure.com
+xcalar-el7-104.westus2.cloudapp.azure.com
+xcalar-el7-105.westus2.cloudapp.azure.com
+#xcalar-el7-106.westus2.cloudapp.azure.com
+
+[netstore]
+netstore.westus2.cloudapp.azure.com     ansible_user=root
+
+
+[el6-100]
+xcalar-el6-100.westus2.cloudapp.azure.com
+xcalar-el6-101.westus2.cloudapp.azure.com
+xcalar-el6-102.westus2.cloudapp.azure.com
+xcalar-el6-103.westus2.cloudapp.azure.com
+xcalar-el6-104.westus2.cloudapp.azure.com
+
+[all:vars]
+ansible_user = azureuser

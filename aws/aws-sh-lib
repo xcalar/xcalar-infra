@@ -1,0 +1,959 @@
+#!/bin/bash
+#
+#
+# shellcheck disable=SC2086,SC2046,SC2207
+. infra-sh-lib
+
+AWS_AMI_OWNER_REDHAT=309956199498
+AWS_AMI_OWNER_CANONICAL=099720109477
+AWS_AMI_MARKETPLACE=679593333241
+AWS_AMI_AMAZON=amazon
+AWS_AMI_FILTERS=('Name=state,Values=available' 'Name=architecture,Values=x86_64' 'Name=virtualization-type,Values=hvm' 'Name=root-device-type,Values=ebs' 'Name=block-device-mapping.volume-type,Values=gp2' 'Name=ena-support,Values=true')
+JQ_TAG_NAME='"\(if .Tags and ([.Tags[] | select( .Key == "Name" )] != []) then .Tags[] | select( .Key == "Name" ) | .Value else "-" end)"'
+JQ_TAGS_OTHER='"\(if .Tags then [.Tags[] | select( .Key != "Name") |"\(.Key)=\(.Value)"] | join(",") else "-" end)"'
+export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-us-west-2}"
+
+aws_sh_setup() {
+    export TMPDIR="${TMPDIR:-/tmp/aws-sh-lib-$(id -u)}/$(basename $0 .sh)/$$"
+    rm -rf "$TMPDIR"
+    mkdir -p "$TMPDIR"
+}
+
+aws_metadata() {
+    curl "http://169.254.169.254/2016-09-02/meta-data${1}"
+}
+
+aws_dynamic() {
+    curl "http://169.254.169.254/2016-09-02/dynamic${1}"
+}
+
+## For JQ usage reference
+#aws_list_instances_names () { aws ec2 describe-instances | jq -r '.Reservations[].Instances[] | "\(if .Tags and ([.Tags[] | select( .Key == "Name" )] != []) then .Tags[] | select( .Key == "Name" ) | .Value else "-" end)"'; }
+
+aws_format_images() {
+    jq -r ".Images[]|[.CreationDate,.ImageId,$(jq_value_or .SriovNetSupport '-'),$(jq_value_or .EnaSupport '-'),.Name, $JQ_TAG_NAME]|@tsv" | sed 's/.000Z//g' | sort -rn
+}
+
+aws_latest_official_image() {
+    local search="${1:-EL7}"
+    aws_list_images | aws_format_images | grep $search | grep -i official | head -1 | awk '{print $2}'
+}
+
+aws_list_images() { aws ec2 describe-images --output=json --owners "${1:-self}" --filters "Name=name,Values=${2:-*}" "${AWS_AMI_FILTERS[@]}"; }
+aws_list_self_images() { aws_list_images self '*' "$@" | aws_format_images; }
+aws_list_rhel6_images() { aws_list_images $AWS_AMI_OWNER_REDHAT 'RHEL-6.?_HVM_*' "$@" | aws_format_images; }
+aws_list_rhel7_images() { aws_list_images $AWS_AMI_OWNER_REDHAT 'RHEL-7.?_HVM_*' "$@" | aws_format_images; }
+aws_list_centos6_images() { aws_list_images $AWS_AMI_MARKETPLACE 'CentOS Linux 6 x86_64 HVM*' "$@" | aws_format_images; }
+aws_list_centos7_images() { aws_list_images $AWS_AMI_MARKETPLACE 'CentOS Linux 7 x86_64 HVM*' "$@" | aws_format_images; }
+aws_list_el6_images() { aws_list_images self 'EL-6.*' "$@" | aws_format_images; }
+aws_list_el7_images() { aws_list_images self 'EL-7.*' "$@" | aws_format_images; }
+aws_list_amzn1_images() { aws_list_images $AWS_AMI_AMAZON 'amzn-ami-hvm-20*' "$@" | aws_format_images; }
+aws_list_amzn2_images() { aws_list_images $AWS_AMI_AMAZON 'amzn2-ami-hvm-2.*-x86_64-gp2' "$@" | aws_format_images; }
+aws_list_ub14_images() { aws_list_images $AWS_AMI_OWNER_CANONICAL '*/hvm-ssd/ubuntu-trusty-14.04-amd64-server-*' "$@" | aws_format_images; }
+aws_list_ub14_image_latest() { aws_list_ub14_images "$@" | aws_jq_images | head -1; }
+aws_share_ami() {
+    local image_id_and_snapshot rc
+    image_id_and_snapshot=($(
+        set -o pipefail
+        aws ec2 describe-images --image-ids "$1" --output=json \
+            | jq -r '.Images[]|[.ImageId,.BlockDeviceMappings[0].Ebs.SnapshotId]|@tsv'
+    ))
+    local snapshot_id="${image_id_and_snapshot[1]}"
+    aws ec2 modify-image-attribute --image-id "$1" --launch-permission "{\"Add\":[{\"UserId\":\"$2\"}]}"
+    aws ec2 modify-snapshot-attribute --snapshot-id $snapshot_id --attribute createVolumePermission --operation-type remove --user-ids $2
+}
+
+aws_list_running() { aws_list_instances_info --filter Name='instance-state-name',Values='running'; }
+
+jq_value_or() {
+    echo '"\(if '$1' and '$1' != "" then '$1' else "'${2:-}'" end)"'
+}
+
+aws_format_output() {
+    sed 's/.000Z//g' | sort -rn | column -t
+}
+
+aws_format_instances() {
+    jq -r '
+    .Reservations[].Instances[] |
+        [
+         "\(if .Tags and ([.Tags[] | select( .Key == "Name" )] != []) then .Tags[] | select( .Key == "Name" ) | .Value else "-" end)",
+         .InstanceId,
+         .ImageId,
+         .EbsOptimized,
+         "\(if .SriovNetSupport then .SriovNetSupport else "-" end)",
+         "\(if .EnaSupport then .EnaSupport else "-" end)",
+         .State.Name,
+         .LaunchTime,
+         .PrivateIpAddress,
+         "\(if .PublicIpAddress then .PublicIpAddress else "None" end)",
+         "\(if .PublicDnsName and .PublicDnsName != "" then .PublicDnsName else "None" end)"
+        ] |@tsv' | aws_format_output
+}
+
+aws_parse_s3_url() {
+    if [[ $1 =~ https://([a-z0-9\.-]+)\.s3\.amazonaws\.com/(.*)$ ]]; then
+        echo "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
+    elif [[ $1 =~ https://s3\.([a-z0-9-]+)\.amazonaws\.com/([^/]+)/(.*)$ ]]; then
+        echo "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}"
+    else
+        return 1
+    fi
+}
+
+aws_list_instances_info() {
+    aws ec2 describe-instances "$@" --output=json | aws_format_instances
+}
+
+aws_list_instances_info2() {
+    aws ec2 describe-instances "$@" --output=json | jq -r "
+    .Reservations[].Instances[] |
+        [
+         .LaunchTime,
+         .InstanceId,
+         .ImageId,
+         .InstanceType,
+         .State.Name,
+         $JQ_TAG_NAME,
+         .EbsOptimized,
+         $(jq_value_or .SriovNetSupport 'nosriov'),
+         $(jq_value_or .EnaSupport 'noena'),
+         .PrivateIpAddress,
+         $(jq_value_or .PublicIpAddress None),
+         $(jq_value_or .PublicDnsName None)
+        ] |@tsv" | aws_format_output
+}
+
+aws_instance_sriov_enable() {
+    aws ec2 modify-instance-attribute --instance-id ${1} --sriov-net-support simple
+}
+
+aws_instance_sriov() {
+    aws ec2 describe-instance-attribute --instance-id ${1} --attribute sriovNetSupport
+}
+
+aws_image_sriov() {
+    aws ec2 describe-image-attribute --image-id ${1} --attribute sriovNetSupport
+}
+
+aws_show_images() {
+    jq -r "
+    .Images[] |
+         [
+          .CreationDate,
+          .ImageId,
+          .BlockDeviceMappings[0].Ebs.SnapshotId,
+          .Name,
+          $(jq_value_or .SriovNetSupport),
+          $(jq_value_or .EnaSupport),
+          $JQ_TAG_NAME,
+          $JQ_TAGS_OTHER
+        ] |@tsv" | aws_format_output
+}
+
+aws_copy_image() {
+    local region="$1" image_id="$2"
+    if [ "$region" = "${AWS_DEFAULT_REGION}" ]; then
+        say "Can't copy to the same region as AWS_DEFAULT_REGION is set to"
+        return 1
+    fi
+    local tags new_image_id token name
+    token=$(uuidgen | cut -d'-' -f1)
+    tags=$(mktemp -t tags.XXXXXX.json)
+    name=$(aws ec2 describe-images --region $AWS_DEFAULT_REGION --image-ids $image_id --query 'Images[0].Name' --output text)
+    aws ec2 describe-images --region $AWS_DEFAULT_REGION --image-ids $image_id --query 'Images[].Tags[]' | tee $tags
+    if ! new_image_id=$(aws ec2 copy-image --name "$name" --region $region --client-token $token --source-region $AWS_DEFAULT_REGION \
+        --source-image-id "$image_id" --query 'ImageId' --output text); then
+        say "Failed to copy $image_id to $region"
+        return 1
+    fi
+    if ! aws ec2 wait image-available --image-ids $new_image_id --region $region; then
+        say "Failed to copy image"
+        return 1
+    fi
+    aws ec2 create-tags --region $region --resources $new_image_id --tags "$(cat $tags)" && rm $tags
+}
+
+aws_delete_image() {
+    if [ $# -eq 0 ]; then
+        echo >&2 "ERROR: Must specify image-ids"
+        return 1
+    fi
+    local no_wait=false
+    if [ "$1" = "--no-wait" ]; then
+        shift
+        no_wait=true
+    fi
+    local image_id_and_snapshot rc
+    image_id_and_snapshot=($(
+        set -o pipefail
+        aws ec2 describe-images --owners self --filters "Name=name,Values=$1" | jq -r '.Images[]|[.ImageId,.BlockDeviceMappings[0].Ebs.SnapshotId]|@tsv'
+    ))
+    rc=$?
+    if [ $rc -ne 0 ]; then
+        echo >&2 "ERROR($rc): Failed to find $1"
+        return $rc
+    fi
+    if [ ${#image_id_and_snapshot[@]} -eq 0 ]; then
+        echo >&2 "No images found matching $1"
+        return 0
+    fi
+    if test $((${#image_id_and_snapshot[@]} % 2)) -ne 0; then
+        echo >&2 "ERROR($rc): Unknown format for image id and snapshot: ${image_id_and_snapshot[*]}"
+        return 1
+    fi
+    echo >&2 "Deleting ${image_id_and_snapshot[*]}."
+    if [ -t 1 ] && [ $no_wait = false ]; then
+        echo >&2 "Sleeping for 5 seconds"
+        sleep 5
+    fi
+    for ((ii = 0; ii < ${#image_id_and_snapshot[@]}; ii += 2)); do
+        image_id=${image_id_and_snapshot[$ii]}
+        snapshot_id=${image_id_and_snapshot[$((ii + 1))]}
+        echo "Deleting ${image_id} (snapshot_id: ${snapshot_id})"
+        aws ec2 deregister-image --image-id "${image_id}" \
+            && aws ec2 delete-snapshot --snapshot-id "${snapshot_id}"
+    done
+}
+
+aws_delete_ami() {
+    local snapshots ii jj
+    for ii in "$@"; do
+        if ! snapshots=($(aws ec2 describe-images --image-ids "$ii" --query 'Images[].BlockDeviceMappings[].Ebs.SnapshotId' --output text)); then
+            echo >&2 "No snapshots found for $ii"
+        fi
+        if aws ec2 deregister-image --image-id "$ii"; then
+            if [ "${#snapshots[@]}" -gt 0 ]; then
+                for jj in "${snapshots[@]}"; do
+                    aws ec2 delete-snapshot --snapshot-id "$jj"
+                done
+            fi
+        fi
+    done
+}
+
+aws_run_instances() {
+    aws ec2 run-instances \
+        --image-id ${1} \
+        --key-name xcalar-${AWS_DEFAULT_REGION} \
+        --security-groups default \
+        --instance-type ${2:-c4.8xlarge} \
+        --output json
+}
+
+aws_run_cluster() {
+    aws ec2 run-instances \
+        --image-id ${1} \
+        --count ${2} \
+        --key-name xcalar-us-west-2 \
+        --security-groups default \
+        --instance-type ${3:-c4.8xlarge} \
+        --placement AvailabilityZone=us-west-2c,GroupName=${USER}-xcalar-pg,Tenancy=default \
+        --output json
+}
+
+aws_create_el7_image() {
+    local snapshot_id=$1 volume_size=$2
+    shift 2
+    test -z "$volume_size" && return 1
+    aws ec2 register-image --name 'EL-7.3_HVM_GP2_IXGBEVF-4.0.3_ENA-1.1.3-3ac3e0b-BASE v1' \
+        --description 'EL7.3 cloud-init + IXGBEVF & ENA drivers' \
+        --virtualization-type hvm \
+        --root-device-name /dev/sda1 \
+        --block-device-mappings '[{"DeviceName":"/dev/sda1","Ebs": { "SnapshotId": "'${snapshot_id}'", "VolumeSize":'${volume_size}',  "DeleteOnTermination": true, "VolumeType": "gp2"}}, { "DeviceName":"/dev/xvdb","VirtualName":"ephemeral0"}, { "DeviceName":"/dev/xvdc","VirtualName":"ephemeral1"}]' \
+        --architecture x86_64 \
+        --sriov-net-support simple \
+        --ena-support
+}
+
+# Get something like
+# 172.x.x.x   i-0228d0f3b610a5c36     MyXcalar
+aws_instances_by_tag() {
+    local key value
+    if [ $# -eq 0 ]; then
+        say "Must specify tag and key to find instances"
+        return 1
+    fi
+    if [ $# -eq 1 ]; then
+        key='aws:cloudformation:stack-name'
+        value="$1"
+        shift
+    else
+        key="$1"
+        value="$2"
+        shift 2
+    fi
+    aws ec2 describe-instances \
+        --filter 'Name=instance-state-name,Values=running,pending' \
+        'Name=tag-key,Values=aws:cloudformation:stack-name' \
+        --query 'Reservations[*].Instances[*].[PrivateIpAddress, InstanceId, Tags[?Key==`Name`] | [0].Value]' \
+        --output text
+}
+
+aws_config_ssh() {
+    local since="$(date --date='100 days ago' +'%Y-%m-%d')"
+    #aws ec2 describe-instances | jq --arg yest $since -r '.Reservations[].Instances[] | select(.LaunchTime > $yest) | select(.State.Code != 48) | (.Tags[]//[]|select(.Key=="Name")|.Value) as $name | "Host \($name)\n\tHostname \(.PrivateIpAddress)\n"'
+    aws ec2 describe-instances | jq --arg yest $since -r '.Reservations[].Instances[] | select(.LaunchTime > $yest) | select(.State.Code != 48) | (.Tags[]//[]|select(.Key=="Name")|.Value) as $name | "Host \($name).aws\n\tHostname \(.PublicDnsName)\n"'
+}
+
+aws_subnet_to_zone() {
+    aws ec2 describe-subnets --subnet-ids $1 --query 'Subnets[0].AvailabilityZone' --output text
+}
+
+aws_spot_price() {
+    aws ec2 describe-spot-price-history --availability-zone ${2:-us-west-2c} --instance-types ${1} \
+        --product-description "Linux/UNIX (Amazon VPC)" \
+        --start-time $(date -d '1 day ago' --utc +%FT%T) \
+        --end-time $(date --utc +%FT%T) --output text
+}
+
+# Print the IAM info as 'export KEY=VALUE' pairs suitable for sourcing in bash
+aws_get_role_iam() {
+    curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/$1 | jq -r '{AWS_ACCESS_KEY_ID:.AccessKeyId,AWS_SECRET_ACCESS_KEY:.SecretAccessKey,AWS_SESSION_TOKEN:.Token}' | jq -r "to_entries|map(\"export \(.key)=\(.value|tostring)\")|.[]"
+}
+
+aws_s3_list_for_delete() {
+    if [ -n "$3" ]; then
+        aws s3api list-objects-v2 --bucket "$1" ${2:+--prefix "$2"} | jq -r '{"Quiet": true, Objects: [ .Contents[]|select(.Size=='$3')|{Key: .Key}]}'
+    else
+        aws s3api list-objects-v2 --bucket "$1" ${2:+--prefix "$2"} | jq -r '{"Quiet": true, Objects: [ .Contents[]|{Key: .Key}]}'
+    fi
+}
+
+aws_s3_empty_bucket() {
+    local bucket="$1"
+    shift
+    local region
+    if ! region=$(aws_s3_region "$bucket"); then
+        echo >&2 "WARNING: Unable to get the bucket location. Assuming bucket doesn't exist"
+        return 0
+    fi
+    local objs
+    local tmpfile token
+    tmpfile=$(mktemp -t s3.XXXXXX)
+    #if objs="$(aws s3api --region $region list-objects-v2 --bucket "$bucket" | jq -r '{"Quiet": true, Objects: [ .Contents[]|{Key: .Key}]}')"; then
+    while aws s3api --region $region list-objects-v2 --bucket "$bucket" ${token:+ --starting-token="$token"} --max-items 200 > "$tmpfile"; do
+        objs="$(jq -r '{"Quiet": true, Objects: [ .Contents[]|{Key: .Key}]}' "$tmpfile")"
+        if [ -n "$objs" ]; then
+            if aws s3api --region $region delete-objects --bucket $bucket --delete "$objs"; then
+                echo >&2 "Deleted all objects in s3://$bucket"
+                break
+            fi
+        fi
+        token="$(jq -r '.NextToken' "$tmpfile")"
+        if [ -z "$token" ]; then
+            break
+        fi
+    done
+    rm -f "$tmpfile"
+}
+
+aws_s3_nuke_bucket() {
+    local bucket="$1"
+    aws_s3_empty_bucket "$bucket"
+    aws s3 rb s3://$bucket
+}
+
+aws_s3_region() {
+    local bucket=$(aws_s3_bucket_from_s3url "$1")
+    local region
+    if ! region=$(aws s3api get-bucket-location --bucket "$bucket" --query LocationConstraint --output text); then
+        echo >&2 "ERROR: aws_s3_region: $1: Unable to determine bucket region"
+        return 1
+    fi
+    if [ "$region" = None ]; then
+        echo "us-east-1"
+    else
+        echo "$region"
+    fi
+}
+
+aws_s3_du() {
+    local size human region
+    if ! region="$(aws_s3_region "$1")"; then
+        return 1
+    fi
+    if ! size=$(aws cloudwatch --region $region get-metric-statistics --namespace AWS/S3 --metric-name BucketSizeBytes \
+        --start-time $(date --date "1 day ago" +%FT%T) \
+        --end-time $(date +%FT%T) \
+        --period 86400 \
+        --statistics Average \
+        --dimensions Name=BucketName,Value=$1 Name=StorageType,Value=StandardStorage \
+        --query 'Datapoints[].Average' --output text); then
+        return 1
+    fi
+    if [ -z "$size" ]; then
+        echo >&2 "ERROR: aws_s3_du: $1: Unable to determine bucket size"
+        return 1
+    fi
+    echo $size
+}
+
+aws_inventory() {
+    local bucket="$1" s3base="s3://xclogs/inventory/$1/$1/"
+    if [ -z "$bucket" ]; then
+        return 1
+    fi
+    local subkey=$(aws s3 ls "$s3base" | awk '{print $2}' | grep -E '20[12][89012]-' | sort -h | tail -1)
+    if [ -z "$subkey" ]; then
+        echo >&2 "No subkey found for bucket $1 in $s3base"
+        return 1
+    fi
+    local manifest="${s3base}${subkey}manifest.json" key=
+    for key in $(aws s3 cp $manifest - | jq -r '.files[].key'); do
+        echo "s3://xclogs/$key"
+        aws s3 cp --quiet s3://xclogs/$key .
+    done
+}
+
+# Print out pairs of: 'ZONEID foo.dns.'
+aws_r53_zoneids() {
+    aws route53 list-hosted-zones --query 'HostedZones[][].{ZoneId: Id, Zone: Name, PrivateZone: Config.PrivateZone}' #--output text | sed -e 's@^/hostedzone/@@g'
+}
+
+aws_r53_cname_mapping() {
+    local zone_id
+    if zone_id=$(aws_r53_zoneids | grep "$1" | awk '{print $1}') && [ -n "$zone_id" ]; then
+        aws route53 list-resource-record-sets --hosted-zone-id $zone_id | jq -r '.[][] | select(.Type == "CNAME")|[.ResourceRecords[0].Value,.Name]|@tsv'
+    fi
+}
+
+aws_cfn_url() {
+    local url
+    url="$(urlencode "$1")"
+    echo "https://${AWS_DEFAULT_REGION}.console.aws.amazon.com/cloudformation/home?region=${AWS_DEFAULT_REGION}#/stack/detail?stackId=$url"
+}
+
+## AWS Cloudformation
+aws_quickcreate() {
+    test -n "${1:-}" || return 1
+    local region=${AWS_DEFAULT_REGION:-us-west-2} templ='' url=''
+    #templ="$(urlencode "$1")"
+    templ="$1"
+    url="https://${region}.console.aws.amazon.com/cloudformation/home?region=${region}#/stacks/quickcreate?stackName=${2:-mystack}&templateUrl=${templ}"
+    echo "$url"
+}
+
+aws_quickurl() {
+    local s3Url="$1" stackName="${2:-$(id -un)-stack-$(date +%Y%m%d)}"
+    # replace("/", "%2A")
+    local region="${AWS_DEFAULT_REGION:-us-west-2}"
+    cat <<EOF
+https://${region}.console.aws.amazon.com/cloudformation/home?region=${region}#/stacks/quickcreate?templateUrl=${s3Url}&stackName=${stackName}
+EOF
+}
+
+aws_cfn_list_updatable_stacks() {
+    local all_update_stacks=(CREATE_FAILED CREATE_COMPLETE ROLLBACK_FAILED ROLLBACK_COMPLETE UPDATE_COMPLETE UPDATE_ROLLBACK_FAILED UPDATE_ROLLBACK_COMPLETE IMPORT_COMPLETE IMPORT_ROLLBACK_FAILED IMPORT_ROLLBACK_COMPLETE)
+    aws cloudformation list-stacks --stack-status-filter "${all_update_stacks[@]}" "$@"
+}
+
+aws_describe_stack() {
+    aws cloudformation describe-stack-events --stack-name "${1:-${LOGNAME}-xcalar}" | jq -r '.StackEvents[]|[.Timestamp,.StackName,.ResourceStatus,.ResourceType]|@tsv' | column -t
+}
+
+cfn_template_default() {
+    local ext
+    if ! ext="$(file_ext "$1")"; then
+        return 1
+    fi
+    case "$ext" in
+        json) jq -r ".Parameters.$2.Default" <"$1" ;;
+        yml | yaml) cfn-flip "$1" | jq -r ".Parameters.$2.Default" ;;
+        *)
+            echo >&2 "Unknown file type: $1"
+            return 1
+            ;;
+    esac
+}
+
+cfn_template_defaults_to_params() {
+    (
+        if [[ $1 =~ yaml ]]; then
+            cfn-flip "$1"
+        else
+            cat "$1"
+        fi
+    ) | jq -r '.Parameters|to_entries|map_values({UsePreviousValue: false, ParameterKey: .key, ParameterValue: .value.Default})'
+}
+
+aws_canonical_user_id() {
+    aws s3api list-buckets --query 'Owner.ID' --output text
+}
+
+aws_s3_upload_public() {
+    if ! test -r "$1"; then
+        echo >&2 "Unable to read $1"
+        return 1
+    fi
+    aws s3 cp --acl public-read \
+        --metadata-directive REPLACE \
+        --cache-control 'no-cache, no-store, must-revalidate, max-age=0, no-transform' \
+        --content-type text/plain \
+        --only-show-errors \
+        "$1" "$2"
+}
+
+# Call with the tag name (eg, ClusterName) and the name of the cluster (eg, abakshi-cluster-1)
+aws_cluster_members() {
+    aws ec2 describe-instances --filters Name=instance-state-name,Values=running,Name=tag:$1,Values=$2 --query "Reservations[].Instances[].[AmiLaunchIndex,${3:-PrivateIpAddress}]" --output text \
+        | sort -n \
+        | awk '{print $2}'
+}
+
+# Print out /etc/hosts compatible format cluster info, eg.
+# sorted by AMI launch index
+# 172.31.17.91	ip-172-31-17-91.ec2.internal	ip-172-31-17-91	    vm0
+# 172.31.29.109	ip-172-31-29-109.ec2.internal	ip-172-31-29-109	vm1
+aws_cluster_hosts() {
+    aws ec2 describe-instances --filters Name=instance-state-name,Values=running,Name=tag:$1,Values=$2 --query "Reservations[].Instances[].[AmiLaunchIndex,NetworkInterfaces[0].PrivateIpAddress, NetworkInterfaces[0].PrivateDnsName]" --output text \
+        | sort -n \
+        | while read INDEX IP NAME; do
+            echo -e "$IP\t$NAME\t${NAME%%.*}\tvm${INDEX}"
+        done
+}
+
+aws_cluster_tags() {
+    local state=running tag_key=ClusterName tag_value="$(id -un)*" cmd="$1"
+    while [ $# -gt 0 ]; do
+        local cmd="$1"
+        shift
+        case "$cmd" in
+            --state)
+                state="$1"
+                shift
+                ;;
+            --tag-key)
+                tag_key="$1"
+                shift
+                ;;
+            --tag-value)
+                tag_value="$1"
+                shift
+                ;;
+            -h | --help)
+                echo >&2 "Usage: aws_cluster_tags [--state running,pending,stopped] [--tag-key key (default: $tag_key)] [--tag-value value (default: $tag_value)]"
+                return 1
+                ;;
+        esac
+    done
+
+    aws ec2 describe-instances --filter Name=instance-state-name,Values="$state",Name=tag:"$tag_key",Values="$tag_value" \
+        --query 'Reservations[].Instances[].{ LaunchIndex: AmiLaunchIndex, ClusterName: Tags[?Key==`'"$tag_key"'`].Value|[0], Name: Tags[?Key==`Name`].Value|[0], InstanceId: InstanceId}'
+    # Alternative: aws ec2 describe-instances --filters Name=instance-state-name,Values=running,Name=tag:"${2:-ClusterName}",Values="$1" --query 'Reservations[].Instances[].[AmiLaunchIndex,PublicDnsName,PrivateIpAddress]'
+}
+
+aws_cfn_template_default() {
+    local ext
+    if ! ext="$(file_ext "$1")"; then
+        return 1
+    fi
+    case "$ext" in
+        json) jq -r ".Parameters.$2.Default" <"$1" ;;
+        yml | yaml) cfn-flip "$1" | jq -r ".Parameters.$2.Default" ;;
+        *)
+            echo >&2 "Unknown file type: $1"
+            return 1
+            ;;
+    esac
+}
+
+# In: StackName, ParameterKey
+# Out: ParameterValue or empty string if it doesn't exist
+aws_cfn_stack_parameter_value() {
+    aws cloudformation describe-stacks --stack-name "$1" --query 'Stacks[].Parameters[?ParameterKey==`'"$2"'`].ParameterValue' --output text
+}
+
+aws_canonical_user_id() {
+    aws s3api list-buckets --query 'Owner.ID' --output text
+}
+
+aws_s3_upload_public() {
+    if ! test -r "$1"; then
+        echo >&2 "Unable to read $1"
+        return 1
+    fi
+    aws s3 cp --acl public-read \
+        --metadata-directive REPLACE \
+        --cache-control 'no-cache, no-store, must-revalidate, max-age=0, no-transform' \
+        --content-type text/plain \
+        --only-show-errors \
+        "$1" "$2"
+}
+
+aws_ec2_instances_by_tag() {
+    local instance_ids
+    local key="$1"
+    local value="$2"
+    shift 2
+    instance_ids="$(aws ec2 describe-instances --query 'Reservations[].Instances[].InstanceId' --output text --filters "Name=tag:$key,Values=$value" "$@")"
+    if [ -z "$instance_ids" ]; then
+        return 1
+    fi
+    echo $instance_ids
+}
+
+aws_ec2_start_instances_by_tag() {
+    local instance_ids
+    instance_ids="$(aws_ec2_instances_by_tag "$1" "$2" Name=instance-state-name,Values=running)"
+    if [ -z "$instance_ids" ]; then
+        say "No instances matching Name=tag:$1 with Values=$2 were found"
+        return 1
+    fi
+    aws ec2 start-instances --instance-ids $instance_ids
+}
+
+aws_ec2_stop_instances_by_tag() {
+    local instance_ids
+    instance_ids="$(aws_ec2_instances_by_tag "$1" "$2" Name=instance-state-name,Values=running)"
+    if [ -z "$instance_ids" ]; then
+        say "No instances matching Name=tag:$1 with Values=$2 were found"
+        return 1
+    fi
+    aws ec2 start-instances --instance-ids $instance_ids
+}
+
+aws_ec2_cmd_instances_by_tag() {
+    local instance_ids
+    instance_ids="$(aws_ec2_instances_by_tag "$1" "$2" Name=instance-state-name,Values=running)"
+    if [ -z "$instance_ids" ]; then
+        say "No instances matching Name=tag:$1 with Values=$2 were found"
+        return 1
+    fi
+    aws ec2 start-instances --instance-ids $instance_ids
+}
+
+aws_s3_endpoint() {
+    local bucket_location
+    if ! bucket_location="$(aws s3api get-bucket-location --bucket $1 --query LocationConstraint --output text)"; then
+        return 1
+    fi
+    if [ "$bucket_location" = None ]; then
+        bucket_location=''
+    fi
+    echo "s3${bucket_location:+.$bucket_location}.amazonaws.com/$1"
+}
+
+aws_s3_head_object() {
+    local bucket_key="${1#s3://}"
+    local bucket="${bucket_key/\/*/}"
+    local key="${bucket_key#$bucket/}"
+    aws s3api head-object --bucket $bucket --key $key
+}
+
+aws_s3_sync() {
+    (
+        set -x
+        aws s3 sync --metadata-directive REPLACE --content-disposition inline --cache-control 'no-cache, no-store, must-revalidate, max-age=0, no-transform' "$@"
+    )
+}
+
+s3_sync() {
+    local args=(--metadata-directive REPLACE)
+    while [ $# -gt 0 ]; do
+        local cmd="$1"
+        shift
+        case "$cmd" in
+            -h|--help)
+                echo >&2 "s3_sync [--no-cache] [--public] [--inline] [--mime-type] path1 path2 ..."
+                return 0
+                ;;
+            --no-cache) args+=(--cache-control 'no-cache,no-store,must-revalidate,max-age=0,no-transform');;
+            --public) args+=(--acl public-read);;
+            --inline) args+=(--content-disposition inline);;
+            --) break;;
+            -*) echo >&2 "Unknown flag: $cmd"; return 1;;
+            /*|s3://*) set -- "$cmd" "$@"; break;;
+            *) set -- "$cmd" "$@"; break;;
+        esac
+    done
+    aws s3 sync "${args[@]}" "$@"
+}
+
+aws_s3_sync_public() {
+    aws_s3_sync --acl public-read "$@"
+}
+
+aws_s3_from_url() {
+    local clean_url="${1%%\?*}"
+    clean_url="${clean_url#https://}"
+    if [[ $clean_url =~ ^s3 ]]; then
+        echo "s3://${clean_url#*/}"
+        return 0
+    fi
+    local host="${clean_url%%/*}"
+    local bucket="${host%%.*}"
+    local s3host="${host#$bucket.}"
+    if ! [[ $s3host =~ ^s3 ]]; then
+        return 1
+    fi
+    local key="${clean_url#$host/}"
+    echo "s3://${bucket}/${key}"
+}
+
+aws_s3_regional_url() {
+    local bucket="${1#s3://}"
+    bucket="${bucket%%/*}"
+    local key="${1#s3://$bucket}"
+    local region=$(aws_s3_region $bucket)
+    if [ "$region" == us-east-1 ] || [ -z "$region" ]; then
+        echo "https://s3.amazonaws.com/${bucket}${key}"
+    else
+        echo "https://${bucket}.s3${region:+.$region}.amazonaws.com${key}"
+    fi
+}
+
+aws_s3_url() {
+    local bucket="${1#s3://}"
+    bucket="${bucket%%/*}"
+    local key="${1#s3://$bucket}"
+    echo "https://${bucket}.s3.amazonaws.com${key}"
+}
+
+aws_s3_configure() {
+    aws configure set default.s3.signature_version s3v4
+    aws configure set default.s3.addressing_style virtual
+}
+
+aws_s3_presign() {
+    aws_s3_configure
+    local bucket_and_key=($(echo "${1#s3://}" | sed 's,/, ,'))
+    local region=$(aws_s3_region ${bucket_and_key[0]})
+    aws s3 --region $region presign "$@"
+}
+
+aws_s3_bucket_from_s3url() {
+    local bucket_and_key="${1#s3://}"
+    echo "${bucket_and_key%%/*}"
+}
+
+aws_s3_key_from_s3url() {
+    local bucket_and_key="${1#s3://}"
+    echo "${bucket_and_key#*/}"
+}
+
+aws_r53_findzone() {
+    local dns_name="${1%.}."
+    aws route53 list-hosted-zones-by-name --dns-name $dns_name --query 'HostedZones[?Name==`'$dns_name'`].{Id: Id, PrivateZone: Config.PrivateZone}' --output text
+}
+
+aws_r53_upsert() {
+    local zoneid="$1"    # eg, Z1LEYCMTWXY870
+    local name="${2%.}." # eg, foo.aks.xcalar.io
+    local type="$3"      # eg, A
+    shift 3              # remaining are values eg, IP1, IP2, etc
+    local action='UPSERT'
+    local tmpf=$(mktemp -t r53XXXXXX.json)
+    local yaml="${tmpf}.yaml"
+    cat >$yaml <<EOF
+Comment: 'Updated $(date +%Y%m%d)'
+Changes:
+  - Action: UPSERT
+    ResourceRecordSet:
+      Name: '$name'
+      Type: $type
+      TTL: 60
+      ResourceRecords:
+EOF
+    local val
+    for val in "${@}"; do
+        cat >>$yaml <<EOF
+        - Value: '${val}'
+EOF
+    done
+    cfn-flip <$yaml >$tmpf
+    local rc
+    aws route53 change-resource-record-sets --hosted-zone-id $zoneid --change-batch file://${tmpf} --query 'ChangeInfo.[Id,Status]' --output text
+    rc=$?
+    rm -f $tmpf $yaml
+    return $rc
+}
+
+aws_start_and_ssh() {
+    local dnsAddress
+    if ! dnsAddress=$(aws_start_and_dns "$@"); then
+        return 1
+    fi
+    ssh ec2-user@${dnsAddress}
+}
+
+aws_start_and_dns() {
+    local curState dnsAddress
+    if ! curState=$(aws ec2 start-instances "$@" --query 'StartingInstances[0].CurrentState.Name'); then
+        return 1
+    fi
+    if [ "$curState" != running ]; then
+        if ! aws ec2 wait instance-running "$@"; then
+            return 1
+        fi
+    fi
+    if ! dnsAddress=$(aws ec2 describe-instances "$@" --query 'Reservations[].Instances[0].PublicDnsName' --output text); then
+        return 1
+    fi
+    echo ${dnsAddress}
+}
+
+aws_s3_undelete() {
+    local bucket=$(aws_s3_bucket_from_s3url "$1")
+    local key=$(aws_s3_key_from_s3url "$1")
+    local version
+
+    if version=$(aws s3api list-object-versions --bucket $bucket --prefix "$key" --query "DeleteMarkers[?Key==\`$key\`].VersionId" --output text); then
+        if [ "$version" = None ]; then
+            echo >&2 "s3://${bucket}/${key} has no delete markers"
+            return
+        fi
+        aws s3api delete-object --bucket $bucket --key $key --version-id $version
+    fi
+}
+
+aws_seconds_until_spot_termination() {
+    local action_time action_time_unix now
+    # Returns json like: {"action": "terminate", "time": "2017-09-18T08:22:00Z"}
+    if action_time="$(curl -sf http://169.254.169.254/latest/meta-data/spot/termination-time | jq -r .time)"; then
+        if action_time_unix="$(date -u -d"${action_time}" +%s)"; then
+            now=$(date +%s)
+            echo $((action_time_unix - now))
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# aws_ami_add_account ami_id account_ids ...
+# Grants account_ids permissions to launch ami_id
+# AWS Marketplace = 679593333241
+aws_ami_add_account() {
+    local ami_id="$1" account_id='' snapshot_id=''
+    shift
+    local -a snapshots=()
+    if ! snapshots=($(aws ec2 describe-images --image-ids $ami_id --query 'Images[].BlockDeviceMappings[].Ebs.SnapshotId' --output text)); then
+        say "AMI: $ami_id has no snapshots"
+        return 1
+    fi
+    for account_id in "$@"; do
+        if ! aws ec2 modify-image-attribute --image-id $ami_id --launch-permission "Add=[{UserId=$account_id}]"; then
+            say "Failed to add permissions for account $account_id to AMI $ami_id"
+            continue
+        fi
+        for snapshot_id in "${snapshots[@]}"; do
+            if ! aws ec2 modify-snapshot-attribute --snapshot-id $snapshot_id --attribute createVolumePermission --operation-type add --user-ids $account_id; then
+                say "Failed to add permissions for account $account_id to snapshot $snapshot_id"
+            fi
+        done
+    done
+}
+
+aws_cfn_asg() {
+    aws cloudformation describe-stack-resource --stack-name "$1" --logical-resource-id InstanceGroup --query 'StackResourceDetail.PhysicalResourceId' --output text
+}
+
+aws_asg_detach() {
+    local asg_name="$1"
+    shift
+    local -i count=$# min_size=
+    if [ -z "$asg_name" ] || [ $count -eq 0 ]; then
+        echo >&2 "Specify autoscaling group name and instance ids to detach."
+        return 1
+    fi
+    min_size=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names "$asg_name" --query 'AutoScalingGroups[].MinSize' --output text) \
+        && aws autoscaling update-auto-scaling-group --auto-scaling-group-name $asg_name --min-size $((min_size - count)) \
+        && aws autoscaling detach-instances --auto-scaling-group-name $asg_name --should-decrement-desired-capacity --instance-ids "$@"
+}
+
+aws_ssm_update_base() {
+    local name="$1" ami="$2" osid="$3"
+    local key="${4:-/xcalar/cloud/images/xdp-base-latest/xdp-base-amzn2}"
+    aws ssm put-parameter --tier Standard --type String \
+        --name "$key" \
+        --value "$ami" \
+        --tags \
+        Key=Name,Value="$name" \
+        Key=OSID,Value="$osid" \
+        ${BUILD_NUMBER:+Key=BuildNumber,Value=$BUILD_NUMBER} \
+        Key=Today,Value="$(date +%Y%m%d)"
+}
+
+aws_ssm_del_tags() {
+    [ $# -gt 0 ] || return 1
+    aws ssm add-tags-for-resource --resource-type Parameter --resource-id "$@"
+}
+
+aws_ssm_add_tags() {
+    [ $# -gt 0 ] || return 1
+    aws ssm add-tags-for-resource --resource-type Parameter --resource-id "$@"
+}
+
+aws_ssm_get_tags() {
+    [ $# -gt 0 ] || set -- /xcalar/cloud/images/xdp-base-latest/xdp-base-amzn2
+    aws ssm list-tags-for-resource --resource-type Parameter --resource-id "$@"
+}
+
+aws_set_bucket_object_owner() {
+    aws s3api put-bucket-ownership-controls --bucket "${1#s3://}" --ownership-controls '{"Rules":  [{"ObjectOwnership": "'${2:-BucketOwnerPreferred}'"}]}'
+}
+
+
+# Useful for when you got a yaml with
+#---
+#- foo: bar
+# and you want it in parameters format
+#
+# cfn-flip < kv.yaml | aws_json_kv_to_params
+aws_json_kv_to_params() {
+    jq -r '.|to_entries|map_values({ParameterKey: .key, ParameterValue: .value})'
+}
+
+# Convert CloudFormation [{ParamKey: "foo", ParamValue: "bar"},...] to [ { "foo": "bar" ,...}]'
+# which can then be easily cfn-flip'd into yaml
+
+# aws_json_params_to_kv < params.json | cfn-flip
+aws_json_params_to_kv() {
+    jq -r '[.[]|{ (.ParameterKey): (.ParameterValue)}]'
+}
+
+aws_tags_to_kv() {
+    jq -r 'map({(.Key): .Value})|add'
+}
+
+aws_my_region() {
+    curl -s http://169.254.169.254/latest/meta-data/placement/region
+}
+
+aws_my_instance_id() {
+    curl -s http://169.254.169.254/latest/meta-data/instance-id
+}
+
+aws_my_tags() {
+    aws ec2 --region "$(aws_my_region)" describe-instances --instance-ids "$(aws_my_instance_id)" \
+        --query 'Reservations[0].Instances[0].Tags' | jq -r 'map({(.Key): .Value})|add'
+}
+
+cfn-download-specification() {
+    mkdir -p $(dirname "$1")
+    curl -fsSL "$1" https://dnwj8swjjbsbt.cloudfront.net/latest/gzip/"$(basename $1)" | gzip -dc > "$1"
+}
+
+cfn-find() {
+    local json=/var/tmp/cfn-$(id -u)/CloudFormationResourceSpecification.json
+    test -e "$json" || cfn-download-specification "$json" || return 1
+    local cmd mode='ResourceTypes'
+    while [ $# -gt 0 ]; do
+        cmd="$1"
+        shift
+        case "$cmd" in
+            -r) mode='ResourceTypes';;
+            -p) mode='PropertyTypes';;
+            AWS::*) jq -r '.'$mode'."'$cmd'"' $json;;
+            *::*) jq -r '.'$mode'."AWS::'$cmd'"' $json;;
+        esac
+    done
+}
+
+cfn_replace_userdata() {
+    local user_data_file="$1"
+    local jpath=${2:-'.Resources.LaunchTemplate.Metadata."AWS::CloudFormation::Init".configure_app.files["/var/lib/cloud/scripts/vendor/bootstrap_override.sh"]'}
+    jq --rawfile a $user_data_file -r  "${jpath}={mode: \"000755\", group: \"root\", owner: \"root\" , content: { \"Fn::Join\": [ \"\", [\$a]]}}" #| del(.Resources.LaunchTemplate.Metadata."AWS::CloudFormation::Init".configure_app.files["/var/lib/cloud/scripts/vendor/bootstrap.sh"].source)
+}
+
+

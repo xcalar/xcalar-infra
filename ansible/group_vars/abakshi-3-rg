@@ -1,0 +1,7 @@
+ansible_user: azureuser
+ansible_ssh_pass: 'Passw0rd!012'
+given_name: abakshi-3-rg.westus2.cloudapp.azure.com
+desired_name: xdp-standard-106.xcalar.io.
+
+
+

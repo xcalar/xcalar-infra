@@ -1,0 +1,11 @@
+#!/bin/bash
+
+docker run --init --rm \
+    --user `id -u`:`id -g` \
+    --volume="/etc/group:/etc/group:ro" \
+    --volume="/etc/passwd:/etc/passwd:ro" \
+    --volume="/etc/shadow:/etc/shadow:ro" \
+    --volume="/home:/home" \
+    --volume="/tmp:/tmp" \
+    --volume="/netstore:/netstore" \
+    xcalar-stats-plotter /app/plot.py "$@"

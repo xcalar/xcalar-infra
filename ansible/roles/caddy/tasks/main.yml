@@ -1,0 +1,31 @@
+---
+- name: Generate pem
+  hosts: localhost
+  become: False
+  command: vault write -field=data -format=json xcalar_ca/issue/int-xcalar-com common_name={{ ansible_host }} ttl=48h
+  register: vault_cert
+
+- name: Set pem fact
+  set_fact:
+    vault_cert_data: "{{ vault_cert.stdout | from_json }}"
+
+- name: Generate crt
+  template:
+    src: "{{ role_path }}/templates/{{ item }}.j2"
+    dest: /etc/xcalar/{{ item }}
+    owner: xcalar
+    group: xcalar
+    mode: '0640'
+    with_items:
+      - cert.pem
+      - cert.key
+  notify: restart caddy
+
+- name: Configure Caddyfile
+  lineinfile:
+    state: present
+    path: /etc/xcalar/Caddyfile
+    regexp: '^(\s*)tls .*$'
+    line: '\1tls /etc/xcalar/cert.pem /etc/xcalar/cert.key'
+    backrefs: yes
+  notify: restart caddy

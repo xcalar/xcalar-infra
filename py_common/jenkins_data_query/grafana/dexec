@@ -1,0 +1,2 @@
+#!/bin/bash
+docker exec -it jdq-grafana-datasource /bin/bash

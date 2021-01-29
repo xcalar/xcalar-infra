@@ -1,0 +1,15 @@
+version: '2'
+services:
+  vsts:
+    image: {{ vsts_image }}
+    restart: on-failure
+    environment:
+      VSTS_ACCOUNT: {{ vsts_account }}
+      VSTS_TOKEN_FILE: /vsts-token
+      VSTS_WORK: /var/vsts/agent
+      VSTS_POOL: {{ vsts_pool }}
+      VSTS_AGENT: {{ vsts_agent }}
+    volumes:
+      - '{{ vsts_token_file }}:/vsts-token:ro'
+      - '{{ vsts_work_dir }}:/var/vsts/agent'
+      - '/var/run/docker.sock:/var/run/docker.sock'

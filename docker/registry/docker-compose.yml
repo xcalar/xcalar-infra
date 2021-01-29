@@ -1,0 +1,55 @@
+version: '3.7'
+
+volumes:
+  registry:
+    external: true
+  redis:
+    external: true
+#  postgres:
+#external: true
+
+networks:
+  xcalarnet:
+    external: true
+
+services:
+    #  postgres:
+    #    image: postgres:12
+    #    restart: unless-stopped
+    #    networks:
+    #      xcalarnet:
+    #        ipv4_address: 172.21.0.247
+    #    environment:
+    #      POSTGRES_PASSWORD: Welcome1
+    #      POSTGRES_USER: root
+    #    volumes:
+    #      - 'postgres:/var/lib/postgresql/data'
+  redis:
+    image: redis:6
+    restart: unless-stopped
+    init: true
+    networks:
+      xcalarnet:
+        ipv4_address: 172.20.0.249
+    volumes:
+      - 'redis:/data'
+    ports:
+      - '6379'
+
+  registry:
+    image: registry:2
+    restart: unless-stopped
+    init: true
+    container_name: registry
+    hostname: registry
+    networks:
+      xcalarnet:
+        ipv4_address: 172.20.0.248
+    depends_on:
+      - redis
+    volumes:
+      - './config.yml:/etc/docker/registry/config.yml:ro'
+      - 'registry:/var/lib/registry'
+    ports:
+      - '5000:5000'
+      - '5001:5001'

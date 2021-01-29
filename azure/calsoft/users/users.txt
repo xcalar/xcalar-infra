@@ -1,0 +1,8 @@
+Shubham Vya,ssvyas-contractor@xcalar.com,4A1Y/zZ6
+Nilesh Arte,narte-contractor@xcalar.com,TDSqxttd1
+Ameya Raut<araut-contractor@xcalar.com,1UgnGAW5
+M More,mmore-contractor@xcalar.com,xyO1NU7C
+R Faujdar,rfaujdar-contractor@xcalar.com,0GKNAXx+
+Poonam Tumma, ptumma-contractor@xcalar.com,lYsbD9LL1
+
+# https://xcrepo.blob.core.windows.net/builds/prod/xcalar-1.4.1-2290-installer-el7?sp=r&sv=2018-03-28&sr=b&sig=FAbcy0cjo6aDfy/tqvNIV/VZWaRmSaervThDFFZBHdA%3D

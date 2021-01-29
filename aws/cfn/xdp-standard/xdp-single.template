@@ -1,0 +1,257 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Xcalar Data Platform. This template deploys a single node XDP instance.
+Parameters:
+  InstanceType:
+    Type: String
+    Description: Xcalar node instance type
+    AllowedValues:
+      - c5d.2xlarge
+      - c5d.4xlarge
+      - c5d.9xlarge
+      - c5d.18xlarge
+      - r5d.2xlarge
+      - r5d.4xlarge
+      - r5d.12xlarge
+      - r5d.24xlarge
+      - m5d.2xlarge
+      - m5d.4xlarge
+      - m5d.12xlarge
+      - m5d.24xlarge
+      - i3.xlarge
+      - i3.2xlarge
+      - i3.4xlarge
+      - i3.8xlarge
+      - c5.4xlarge
+      - c5.9xlarge
+      - c5.18xlarge
+      - m5.2xlarge
+      - m5.4xlarge
+      - m5.12xlarge
+      - m5.24xlarge
+      - r4.xlarge
+      - r4.2xlarge
+      - r4.4xlarge
+      - r4.8xlarge
+      - r4.16xlarge
+    ConstraintDescription: Choose an instance type.
+    Default: m5d.2xlarge
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: id_rsa_aws
+    ConstraintDescription: Must be the name of an existing EC2 KeyPair.
+  Subnet:
+    Description: ID of the private subnet of servers (e.g., subnet-xxxxxxxx)
+    Type: AWS::EC2::Subnet::Id
+  LicenseKey:
+    Description: Optional. Xcalar License. Leave blank to enter via GUI.
+    MinLength: '0'
+    MaxLength: '4096'
+    Default: ''
+    NoEcho: true
+    Type: String
+  VpcId:
+    Description: VPC ID
+    Type: AWS::EC2::VPC::Id
+  SSHLocation:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
+    Description: CIDR Block that should have access SSH access to this cluster. For
+      example, your Bastion host or Office IP.
+    Type: String
+    Default: 0.0.0.0/0
+  HTTPLocation:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
+    Description: CIDR Block that should have access HTTP access to this cluster. For
+      example, your office.
+    Type: String
+    Default: 0.0.0.0/0
+  AdminUsername:
+    Description: XD Administrator name
+    Type: String
+    MinLength: '5'
+    MaxLength: '128'
+  AdminPassword:
+    Description: XD Administrator password
+    NoEcho: true
+    Type: String
+    MinLength: '5'
+    MaxLength: '128'
+  AdminEmail:
+    Description: Email of the administrator
+    Type: String
+  RootSize:
+    Description: Size of Root Disk
+    MinValue: 32
+    MaxValue: 4095
+    Default: 100
+    Type: Number
+  BootstrapUrl:
+    MaxLength: '2047'
+    Description: Optional. Location of the bootstrap script. For example, https://s3.amazonaws.com/xcrepoe1/cfn/prod/v2/scripts/user-data.sh
+    Type: String
+    Default: ''
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Xcalar Configuration
+        Parameters:
+          - InstanceType
+          - LicenseKey
+          - AdminEmail
+          - AdminUsername
+          - AdminPassword
+      - Label:
+          default: Network Configuration
+        Parameters:
+          - VpcId
+          - Subnet
+          - KeyName
+          - HTTPLocation
+          - SSHLocation
+    ParameterLabels:
+      InstallerUrl:
+        default: 'XCE Installer Url:'
+      LicenseKey:
+        default: 'XCE License Key:'
+      InstanceType:
+        default: 'Server size:'
+      KeyName:
+        default: 'Key pair:'
+      SSHLocation:
+        default: 'SSH CIDR range:'
+      HTTPLocation:
+        default: 'HTTP CIDR range:'
+Mappings:
+  AWSAMIRegionMap:
+    AMI:
+      AMZN1HVM: amazon/amzn-ami-hvm-2018.03.0.20180811-x86_64-gp2
+    us-east-1:
+      AMZN1HVM: ami-079b87c75f15ac882
+    us-west-2:
+      AMZN1HVM: ami-07ef94c860b8c06f6
+Resources:
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to instance via HTTPS/SSH from the given CIDR.
+      VpcId: !Ref 'VpcId'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref 'SSHLocation'
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: !Ref 'HTTPLocation'
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref 'HTTPLocation'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-InstanceSecurityGroup'
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT15M
+    Properties:
+      InstanceType: !Ref 'InstanceType'
+      SecurityGroupIds:
+        - !GetAtt 'InstanceSecurityGroup.GroupId'
+      KeyName: !Ref 'KeyName'
+      ImageId: !FindInMap
+        - AWSAMIRegionMap
+        - !Ref 'AWS::Region'
+        - AMZN1HVM
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: !Ref 'RootSize'
+            VolumeType: gp2
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-Node'
+      UserData: !Base64
+        Fn::Sub:
+          - |-
+            #!/bin/bash
+            ensure_xcalar() {
+              #sed -i '/# Provides:/a# Should-Start: cloud-final' /etc/init.d/xcalar
+              #chkconfig xcalar off
+              chkconfig xcalar on
+            }
+            genDefaultAdmin() {
+              local crypted=$(/opt/xcalar/bin/node -e 'var crypto=require("crypto"); var hmac=crypto.createHmac("sha256", "xcalar-salt").update("${AdminPassword}").digest("hex"); process.stdout.write(hmac+"\n")')
+              cat <<EOF
+              {"username": "${AdminUsername}", "password": "$crypted", "email": "${AdminEmail}", "defaultAdminEnabled": true}
+            EOF
+            }
+            if [ "${ClusterSize}" = 1 ] && rpm -q xcalar; then
+              if [ -n "${LicenseKey}" ]; then
+                echo "${LicenseKey}" | base64 -d | gzip -dc > /etc/xcalar/XcalarLic.key
+              fi
+              mkdir -p /var/opt/xcalar/config
+              chmod 0700 /var/opt/xcalar/config
+              genDefaultAdmin > /var/opt/xcalar/config/defaultAdmin.json
+              chmod 0600 /var/opt/xcalar/config/defaultAdmin.json
+              chown xcalar:xcalar /etc/xcalar/XcalarLic.key /var/opt/xcalar/config /var/opt/xcalar/config/*
+              ensure_xcalar
+              /sbin/service xcalar start
+              rc=$?
+              /opt/aws/bin/cfn-signal -e $rc  --stack ${AWS::StackName} --resource ${Resource} --region ${AWS::Region}
+              exit $rc
+            fi
+            yum install -y curl ca-certificates unzip
+            if [ "${Ec2RetryTagKey}" == "aws:cloudformation:stack-name" ]; then
+              retryTagValue=${AWS::StackName}
+            else
+              retryTagValue=${Ec2RetryTagValue}
+            fi
+            mkdir -p /var/lib/cfn
+            cd /var/lib/cfn
+            curl -Lf "${BootstrapUrl}" -o bootstrap.sh
+            rc=$?
+            if [ $rc -eq 0 ]; then
+              /bin/bash -x bootstrap.sh --bootstrap-expect "${ClusterSize}" --tag-key "${Ec2RetryTagKey}" --tag-value "$retryTagValue" --stack-name "${AWS::StackName}" --nfs-mount "${EfsMount}" --license "${LicenseKey}" --installer-url "${InstallerUrl}"
+              rc=$?
+            fi
+            if [ $rc -eq 0 ] && [ -n "${CustomScriptUrl}" ]; then
+              curl -Lf "${CustomScriptUrl}" -o customscript.sh
+              rc=$?
+              if [ $rc -eq 0 ]; then
+                /bin/bash -x customscript.sh --bootstrap-expect "${ClusterSize}" --tag-key "${Ec2RetryTagKey}" --tag-value "$retryTagValue" --stack-name "${AWS::StackName}" --nfs-mount "${EfsMount}" --license "${LicenseKey}" --installer-url "${InstallerUrl}"
+                rc=$?
+              fi
+            fi
+            ensure_xcalar
+            /opt/aws/bin/cfn-signal -e $rc --stack ${AWS::StackName} --resource "${Resource}" --region ${AWS::Region}
+            exit $rc
+          - ClusterSize: '1'
+            EfsMount: ''
+            InstallerUrl: ''
+            CustomScriptUrl: ''
+            Resource: 'EC2Instance'
+            Ec2RetryTagKey: aws:cloudformation:stack-name
+            Ec2RetryTagValue: ''
+
+Outputs:
+  InstanceID:
+    Description: The Instance ID
+    Value: !Ref 'EC2Instance'
+  PublicURL:
+    Value: !Sub 'https://${EC2Instance.PublicDnsName}'
+    Description: Public address of newly created XD instance
+  PrivateURL:
+    Value: !Sub 'https://${EC2Instance.PrivateDnsName}'
+    Description: Private address of newly created XD instance
+  SSH:
+    Value: !Sub 'ssh -i ~/.ssh/${KeyName}.pem ec2-user@${EC2Instance.PublicDnsName}'
+    Description: SSH instructions
+  UserName:
+    Value: !Ref 'AdminUsername'
+    Description: Default administrator username for XD
+
+# vim: ft=yaml

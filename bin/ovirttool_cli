@@ -1,0 +1,77 @@
+#!/bin/bash
+
+# Wrapper for bin/ovirt_docker_wrapper
+# Obtains user credentials to run bin/ovirt_docker_wrapper non-interactively,
+# and sets up logging.
+
+SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+OVIRT_WRAPPER="$SCRIPTDIR/../bin/ovirttool_docker_wrapper"
+
+# allow uname/pword as env vars for automation
+UNAME="${OVIRT_UNAME:-""}"
+PASSWORD="${OVIRT_PASSWORD:-""}"
+
+BASH_ARG_STR="$*"
+
+# if help requested, display and exit (else will have to enter credentials just for help)
+if [[ "$BASH_ARG_STR" == *"--help"* ]]; then
+  "$OVIRT_WRAPPER" --help | sed -e 's/ovirttool.py/ovirttool_cli/g' >&2
+  exit 0
+fi
+
+# cmd args to send to ovirttool.py
+cmds="$BASH_ARG_STR"
+
+# tool can accept both env var and --user arg for username;
+# --user will take precedence if both supplied
+if [[ "$BASH_ARG_STR" != *"--user="* ]] && [ -z "$UNAME" ]; then
+  echo >&2
+  read -rp 'Your Xcalar LDAP username: ' UNAME
+fi
+export OVIRT_UNAME="$UNAME"
+if [ -z "$PASSWORD" ]; then
+  read -rsp 'Your Xcalar LDAP Password: ' PASSWORD
+  echo >&2
+  echo >&2
+fi
+export OVIRT_PASSWORD="$PASSWORD"
+
+# dir to hold logs/build artifacts for this run of the tool
+timestamp=$(date +%F_%T)
+export OVIRT_DATA_DIR="${OVIRT_DATA_DIR:-/netstore/ovirt/logs/$USER/$timestamp}"
+mkdir -p $OVIRT_DATA_DIR >&2
+# logfile will redirect stdout to
+OVIRT_LOG_FILE=$OVIRT_DATA_DIR/logfile.txt
+# ovirttool will create a data file; env param can set its location
+export OVIRT_DATA_FILE="$OVIRT_DATA_DIR/ovirttool_run.txt"
+
+cat << EOF >&2
+Calling ovirttool!  You can track full debug log here: $OVIRT_LOG_FILE
+EOF
+
+# python script prepends DEBUG to every debug log statement; filter all but that
+# If you're not getting any console output, check if python script has changed
+# what's being prepended
+"$OVIRT_WRAPPER" $cmds | tee $OVIRT_LOG_FILE | grep -v DEBUG
+rc=${PIPESTATUS[0]}
+
+# append log location to data file ovirttool created
+if [ -f "$OVIRT_DATA_FILE" ]; then
+    printf '%s\n%s\n%s\n' "Debug log:" "$OVIRT_LOG_FILE" "$(cat $OVIRT_DATA_FILE)" > "$OVIRT_DATA_FILE"
+else
+    # if couldn't find data file to append logfile to and the job was
+    # successful, this probably indicates some bug in ovirttool; issue warning.
+    # (data file should be created right when the job begins, so it should
+    # be present even if only --list, --help, etc.)
+    if [ "$rc" -eq 0 ]; then
+        echo "Can't find ovirttool data file!  This needs to be investigated!" >&2
+    fi
+fi
+
+if [ $rc != 0 ]; then
+cat << EOF >&2
+Encountered a problem when executing the Ovirt tool.  Exit code $rc .
+Please contact jolsen@xcalar.com and provide the log at $OVIRT_LOG_FILE
+EOF
+fi
+exit $rc

@@ -1,0 +1,151 @@
+#!/usr/bin/env python3
+
+# Copyright 2019 Xcalar, Inc. All rights reserved.
+#
+# No use, or distribution, of this source code is permitted in any form or
+# means without a valid, written license agreement with Xcalar, Inc.
+# Please refer to the included "COPYING" file for terms and conditions
+# regarding the use and redistribution of this software.
+
+import json
+import logging
+import os
+import pprint
+import requests
+import sys
+import time
+
+if __name__ == '__main__':
+    sys.path.append(os.environ.get('XLRINFRADIR', ''))
+
+from py_common.env_configuration import EnvConfiguration
+from py_common.jenkins_data_query.client import JDQClient
+
+if __name__ == '__main__':
+
+    # It's log, it's log... :)
+    ENV_PARAMS = {'LOG_LEVEL': {'default': logging.INFO},
+                  'JDQ_SERVICE_HOST': {'default': 'cvraman3.int.xcalar.com'},
+                  'JDQ_SERVICE_PORT': {'default': '4000'} }
+
+    cfg = EnvConfiguration(ENV_PARAMS)
+    logging.basicConfig(level=cfg.get('LOG_LEVEL'),
+                        format="'%(asctime)s - %(threadName)s - %(funcName)s - %(levelname)s - %(message)s",
+                        handlers=[logging.StreamHandler()])
+
+    logger = logging.getLogger(__name__)
+
+    jdq_client = JDQClient(host=cfg.get('JDQ_SERVICE_HOST'),
+                           port=cfg.get('JDQ_SERVICE_PORT'))
+
+    import argparse
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--job", help="jenkins job name", required=True)
+    parser.add_argument("--bnum", help="jenkins build number")
+    parser.add_argument("--up", help="return upstream jobs", action='store_true')
+    parser.add_argument("--down", help="return downstream jobs", action='store_true')
+
+    parser.add_argument("--peq", help="parameter equals: takes <parameter name>:<parameter val>", action='append', default=[])
+    parser.add_argument("--pregex", help="parameter matches regex: takes <parameter name>:<regex pat>", action='append', default=[])
+    parser.add_argument("--ptrue", help="parameter true: takes <parameter name>", action='append', default=[])
+    parser.add_argument("--pfalse", help="parameter false: takes <parameter name>", action='append', default=[])
+    parser.add_argument("--heq", help="execution host equals: takes <host name>")
+    parser.add_argument("--pass", dest="_pass", help="result is SUCCESS (pass)", action='store_true')
+    parser.add_argument("--fail", help="results is FAILURE (fail)", action='store_true')
+    parser.add_argument("--abort", help="job was aborted", action='store_true')
+
+    parser.add_argument("--dlt", help="duration less-than (s)", type=int)
+    parser.add_argument("--dgt", help="duration greater-than (s)", type=int)
+
+    parser.add_argument("--after", help="executed before this many days in the past", type=int)
+    parser.add_argument("--before", help="executed after this many days in the past", type=int)
+
+    parser.add_argument("--verbose", "-v", help="verbose responses (all job data)", action='store_true')
+    parser.add_argument("--json", help="output strict JSON format (not always readable)", action='store_true')
+
+    args = parser.parse_args()
+
+    query = {}
+    for item in args.peq:
+        #print("peq: {}".format(item))
+        name,val = item.split(':')
+        query["parameters.{}".format(name)] = val
+
+    for item in args.pregex:
+        #print("peq: {}".format(item))
+        name,val = item.split(':')
+        query["parameters.{}".format(name)] = {'$regex': val}
+
+    for item in args.ptrue:
+        #print("true: {}".format(item))
+        query["parameters.{}".format(item)] = True
+
+    for item in args.pfalse:
+        #print("false: {}".format(item))
+        query["parameters.{}".format(item)] = False
+
+    if args.heq:
+        query['built_on'] = args.heq
+
+    if args._pass:
+        query['result'] = 'SUCCESS'
+
+    if args.fail:
+        query['result'] = 'FAILURE'
+
+    if args.abort:
+        query['result'] = 'ABORTED'
+
+    if args.dlt:
+        query['duration_ms'] = {'$lt': (args.dlt * 1000)}
+
+    if args.dgt:
+        query['duration_ms'] = {'$gt': (args.dgt * 1000)}
+
+    if args.bnum:
+        query['_id'] = args.bnum
+
+    def _days_ago_ms(days):
+        return (time.time()-(days*24*60*60))*1000
+
+    if args.after and args.before:
+        after = _days_ago_ms(args.after)
+        before = _days_ago_ms(args.before)
+        query['$and'] = [{'start_time_ms':{'$lt': _days_ago_ms(args.before)}},
+                         {'start_time_ms':{'$gt': _days_ago_ms(args.after)}}]
+
+    elif args.after:
+        query['start_time_ms'] = {'$gt': _days_ago_ms(args.after)}
+
+    elif args.before:
+        query['start_time_ms'] = {'$lt': _days_ago_ms(args.before)}
+
+    projection = None
+    if not args.verbose:
+        projection = {'_id': 1} # We're gonna strip everything anyhow...
+
+    resp = jdq_client.find_builds(job_name = args.job,
+                                  query = query,
+                                  projection = projection)
+
+    if not args.verbose:
+        # Just a list of matching build numbers
+        for bnum in resp:
+            print(bnum)
+        sys.exit(0)
+
+    for bnum in resp:
+        if args.up:
+            resp[bnum]['upstream'] = jdq_client.upstream(job_name=args.job, bnum=bnum)
+        if args.down:
+            resp[bnum]['downstream'] = jdq_client.downstream(job_name=args.job, bnum=bnum)['downstream']
+
+    if args.json:
+        # Strict JSON for piping to other JSON consumers.
+        print(json.dumps(resp))
+        sys.exit(0)
+
+    # Use pprint.pformat for easier-on-the-eyes output...
+    print(pprint.pformat(resp))

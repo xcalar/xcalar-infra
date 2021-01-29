@@ -1,0 +1,10 @@
+---
+- hosts: all
+  vars_files:
+    - vars/vars.yml
+    - vars/vault.yml
+  vars:
+    docker_compose_version: "1.17.0"
+  roles:
+    - docker_galaxy
+    - vsts

@@ -1,0 +1,86 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"newVMName": {
+			"type": "string",
+			"defaultValue": "xcalar-stanfordlab-1"
+		},
+		"labName": {
+			"type": "string",
+			"defaultValue": "stanfordlab"
+		},
+		"size": {
+			"type": "string",
+			"defaultValue": "Standard_E8s_v3"
+		},
+		"userName": {
+			"type": "string",
+			"defaultValue": "xcuser"
+		},
+		"password": {
+			"type": "securestring",
+			"defaultValue": "[[[Password]]"
+		},
+		"ResourceDisk_Swap.size": {
+			"type": "string",
+			"defaultValue": "16g"
+		},
+		"ResourceDisk_SerDes.restart": {
+			"type": "bool",
+			"defaultValue": true
+		}
+	},
+	"variables": {
+		"labSubnetName": "[concat(variables('labVirtualNetworkName'), 'Subnet')]",
+		"labVirtualNetworkId": "[resourceId('Microsoft.DevTestLab/labs/virtualnetworks', parameters('labName'), variables('labVirtualNetworkName'))]",
+		"labVirtualNetworkName": "[concat('Dtl', parameters('labName'))]",
+		"vmId": "[resourceId ('Microsoft.DevTestLab/labs/virtualmachines', parameters('labName'), parameters('newVMName'))]",
+		"vmName": "[concat(parameters('labName'), '/', parameters('newVMName'))]"
+	},
+	"resources": [
+		{
+			"apiVersion": "2017-04-26-preview",
+			"type": "Microsoft.DevTestLab/labs/virtualmachines",
+			"name": "[concat(variables('vmName'), padLeft(copyIndex(), 2, '0'))]",
+			"location": "[resourceGroup().location]",
+			"copy": {
+				"name": "[parameters('newVMName')]",
+				"count": 4
+			},
+			"properties": {
+				"labVirtualNetworkId": "[variables('labVirtualNetworkId')]",
+				"notes": "xcalar-10264-v4",
+				"customImageId": "/subscriptions/861014e9-bb2e-40ff-b6f6-85a511035bfd/resourcegroups/stanfordlabrg737333/providers/microsoft.devtestlab/labs/stanfordlab/customimages/xcalar-10264-v4",
+				"size": "[parameters('size')]",
+				"userName": "[parameters('userName')]",
+				"password": "[parameters('password')]",
+				"isAuthenticationWithSshKey": false,
+				"artifacts": [
+					{
+						"artifactId": "[resourceId('Microsoft.DevTestLab/labs/artifactSources/artifacts', parameters('labName'), 'privaterepo476', 'resourcedisk-swapfile')]",
+						"parameters": [
+							{
+								"name": "size",
+								"value": "[parameters('ResourceDisk_Swap.size')]"
+							}
+						]
+					},
+					{
+						"artifactId": "[resourceId('Microsoft.DevTestLab/labs/artifactSources/artifacts', parameters('labName'), 'privaterepo476', 'resourcedisk-serdes')]",
+						"parameters": [
+							{
+								"name": "restart",
+								"value": "[parameters('ResourceDisk_SerDes.restart')]"
+							}
+						]
+					}
+				],
+				"labSubnetName": "[variables('labSubnetName')]",
+				"disallowPublicIpAddress": false,
+				"storageType": "Premium",
+				"allowClaim": true
+			}
+		}
+	]
+}

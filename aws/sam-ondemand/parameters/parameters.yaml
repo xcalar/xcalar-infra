@@ -1,0 +1,14 @@
+- ParameterKey: VpcId
+  ParameterValue: vpc-30100e55
+- ParameterKey: KeyName
+  ParameterValue: xcalar-us-east-1
+- ParameterKey: Subnet
+  ParameterValue: subnet-6a7d1641
+- ParameterKey: InstanceType
+  ParameterValue: m5d.2xlarge
+- ParameterKey: AdminEmail
+  ParameterValue: abakshi@xcalar.com
+- ParameterKey: AdminUsername
+  ParameterValue: xdpadmin
+- ParameterKey: AdminPassword
+  ParameterValue: Welcome1

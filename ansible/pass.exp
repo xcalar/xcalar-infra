@@ -1,0 +1,10 @@
+#!/usr/bin/expect -f
+
+set timeout 600
+
+spawn {*}$argv
+expect -exact "SSH password:"
+send -- "$::env(SSHPASS)\n\n"
+expect -exact "SUDO password\[defaults to SSH password\]:"
+send -- "\n"
+expect eof

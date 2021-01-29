@@ -1,0 +1,7 @@
+{
+  "command": "%(script)s s3://%(bucket)s/%(input)s s3://%(bucket)s/%(output)s",
+  "schedule": "cron(0 8 ? * MON-FRI *)",
+  "input": "dataFlow.xlrwb.tar.gz",
+  "output": "exportDemo/dataFlowOut.txt",
+  "remote_script": "s3://sharedinf-lambdabucket-559166403383-us-west-2/xdp-instamart/batch.py"
+}

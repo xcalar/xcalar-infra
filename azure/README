@@ -1,0 +1,19 @@
+Azure Deployment Overview
+---------------------------
+We are not using a special VM Image for Azure deployment. Instead, we're deploying a generic Centos7 image, and using a bootstrap script to set up the VMs in the cluster. We take the license entered by the user during deployment to invoke the AWS Lambda function getInstaller in order to retrieve a pre-signed URL of the installer located on S3. If the license is valid, the pre-signed URL is returned. In the event of an error, the bootstrap script will serve the error message to the user via python's SimpleHTTPServer. The template for the error page is in html/templates. 
+
+Thus, if the deployment fails and the VM doesn't start, that's Microsoft's hassle. If the VM starts, we'll always be able to direct the user to http://<ipAddrOfTheirVm>. On error, our error message is displayed there and customers can inform Xcalar support of the error message. On success, they will perform their post-deployment configuration there.
+
+
+Setup
+------
+1) ampBootstrap.sh: Place this in http://pub.xcalar.net/azure/ampBootstrap.sh
+$ gsutil copy bootstrap/ampBootstrap.sh gs://pub.xcalar.net/azure/
+
+2) html.tar.gz: Package up the html folder in a zip file and upload it to http://pub.xcalar.net/azure/html.tar.gz
+$ tar -czf html.tar.gz bootstrap/html/
+$ gsutil copy html.tar.gz gs://pub.xcalar.net/azure/
+
+3) Xcalar Managed App: Follow the instructions in xdp-standard/README
+
+

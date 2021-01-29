@@ -1,0 +1,22 @@
+version: '2'
+services:
+    hdfs_sanity:
+        build:
+            context: ${XLRDIR}
+            dockerfile: docker/hdfs/Dockerfile
+        image: hdfs_sanity
+        restart: always
+        environment:
+            - VIRTUAL_HOST=hdfs-${HOSTNAME}.${DNSDOMAIN}, hdfs-${HOSTNAME}
+            - VIRTUAL_PORT=8088
+        hostname: ${HOSTNAME}
+        domainname: ${DNSDOMAIN}
+        ports:
+            - "2122:2122"
+            - "8020:9000"
+            - "8088:8088"
+            - "50010:50010"
+            - "50020:50020"
+            - "50070:50070"
+            - "50075:50075"
+

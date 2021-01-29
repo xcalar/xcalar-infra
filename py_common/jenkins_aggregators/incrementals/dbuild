@@ -1,0 +1,2 @@
+#!/bin/bash
+docker build --no-cache -f $XLRINFRADIR/py_common/jenkins_aggregators/incrementals/Dockerfile --rm -t jenkins-aggregators-incrementals $XLRINFRADIR

@@ -1,0 +1,90 @@
+[
+  {
+    "ParameterKey": "RootSize",
+    "ParameterValue": "64"
+  },
+  {
+    "ParameterKey": "SSLKey",
+    "ParameterValue": "None"
+  },
+  {
+    "ParameterKey": "HostedZoneName",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "ClusterSize",
+    "ParameterValue": "3"
+  },
+  {
+    "ParameterKey": "EfsIP",
+    "ParameterValue": "10.102.2.2"
+  },
+  {
+    "ParameterKey": "ExistingShare",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "EfsThroughputMode",
+    "ParameterValue": "bursting"
+  },
+  {
+    "ParameterKey": "SSLCert",
+    "ParameterValue": "None"
+  },
+  {
+    "ParameterKey": "AssociatePublicIpAddress",
+    "ParameterValue": "false"
+  },
+  {
+    "ParameterKey": "KeyName",
+    "ParameterValue": "xcalar-us-west-2"
+  },
+  {
+    "ParameterKey": "AdminUsername",
+    "ParameterValue": "xdpadmin"
+  },
+  {
+    "ParameterKey": "NotificationEmail",
+    "ParameterValue": "a@a.com"
+  },
+  {
+    "ParameterKey": "AllowedCIDR",
+    "ParameterValue": "10.0.0.0/8"
+  },
+  {
+    "ParameterKey": "ExistingSGs",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "VpcId",
+    "ParameterValue": "vpc-0891757cf5d9d7ed3"
+  },
+  {
+    "ParameterKey": "CNAME",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "EfsProvisionedThroughputMibps",
+    "ParameterValue": "10"
+  },
+  {
+    "ParameterKey": "InstanceType",
+    "ParameterValue": "r5d.xlarge"
+  },
+  {
+    "ParameterKey": "Subnet",
+    "ParameterValue": "subnet-0dc8e4b79d6cccb22"
+  },
+  {
+    "ParameterKey": "AdminPassword",
+    "ParameterValue": "Welcome1"
+  },
+  {
+    "ParameterKey": "ExistingS3",
+    "ParameterValue": "xc-*"
+  },
+  {
+    "ParameterKey": "LicenseKey",
+    "ParameterValue": ""
+  }
+]

@@ -1,0 +1,11 @@
+---
+- name: Download installer
+  get_url:
+    url: "{{ installer_url }}"
+    dest: "{{ installer_local }}"
+
+- name: Run installer
+  become: true
+  command: /bin/bash -x {{ installer_local }}
+  args:
+    warn: no

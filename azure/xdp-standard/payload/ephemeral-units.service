@@ -1,0 +1,16 @@
+[Unit]
+Description=Run services using ephemeral disk
+After=ephemeral-disk.service ephemeral-data.mount
+Requires=ephemeral-disk.service ephemeral-data.mount
+Before=xcalar.service
+ConditionPathIsMountPoint=/ephemeral/data
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/true
+ExecStop=/bin/true
+
+[Install]
+WantedBy=local-fs.target
+RequiredBy=ephemeral-disk.service ephemeral-data.mount

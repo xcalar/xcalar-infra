@@ -1,0 +1,22 @@
+# vim: ft=sshconfig
+
+Host *.cloudapp.azure.com
+    User azureuser
+    Port 22
+    ForwardAgent            yes
+    PubKeyAuthentication    yes
+    PasswordAuthentication  no
+    UserKnownHostsFile      /dev/null
+    StrictHostKeyChecking   no
+    IdentityFile ~/.ssh/id_azure
+
+Host *.westus2 *.eastus
+    Hostname %h.cloudapp.azure.com
+    User azureuser
+    Port 22
+    ForwardAgent            yes
+    PubKeyAuthentication    yes
+    PasswordAuthentication  no
+    UserKnownHostsFile      /dev/null
+    StrictHostKeyChecking   no
+    IdentityFile ~/.ssh/id_azure

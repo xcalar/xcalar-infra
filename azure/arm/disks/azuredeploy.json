@@ -1,0 +1,64 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "diskName": {
+            "type": "string"
+        },
+        "location": {
+            "type": "string"
+        },
+        "sku": {
+            "type": "string"
+        },
+        "diskSizeGb": {
+            "type": "int"
+        },
+        "diskCount": {
+            "type": "int",
+            "defaultValue": 1
+        },
+        "sourceResourceId": {
+            "type": "string"
+        },
+        "sourceUri": {
+            "type": "string"
+        },
+        "osType": {
+            "type": "string"
+        },
+        "createOption": {
+            "type": "string"
+        },
+        "hyperVGeneration": {
+            "type": "string",
+            "defaultValue": "V1"
+        },
+        "diskEncryptionSetType": {
+            "type": "string"
+        }
+    },
+    "resources": [
+        {
+            "apiVersion": "2019-07-01",
+            "type": "Microsoft.Compute/disks",
+            "name": "[concat(parameters('diskName'),'-',copyIndex())]",
+            "location": "[parameters('location')]",
+            "copy": {
+              "name": "diskCount",
+              "count": "[parameters('diskCount')]"
+            },
+            "properties": {
+                "creationData": {
+                    "createOption": "[parameters('createOption')]"
+                },
+                "diskSizeGB": "[parameters('diskSizeGb')]",
+                "osType": "[parameters('osType')]"
+            },
+            "sku": {
+                "name": "[parameters('sku')]"
+            },
+            "tags": {}
+        }
+    ]
+}

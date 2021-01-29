@@ -1,0 +1,24 @@
+---
+- hosts: all
+  become: yes
+  vars:
+    ca_pem_src: files/trusted-user-ca-keys.pem
+    ca_pem_dest: /etc/ssh/trusted-user-ca-keys.pem
+    sshd_config: /etc/ssh/sshd_config
+  tasks:
+    - name: install selinux
+      yum:
+        name:
+          - libselinux-python
+          - policycoreutils-python
+        state: present
+
+    - name: Upload {{ ca_pem_src }} to {{ ca_pem_dest }}
+      copy: src={{ ca_pem_src }} dest={{ ca_pem_dest }} mode='0755' owner='root' group='root'
+    - name: Updated sshd_config
+      lineinfile:
+        path: "{{ sshd_config }}"
+        regexp:  '^[#]?TrustedUserCAKeys.*$'
+        line: 'TrustedUserCAKeys {{ ca_pem_dest }}'
+    - name: Restart sshd
+      service: name=sshd state=restarted

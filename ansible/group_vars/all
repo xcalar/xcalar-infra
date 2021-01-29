@@ -1,0 +1,4 @@
+hosted_zone: Z2S03H582J2UUD
+become: true
+ask_become_pass: true
+docker_compose_version: "1.17.1"

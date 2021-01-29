@@ -1,0 +1,22 @@
+#cloud-config
+package_upgrade: true
+packages:
+  - curl
+  - ca-certificates
+  - epel-release
+  - dnsmasq
+  - nfs-utils
+  - libnfs-utils
+write_files:
+  - path: /etc/facter/facts.d/role.txt
+    content: role={{ role }}
+    owner: root:root
+  - path: /etc/facter/facts.d/cloud.txt
+    content: cloud={{ cloud }}
+    owner: root:root
+  - path: /etc/facter/facts.d/datacenter.txt
+    content: cloud={{ cloud }}-{{ region }}
+    owner: root:root
+runcmd:
+  - curl -o /tmp/install-puppet.sh http://netstore/scripts/install-puppet.sh
+  - bash -x /tmp/install-puppet.sh --role {{ role }} --cluster {{ cluster }} --datacenter {{ datacenter }} --region {{ region }}

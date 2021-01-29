@@ -1,0 +1,29 @@
+---
+- name: Add Xcalar repo
+  yum_repository:
+    name: xcalar-deps
+    description: Xcalar Dependencies for EL7
+    baseurl: http://repo.xcalar.net/rpm-deps/el7/$basearch/
+    gpgkey: https://xcrepo.s3.amazonaws.com/RPM-GPG-KEY-Xcalar
+    gpgcheck: yes
+  notify: yum-clean-metadata
+- name: Install basic tools
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - htop
+    - iperf3
+    - tmux
+    - vim-enhanced
+    - ansible
+    - sshpass
+- name: Let user use sudo without password
+  lineinfile:
+    path: /etc/sudoers.d/waagent
+    state: present
+    regexp: "^{{ ansible_user }}\\s"
+    line: "{{ ansible_user }} ALL=(ALL) NOPASSWD: ALL"
+    validate: '/usr/sbin/visudo -cf %s'
+- name: Create user ssh dir
+  file: path=/home/{{ ansible_user }}/.ssh state=directory mode=0700 owner={{ ansible_user }} group={{ ansible_user }}

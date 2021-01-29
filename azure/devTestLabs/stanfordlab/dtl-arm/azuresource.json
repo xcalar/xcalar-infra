@@ -1,0 +1,85 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"newVMName": {
+			"type": "string",
+			"defaultValue": "xcalar-10264-v3"
+		},
+		"labName": {
+			"type": "string",
+			"defaultValue": "qalab"
+		},
+		"size": {
+			"type": "string",
+			"defaultValue": "Standard_E8s_v3"
+		},
+		"userName": {
+			"type": "string",
+			"defaultValue": "xcuser"
+		},
+		"password": {
+			"type": "securestring",
+			"defaultValue": "[[[Password]]"
+		},
+		"Resourdisk_File.size": {
+			"type": "string",
+			"defaultValue": "120g"
+		}
+	},
+	"variables": {
+		"labSubnetName": "[concat(variables('labVirtualNetworkName'), 'Subnet')]",
+		"labVirtualNetworkId": "[resourceId('Microsoft.DevTestLab/labs/virtualnetworks', parameters('labName'), variables('labVirtualNetworkName'))]",
+		"labVirtualNetworkName": "[concat('Dtl', parameters('labName'))]",
+		"vmId": "[resourceId ('Microsoft.DevTestLab/labs/virtualmachines', parameters('labName'), parameters('newVMName'))]",
+		"vmName": "[concat(parameters('labName'), '/', parameters('newVMName'))]"
+	},
+	"resources": [
+		{
+			"apiVersion": "2017-04-26-preview",
+			"type": "Microsoft.DevTestLab/labs/virtualmachines",
+			"name": "[variables('vmName')]",
+			"location": "[resourceGroup().location]",
+			"properties": {
+				"labVirtualNetworkId": "[variables('labVirtualNetworkId')]",
+				"notes": "xcalar-10264-v3",
+				"customImageId": "/subscriptions/861014e9-bb2e-40ff-b6f6-85a511035bfd/resourcegroups/qalabrg896185/providers/microsoft.devtestlab/labs/qalab/customimages/xcalar-10264-v3",
+				"size": "[parameters('size')]",
+				"userName": "[parameters('userName')]",
+				"password": "[parameters('password')]",
+				"isAuthenticationWithSshKey": false,
+				"artifacts": [
+					{
+						"artifactId": "[resourceId('Microsoft.DevTestLab/labs/artifactSources/artifacts', parameters('labName'), 'privaterepo575', 'resourcedisk-swap')]",
+						"parameters": [
+							{
+								"name": "size",
+								"value": "[parameters('Resourdisk_File.size')]"
+							}
+						]
+					}
+				],
+				"labSubnetName": "[variables('labSubnetName')]",
+				"disallowPublicIpAddress": true,
+				"storageType": "Premium",
+				"allowClaim": false,
+				"networkInterface": {
+					"sharedPublicIpAddressConfiguration": {
+						"inboundNatRules": [
+							{
+								"transportProtocol": "tcp",
+								"backendPort": 22
+							}
+						]
+					}
+				}
+			}
+		}
+	],
+	"outputs": {
+		"labVMId": {
+			"type": "string",
+			"value": "[variables('vmId')]"
+		}
+	}
+}

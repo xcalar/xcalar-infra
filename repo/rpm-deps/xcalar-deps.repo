@@ -1,0 +1,4 @@
+[xcalar-deps]
+name = Xcalar Dependencies Yum Repository
+baseurl = http://repo.xcalar.net/rpm-deps/el$releasever/$basearch/
+gpgcheck = 1

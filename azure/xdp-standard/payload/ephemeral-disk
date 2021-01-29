@@ -1,0 +1,47 @@
+# ephemeral disks (coma separated list)
+DISKS=/dev/xvdb
+
+# enable RAID
+ENABLE_MD=0
+
+# RAID level
+MD_LEVEL=0
+
+# RAID device
+MD_DEVICE=/dev/md0
+
+# RAID chunk size in kbytes
+MD_CHUNK=64
+
+# Configuration file of mdadm
+MD_CONFIG=/etc/mdadm/mdadm.conf
+
+# enable swap
+ENABLE_SWAP=1
+
+# VG name *** DON'T CHANGE THIS SETTING ***
+VG_NAME=ephemeral
+
+# LV name of swap *** DON'T CHANGE THIS SETTING ***
+LV_SWAP=swap
+
+# LV size of data
+LV_SWAP_SIZE="1024M"
+
+# LV name of data *** DON'T CHANGE THIS SETTING ***
+LV_DATA=data
+
+# LV extents of data
+LV_DATA_EXTENTS=90%FREE
+
+# filesystem type
+MOUNT_FSTYPE=ext4
+
+# mount options
+MOUNT_OPTIONS="defaults,nofail,relatime,barrier=0,nodev,nosuid"
+
+# mountpoint *** DON'T CHANGE THIS SETTING ***
+MOUNT_PATH=/ephemeral/data
+
+# destroy on stop
+DESTROY_ON_STOP=0

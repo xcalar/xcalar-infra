@@ -1,0 +1,95 @@
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number: 17 (0x11)
+    Signature Algorithm: sha1WithRSAEncryption
+        Issuer: CN=Sial CA, C=US, ST=Washington, L=Seattle, O=sial.org/emailAddress=jmates@sial.org
+        Validity
+            Not Before: Sep 21 18:38:20 2017 GMT
+            Not After : Sep 21 18:38:20 2018 GMT
+        Subject: C=US, ST=Washington, O=sial.org, CN=*.int.xcalar.com/emailAddress=ca_owner@int.xcalar.com
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                Public-Key: (2048 bit)
+                Modulus:
+                    00:df:cf:7f:49:9e:a4:4b:1d:63:5d:ba:ca:c4:54:
+                    b2:16:9d:c6:ba:10:d8:c7:d2:4b:cf:5f:6b:c3:2c:
+                    eb:c7:f5:f3:35:e4:f9:f6:33:13:30:66:b7:83:f7:
+                    67:8c:82:d2:36:00:53:4a:f4:54:1b:b1:c6:cf:7c:
+                    af:04:1c:31:ee:a3:fc:83:b0:ce:3d:b9:6f:92:10:
+                    f9:cd:b3:9f:d4:2b:82:ae:c8:73:bd:24:0f:61:37:
+                    d6:ed:3f:dd:26:97:c6:4b:37:2e:8d:fc:65:2d:a0:
+                    b1:ee:16:d9:d0:4d:42:f2:53:e8:50:88:cf:bc:38:
+                    30:e6:40:39:00:56:c2:d8:fd:29:65:09:7d:1e:86:
+                    97:df:9d:79:a4:42:38:41:95:e6:ce:af:cf:9a:e7:
+                    29:cd:54:92:03:ee:38:f3:07:4c:44:91:f4:1a:0f:
+                    a0:6b:88:22:1e:b1:f9:9b:ff:b8:f9:19:12:97:b5:
+                    ee:44:61:ff:9d:54:55:dd:be:d8:eb:65:2e:d2:c3:
+                    a7:db:0c:62:f5:ef:97:7c:98:1e:2c:3d:0b:3e:ec:
+                    a2:0e:b1:52:f7:66:42:11:67:57:40:fb:cb:b5:52:
+                    53:09:7f:f6:53:5c:2e:f1:56:66:b1:5c:3b:cc:1c:
+                    7e:a6:fc:08:f1:65:05:bf:d4:5d:17:1c:d4:ea:6b:
+                    5e:cd
+                Exponent: 65537 (0x10001)
+        X509v3 extensions:
+            X509v3 Basic Constraints: 
+                CA:FALSE
+            X509v3 Subject Key Identifier: 
+                0A:C1:E2:0F:D9:AB:2F:7D:85:7E:B0:E1:1E:50:2B:E2:81:09:D1:50
+            X509v3 Authority Key Identifier: 
+                keyid:74:50:FC:6B:9A:64:C5:6A:58:D9:A6:AA:0F:CA:14:A3:80:F8:7E:34
+                DirName:/CN=Sial CA/C=US/ST=Washington/L=Seattle/O=sial.org/emailAddress=jmates@sial.org
+                serial:B8:C0:F6:C9:B9:54:19:1C
+
+            Netscape CA Revocation Url: 
+                https://www.sial.org/ca-crl.pem
+            X509v3 Key Usage: 
+                Digital Signature, Non Repudiation, Key Encipherment
+            X509v3 Extended Key Usage: 
+                TLS Web Server Authentication, TLS Web Client Authentication
+            X509v3 Subject Alternative Name: 
+                IP Address:127.0.0.1
+    Signature Algorithm: sha1WithRSAEncryption
+         24:9f:b9:12:f3:d4:fb:22:ac:fb:94:bc:05:77:cc:34:9c:0a:
+         54:68:51:d1:cf:47:d0:6d:48:9b:db:b6:2e:5d:0c:65:dd:a0:
+         a9:b5:81:28:83:ca:96:65:98:dc:54:71:6a:b5:44:37:66:70:
+         f3:17:b2:4b:78:bb:b4:68:bd:04:91:f0:bf:ac:0a:b2:3f:c4:
+         4e:bb:e0:6f:72:b4:22:48:00:a4:22:f7:99:b4:88:95:d5:9f:
+         ee:ba:5f:eb:46:29:19:a4:ea:d7:72:ba:2d:35:5a:51:1a:cf:
+         5b:42:6d:90:25:69:bd:67:28:62:3e:26:c1:42:7e:02:08:2b:
+         7f:da:2c:df:8d:2a:bf:b2:59:5f:47:37:1d:95:31:2f:95:00:
+         13:bf:f4:c1:01:6a:6a:80:63:e4:b5:88:86:cf:59:c6:ec:24:
+         bd:0b:52:bb:ba:0c:ae:da:7b:e6:a7:04:21:8d:b1:b1:e9:84:
+         8e:30:7b:ac:7a:64:c0:4b:3a:68:ae:ac:37:9a:58:2f:e8:2e:
+         79:11:e8:d0:f4:3d:b9:36:85:1a:85:c5:0d:f8:95:75:61:95:
+         3a:98:3a:03:d4:ee:99:bb:ce:58:ca:9e:dc:f7:bb:60:0e:9e:
+         3f:f9:e1:54:05:7e:9b:8e:e7:77:31:9b:bc:0f:5b:b2:a7:60:
+         c0:ab:7d:c0
+-----BEGIN CERTIFICATE-----
+MIIEtzCCA5+gAwIBAgIBETANBgkqhkiG9w0BAQUFADB5MRAwDgYDVQQDEwdTaWFs
+IENBMQswCQYDVQQGEwJVUzETMBEGA1UECBMKV2FzaGluZ3RvbjEQMA4GA1UEBxMH
+U2VhdHRsZTERMA8GA1UEChMIc2lhbC5vcmcxHjAcBgkqhkiG9w0BCQEWD2ptYXRl
+c0BzaWFsLm9yZzAeFw0xNzA5MjExODM4MjBaFw0xODA5MjExODM4MjBaMHgxCzAJ
+BgNVBAYTAlVTMRMwEQYDVQQIEwpXYXNoaW5ndG9uMREwDwYDVQQKEwhzaWFsLm9y
+ZzEZMBcGA1UEAxQQKi5pbnQueGNhbGFyLmNvbTEmMCQGCSqGSIb3DQEJARYXY2Ff
+b3duZXJAaW50LnhjYWxhci5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
+AoIBAQDfz39JnqRLHWNdusrEVLIWnca6ENjH0kvPX2vDLOvH9fM15Pn2MxMwZreD
+92eMgtI2AFNK9FQbscbPfK8EHDHuo/yDsM49uW+SEPnNs5/UK4KuyHO9JA9hN9bt
+P90ml8ZLNy6N/GUtoLHuFtnQTULyU+hQiM+8ODDmQDkAVsLY/SllCX0ehpffnXmk
+QjhBlebOr8+a5ynNVJID7jjzB0xEkfQaD6BriCIesfmb/7j5GRKXte5EYf+dVFXd
+vtjrZS7Sw6fbDGL175d8mB4sPQs+7KIOsVL3ZkIRZ1dA+8u1UlMJf/ZTXC7xVmax
+XDvMHH6m/AjxZQW/1F0XHNTqa17NAgMBAAGjggFJMIIBRTAJBgNVHRMEAjAAMB0G
+A1UdDgQWBBQKweIP2asvfYV+sOEeUCvigQnRUDCBqwYDVR0jBIGjMIGggBR0UPxr
+mmTFaljZpqoPyhSjgPh+NKF9pHsweTEQMA4GA1UEAxMHU2lhbCBDQTELMAkGA1UE
+BhMCVVMxEzARBgNVBAgTCldhc2hpbmd0b24xEDAOBgNVBAcTB1NlYXR0bGUxETAP
+BgNVBAoTCHNpYWwub3JnMR4wHAYJKoZIhvcNAQkBFg9qbWF0ZXNAc2lhbC5vcmeC
+CQC4wPbJuVQZHDAuBglghkgBhvhCAQQEIRYfaHR0cHM6Ly93d3cuc2lhbC5vcmcv
+Y2EtY3JsLnBlbTALBgNVHQ8EBAMCBeAwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsG
+AQUFBwMCMA8GA1UdEQQIMAaHBH8AAAEwDQYJKoZIhvcNAQEFBQADggEBACSfuRLz
+1PsirPuUvAV3zDScClRoUdHPR9BtSJvbti5dDGXdoKm1gSiDypZlmNxUcWq1RDdm
+cPMXskt4u7RovQSR8L+sCrI/xE674G9ytCJIAKQi95m0iJXVn+66X+tGKRmk6tdy
+ui01WlEaz1tCbZAlab1nKGI+JsFCfgIIK3/aLN+NKr+yWV9HNx2VMS+VABO/9MEB
+amqAY+S1iIbPWcbsJL0LUru6DK7ae+anBCGNsbHphI4we6x6ZMBLOmiurDeaWC/o
+LnkR6ND0Pbk2hRqFxQ34lXVhlTqYOgPU7pm7zljKntz3u2AOnj/54VQFfpuO53cx
+m7wPW7KnYMCrfcA=
+-----END CERTIFICATE-----

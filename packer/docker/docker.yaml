@@ -1,0 +1,256 @@
+#@yaml/text-templated-strings
+---
+#@ load("@ytt:overlay", "overlay")
+#@ load("docker.lib.yml", "docker_builder", "docker_push")
+
+variables:
+  baseos: 'centos:7.8.2003'
+  build_id: '{{env `BUILD_ID`}}'
+  build_number: '{{env `BUILD_NUMBER`}}'
+  destination_regions: '{{env `REGIONS`}}'
+  disk_size: '16'
+  home: '{{env `HOME`}}'
+  docker_version: '19.03.8'
+  guardrails_version: '0.0.1-1'
+  installer_url: '{{env `INSTALLER_URL`}}'
+  installer: '{{env `INSTALLER`}}'
+  installer_version: ''
+  installer_build_number: ''
+  installer_build_type: '{{env `BUILD_TYPE`}}'
+  installer_xce_branch: ''
+  installer_xce_sha1: ''
+  installer_xd_branch: ''
+  installer_xd_sha1: ''
+  installer_byjob: ''
+  installer_rc: ''
+  installer_tag: '{{env `INSTALLER_TAG`}}'
+  image_build_number: ''
+  xlrdir: '{{env `XLRDIR`}}'
+  xlrinfradir: '{{env `XLRINFRADIR`}}'
+  bootstrap: '{{env `XLRINFRADIR`}}/aws/cfn/{{env `PROJECT`}}/scripts/user-data.sh'
+  license: '{{env `LICENSE`}}'
+  product_desc: Xcalar Data Platform
+  product: 'xdp-standard'
+  project: '{{env `PROJECT`}}'
+  region: '{{env `AWS_DEFAULT_REGION`}}'
+  shared_with: '{{env `SHARED_WITH` }}'
+  ssh_uid: '1001'
+  ssh_username: 'ec2-user'
+  ssh_pubkey: ''
+  today: '{{isotime "20060102"}}'
+  xcalar_uid: '1000'
+  xcalar_username: 'xcalar'
+  xcalar_password: 'Welcome1'
+  release: '{{env `RELEASE`}}'
+  shm_size: '16g'
+  registry: 'localhost:5000'
+  repository: 'xcalar/xcalar'
+  dns1: '10.10.2.136'
+  netstore_ip: '10.10.2.136'
+  admin_user: 'admin'
+  admin_password: 'admin'
+  admin_email: 'info@xcalar.com'
+  base_image: 'centos:7.8.2003'
+  xcalar_image: '{{user `registry`}}/xcalar/base:{{user `installer_version`}}'
+  xcalar_volume_version: 'v2'
+  http_proxy: '{{env `http_proxy`}}'
+  no_proxy: 'localhost,.localdomain,127.0.0.1,10.10.2.136,172.,netstore,cacher,.int.xcalar.com'
+  image: '{{user `registry`}}/xcalar/base:{{user `installer_version`}}'
+builders:
+  - #@ docker_builder(name="base",builder="docker",osid="el7")
+  - #@ docker_builder(name="xcalar",builder="docker",osid="el7")
+#!##############
+#! Provisioners
+#!#############
+provisioners:
+  - type: file
+    source: '{{ template_dir }}/../scripts/genDefaultAdmin.sh'
+    destination: /tmp/genDefaultAdmin.sh
+  - type: file
+    source: '{{ template_dir }}/../scripts/fix-docker-systemd.sh'
+    destination: '/usr/bin/fix-docker-systemd.sh'
+  #!### BASE ONLY #######
+  #! As an optimization, we build the base image with a regular installer then
+  #! remove only the xcalar.rpm containing the bits that change the most.
+  #! Subsequent builds of docker-xcalar-el7 will only have to install that one
+  #! (or few) rpms, reducing the size of child images. This means quicker/smaller
+  #! downloads for dev/test
+  - type: shell
+    only: [docker-base-el7]
+    environment_vars:
+      - OSID={{split build_name "-" 2}}
+      - ACCEPT_EULA=y
+      - container=docker
+      - no_proxy={{user `no_proxy`}}
+      - http_proxy={{user `http_proxy`}}
+      - TMPDIR=/tmp/installer
+      - XCE_UID={{user `xcalar_uid`}}
+      - XCE_USER={{user `xcalar_username`}}
+      - XCE_HOME=/home/{{user `xcalar_username`}}
+      - SSH_UID={{user `ssh_uid`}}
+      - SSH_USER={{user `ssh_username`}}
+      - SSH_HOME=/home/{{user `ssh_username`}}
+    execute_command: '{{.Vars}} bash ''{{.Path}}'''
+    inline:
+      - set -ex
+      - mkdir -m 1777 -p $TMPDIR
+      - groupmod -g 991 $(awk -F ':' '/999/{print $1}' /etc/group) || true
+      - groupadd -r -g 999 docker
+      - groupadd -r -g 998 sudo
+      - groupadd -g $XCE_UID $XCE_USER
+      - useradd -g $XCE_UID -u $XCE_UID -m -d $XCE_HOME -s /bin/bash -c "Xcalar software owner" $XCE_USER
+      - chmod 0775 $XCE_HOME
+      - groupadd -g $SSH_UID $SSH_USER
+      - useradd -g $SSH_UID -u $SSH_UID -m -d $SSH_HOME -s /bin/bash -G sudo,docker,$XCE_USER $SSH_USER
+      - mkdir -m 0700 -p $SSH_HOME/.ssh && echo '{{user `ssh_pubkey`}}' > $SSH_HOME/.ssh/authorized_keys && chmod 0600 $SSH_HOME/.ssh/authorized_keys
+      - chown -R $SSH_UID:$SSH_UID $SSH_HOME
+      - rm -fv $(ls /etc/yum.repos.d/CentOS-*.repo | grep -vE '(CentOS-Base|kernel)')
+      - yum update -y
+      - yum localinstall -y http://repo.xcalar.net/xcalar-release-${OSID}.rpm
+      - yum install -y curl ca-certificates systemd-sysv systemd systemd-libs which audit cronie rsyslog initscripts pam openssh-server sudo sysvinit-tools openssh-clients less
+      - yum install -y --enablerepo=xcalar-deps optgdb8
+      - ln -sfn /opt/gdb8/bin/gdb /usr/local/bin/gdb
+      - yum localinstall -y 'http://repo.xcalar.net/rpm-deps/common/x86_64/Packages/xcalar-guardrails-{{user `guardrails_version`}}.x86_64.rpm'
+      - bash -x /usr/bin/fix-docker-systemd.sh
+      - bash '{{user `installer`}}' -x $TMPDIR/installer
+      - yum localinstall -y $TMPDIR/installer/xcalar-install/unibuild/*.rpm $TMPDIR/installer/xcalar-install/${OSID}/*.rpm
+      - yum remove -y xcalar xcalar-platform
+      - curl -fsSL 'https://download.docker.com/linux/static/stable/x86_64/docker-{{user `docker_version`}}.tgz' | tar zxvf - --strip-components=1 -C /usr/bin docker/docker
+      - rm -rvf /etc/xcalar /var/opt/xcalar $TMPDIR/installer
+      - rm -fv /etc/default/xcalar
+      - mkdir -p -m 0750 /etc/sudoers.d
+      - echo '%sudo ALL=(ALL) NOPASSWD:ALL' >/etc/sudoers.d/99-sudo
+      - chmod 0440 /etc/sudoers.d/99-sudo
+      - yum clean all --enablerepo='*'
+      - rm -rf /var/cache/yum* /var/tmp/yum* $TMPDIR
+      - exit 0
+  #!### XCALAR ONLY #######
+  - type: shell
+    only: [docker-xcalar-el7]
+    environment_vars:
+      - OSID=el7
+      - ACCEPT_EULA=y
+      - container=docker
+      - no_proxy={{user `no_proxy`}}
+      - http_proxy={{user `http_proxy`}}
+      - XCE_USER={{user `xcalar_username`}}
+      - XCE_USER_HOME=/home/{{user `xcalar_username`}}
+      - TMPDIR=/tmp/installer
+    execute_command: '{{.Vars}} /usr/bin/sudo -H -E bash ''{{.Path}}'''
+    inline:
+      - set -ex
+      - mkdir -m 1777 -p $TMPDIR
+      #!# installer-start
+      - echo "========= install xcalar ========="
+      - /bin/bash '{{user `installer`}}' --nostart --startonboot
+      - source /opt/xcalar/etc/default/xcalar
+      #!# installer-done
+      - echo "========= setup default admin user ========="
+      - chmod +x /tmp/genDefaultAdmin.sh
+      - chown root:root /tmp/genDefaultAdmin.sh
+      - mv /tmp/genDefaultAdmin.sh /opt/xcalar/scripts/
+      - mkdir -p /var/opt/xcalar/config /mnt
+      - chmod 0700 /var/opt/xcalar/config
+      - /opt/xcalar/scripts/genDefaultAdmin.sh -e '{{user `admin_email`}}' --username '{{user `admin_user`}}' --password '{{user `admin_password`}}' > /var/opt/xcalar/config/defaultAdmin.json
+      - chmod 0600 /var/opt/xcalar/config/defaultAdmin.json
+      - echo "========= seed shared root ========="
+      - cp -a /var/opt/xcalar /mnt/
+      - echo "========= install license ========="
+      - if [ -n "{{user `license`}}" ]; then echo "{{user `license`}}" | base64 -d | gzip -dc > /etc/xcalar/XcalarLic.key; fi
+      - echo "========= user pip packages ========="
+      - echo '/mnt/xcalar/pysite' > /opt/xcalar/lib/python3.6/site-packages/mnt-xcalar-pysite.pth
+      - mkdir -p /mnt/xcalar/pysite
+      - touch /mnt/xcalar/pysite/requirements.in /mnt/xcalar/pysite/requirements.txt
+      - chown -R xcalar:xcalar /var/opt/xcalar /etc/xcalar /mnt/xcalar
+      - echo '{{user `xcalar_volume_version`}}' > /mnt/xcalar/.version
+      - echo "========= service environment fixes ========="
+      - sed -i '/PYTHONHOME/d' /etc/default/xcalar /opt/xcalar/etc/default/xcalar
+      - echo -e '[Service]\nEnvironmentFile=/etc/sysconfig/dcc\nUnsetEnvironment=PYTHONHOME' > /tmp/99-dcc.conf
+      - touch /etc/sysconfig/dcc
+      - mkdir -p /var/lib/cloud/instances/nocloud
+      - ln -sfn /var/lib/cloud/instances/nocloud /var/lib/cloud/instance
+      - printf '%s\n%s\n%s\n' 'set -a' 'source /etc/sysconfig/dcc' 'set +a' > /etc/profile.d/xcalar-env.sh
+      - for ii in /etc/systemd/system/xcalar-{sqldf,usrnode,caddy}.service.d; do mkdir -p $ii; cp /tmp/99-dcc.conf $ii/; done
+      - echo "========= install java symlink ========="
+      - if ! test -x /usr/bin/java; then ln -sfn /opt/xcalar/lib/java8/jre/bin/java /usr/bin/; fi
+      - echo "========= xcalar shell ssh setup ========="
+      - mkdir -p -m 0700 ${XCE_USER_HOME}/.ssh
+      - ssh-keygen -o -a 10 -t ed25519 -N "" -f ${XCE_USER_HOME}/.ssh/id_ed25519 -C "xcalar user"
+      - cp ${XCE_USER_HOME}/.ssh/id_ed25519.pub ${XCE_USER_HOME}/.ssh/authorized_keys
+      - echo -e 'Host *\n\tUserKnownHostsFile /dev/null\n\tStrictHostKeyChecking no\n' > ${XCE_USER_HOME}/.ssh/config
+      - chmod 0600 ${XCE_USER_HOME}/.ssh/authorized_keys ${XCE_USER_HOME}/.ssh/config
+      - chmod 0750 ${XCE_USER_HOME}
+      - echo "${XCE_USER}:{{user `xcalar_password`}}" | chpasswd -m
+      - chown -R ${XCE_USER}:${XCE_USER} ${XCE_USER_HOME}
+      - echo "========= clean up ========="
+      - yum clean all --enablerepo='*'
+      - rm -rf /var/tmp/yum* /var/cache/yum/* $TMPDIR
+      - echo "========= unconfig ========="
+      - rm -fv /etc/ssh/ssh_host_*
+      - systemctl enable sshd.service
+      - /bin/true > /etc/machine-id
+  - type: file
+    only: [docker-xcalar-el7]
+    source: '{{ template_dir }}/docker-entrypoint.sh'
+    destination: /
+  - type: file
+    only: [docker-xcalar-el7]
+    source: '{{ template_dir }}/template.cfg'
+    destination: /etc/xcalar/template.cfg
+  - type: file
+    only: [docker-xcalar-el7]
+    source: '{{ template_dir }}/docker-entrypoint.sh'
+    destination: /docker-entrypoint.sh
+  - type: file
+    only: [docker-xcalar-el7]
+    source: '{{ user `xlrdir`}}/conf/localhost.crt'
+    destination: /etc/xcalar/
+  - type: file
+    only: [docker-xcalar-el7]
+    source: '{{ user `xlrdir`}}/conf/localhost.key'
+    destination: /etc/xcalar/
+  - type: file
+    only: [docker-xcalar-el7]
+    source: '{{ user `xlrdir`}}/bin/gdb'
+    destination: /usr/local/share/xcalar/
+  - type: shell
+    execute_command: '{{.Vars}} /usr/bin/sudo -H -E bash ''{{.Path}}'''
+    only: [docker-xcalar-el7]
+    inline:
+      - sed --follow-symlinks -r -i.bak 's@tls .*$@tls /etc/xcalar/localhost.crt /etc/xcalar/localhost.key@' /etc/xcalar/Caddyfile
+      - chown 'root:xcalar' /etc/xcalar/localhost.*
+      - chmod 0640 /etc/xcalar/localhost.key
+      - chmod 0644 /etc/xcalar/localhost.crt
+      - mkdir -p /ephemeral/data/serdes
+      - chmod 1777 /ephemeral/data
+      - chown xcalar:xcalar /ephemeral/data/serdes
+      - chown root:root /docker-entrypoint.sh
+
+#!##############
+#! Post Processors
+#!#############
+post-processors:
+  - #@ docker_push('{{user `registry`}}/{{user `repository`}}', '{{user `installer_tag`}}')
+#!  - #@ docker_push('xcalar.azurecr.io/{{user `repository`}}', '{{user `installer_tag`}}')
+  - - type: manifest
+      output: docker-manifest.json
+      custom_data:
+      - build_number: '{{user `build_number`}}'
+        installer_version: '{{user `installer_version`}}'
+        installer_rc: '{{user `installer_rc`}}'
+        installer_build_number: '{{user `installer_build_number`}}'
+        installer_url: '{{user `installer_url`}}'
+        installer_tag: '{{user `installer_tag`}}'
+        installer: '{{user `installer`}}'
+        bootstrap: '{{user `bootstrap`}}'
+        project: '{{user `project`}}'
+        today: '{{user `today`}}'
+        ssh_uid: '{{user `ssh_uid`}}'
+        xcalar_uid: '{{user `xcalar_uid`}}'
+        ssh_username: '{{user `ssh_username`}}'
+        ssh_pubkey: '{{user `ssh_pubkey`}}'
+        release: '{{user `release`}}'
+        shm_size: '{{user `shm_size`}}'
+        registry: '{{user `registry`}}'
+        repository: '{{user `repository`}}'
+        xcalar_volume_version: '{{user `xcalar_volume_version`}}'

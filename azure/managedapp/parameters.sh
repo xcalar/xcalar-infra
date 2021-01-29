@@ -1,0 +1,4 @@
+subscriptionId=861014e9-bb2e-40ff-b6f6-85a511035bfd
+resourceGroupName=xcalar-managedapp-rg
+resourceGroupLocation=westcentralus
+storageAccountName=xcalarmanagedappsa

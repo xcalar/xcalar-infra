@@ -1,0 +1,3 @@
+route_uri=syslog://logstash-collector.logstash.default.xcalar.cloud:51660
+envname=Default
+format=rfc5424

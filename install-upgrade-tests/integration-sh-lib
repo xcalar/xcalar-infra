@@ -1,0 +1,874 @@
+#!/bin/bash
+
+export TMPDIR="${TMPDIR:-/tmp/$(id -un)}/gui-tst"
+remote_path="PATH=/usr/sbin:/usr/bin:/sbin:/bin:\$PATH"
+export CLOUD_PROVIDER="${CLOUD_PROVIDER:-aws}"
+export AWS_USER=ec2-user
+export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-us-west-2}"
+export AWS_DEFAULT_AVAILABILITY_ZONE="${AWS_DEFAULT_AVAILABILITY_ZONE:-us-west-2c}"
+export SSH_DEBUG="${SSH_DEBUG:-}"
+
+is_true_false() {
+    case "$2" in
+        true|false|TRUE|FALSE)
+            ;;
+        *)
+            echo "Illegal $1 value $2" > 2
+            exit 1
+            ;;
+    esac
+}
+
+is_int_ext() {
+    case "$2" in
+        int|ext|reuse|INT|EXT|REUSE)
+            ;;
+        *)
+            echo "Illegal $1 value $2" > 2
+            exit 1
+            ;;
+    esac
+}
+
+is_os_type() {
+    case "$2" in
+        RHEL6|rhel6|RHEL7|rhel7|CENTOS6|centos6|CENTOS7|centos7)
+            ;;
+        *)
+            echo "Illegal $1 value $2" > 2
+            exit 1
+            ;;
+    esac
+}
+
+say () {
+    echo >&2 "$*"
+}
+
+task() {
+    echo "[TASK]: $1"
+}
+
+die () {
+    res=$1
+    shift
+    echo >&2 "ERROR:$res: $*"
+    exit $res
+}
+
+#
+# $1 - host address
+#
+ssh_ping() {
+    ssh_cmd $1 "ls -l"
+}
+
+#
+# $1 - host address csv
+#
+pssh_ping() {
+    hosts_array=($(echo $1 | sed -e 's/,/\n/g'))
+    pssh_cmd "ls -l"
+}
+
+_ssh_cmd() {
+    HOST=$1
+    shift;
+
+    case "${CLOUD_PROVIDER}" in
+        aws)
+            HOST="${AWS_USER}@${HOST}"
+            ;;
+    esac
+
+    ssh $SSH_DEBUG -tt -o "StrictHostKeyChecking no" -o "ServerAliveInterval 5" -o "UserKnownHostsFile=/dev/null" $AWS_SSH_OPT "$HOST" "$@"  >"$TMPDIR/stdout"  2>"$TMPDIR/stderr"
+}
+
+bg_ssh_cmd() {
+    t_start="$(date +%s)"
+    HOST=$1
+    shift;
+
+    case "${CLOUD_PROVIDER}" in
+        aws)
+            HOST="${AWS_USER}@${HOST}"
+            ;;
+    esac
+
+    ssh $SSH_DEBUG -n -f -o "StrictHostKeyChecking no" -o "ServerAliveInterval 5" -o "UserKnownHostsFile=/dev/null" $AWS_SSH_OPT "$HOST" "$@" >"$TMPDIR/stdout" 2>"$TMPDIR/stderr"
+
+    rc=$?
+    t_end="$(date +%s)"
+    dt=$(( $t_end - $t_start ))
+    if [ $rc -eq 0 ]; then
+        echo "[0] $(date --utc -d@$dt +'%H:%M:%S') [SUCCESS] ssh $@"
+    else
+        echo "[0] $(date --utc -d@$dt +'%H:%M:%S') [FAILURE] ssh $@"
+        test -f ~/.ssh/config && cat ~/.ssh/config >&2
+        cat ${TMPDIR}/std* >&2
+        return $rc
+    fi
+}
+
+ssh_cmd() {
+    t_start="$(date +%s)"
+    for idx in `seq 1 10`; do
+        _ssh_cmd "$@"
+        rc=$?
+        test $rc -eq 0 && break
+        sleep 1
+    done
+    t_end="$(date +%s)"
+    dt=$(( $t_end - $t_start ))
+    if [ $rc -eq 0 ]; then
+        echo "[0] $(date --utc -d@$dt +'%H:%M:%S') [SUCCESS] ssh $@"
+    else
+        echo "[0] $(date --utc -d@$dt +'%H:%M:%S') [FAILURE] ssh $@"
+        test -f ~/.ssh/config && cat ~/.ssh/config >&2
+        cat  $TMPDIR/std*  2>"$TMPDIR/stderr"
+        return $rc
+    fi
+}
+
+scp_cmd() {
+    t_start="$(date +%s)"
+    SRC="$1"
+    DEST="$2"
+
+    case "${CLOUD_PROVIDER}" in
+        aws)
+            test "$SRC" != "${SRC%%:*}" && \
+                test "$SRC" == "${SRC%%@*}" && \
+                SRC="${AWS_USER}@${SRC}"
+            test "$DEST" != "${DEST%%:*}" && \
+                test "$DEST" == "${DEST%%@*}" && \
+                DEST="${AWS_USER}@${DEST}"
+            ;;
+    esac
+
+    scp $SSH_DEBUG $SSH_THROTTLE -o "StrictHostKeyChecking no" -o "ServerAliveInterval 5" -o "UserKnownHostsFile=/dev/null" $AWS_SSH_OPT "$SRC" "$DEST" >"$TMPDIR/stdout"  2>"$TMPDIR/stderr"
+    rc=$?
+    t_end="$(date +%s)"
+    dt=$(( $t_end - $t_start ))
+    if [ $rc -eq 0 ]; then
+        echo "[0] $(date --utc -d@$dt +'%H:%M:%S') [SUCCESS] scp $SRC $DEST"
+    else
+        echo "[0] $(date --utc -d@$dt +'%H:%M:%S') [FAILURE] scp $SRC $DEST"
+        cat  $TMPDIR/std*  2>"$TMPDIR/stderr"
+        return $rc
+    fi
+}
+
+pssh_cmd () {
+    local -i n=0
+    local -a pids=()
+    t_start="$(date +%s)"
+
+    for host in "${hosts_array[@]}"; do
+        case "${CLOUD_PROVIDER}" in
+            aws)
+                host=${AWS_USER}@$host
+                ;;
+        esac
+
+        OUTDIR="${TMPDIR}/${n}"
+        mkdir -p "$OUTDIR"
+        ssh $SSH_DEBUG -tt -o "StrictHostKeyChecking no" -o "ServerAliveInterval 5" -o "UserKnownHostsFile=/dev/null" $AWS_SSH_OPT $host "$@" >"$OUTDIR/stdout" 2>"$OUTDIR/stderr" </dev/null &
+        pids+=($!)
+        n=$(( $n + 1 ))
+    done
+
+    n=0
+    local -i anyfailed=0
+    for pid in "${pids[@]}"; do
+        OUTDIR="${TMPDIR}/${n}"
+        wait $pid
+        rc=$?
+        t_end="$(date +%s)"
+        echo "$rc" > "$OUTDIR/rc"
+        dt=$(( $t_end - $t_start ))
+        if [ $rc -eq 0 ]; then
+            echo "[$n] $(date --utc -d@$dt +'%H:%M:%S') [SUCCESS] ${hosts_array[$n]} -> $*"
+        else
+            echo "[$n] $(date --utc -d@$dt +'%H:%M:%S') [FAILURE] ${hosts_array[$n]} -> $*"
+            cat $OUTDIR/std* >&2
+            anyfailed=1
+        fi
+        n=$(( $n + 1 ))
+    done
+
+    return $anyfailed
+}
+
+pscp_cmd () {
+    local -i n=0
+    local -a pids=()
+    t_start="$(date +%s)"
+    for host in "${hosts_array[@]}"; do
+        case "${CLOUD_PROVIDER}" in
+            aws)
+                host=${AWS_USER}@$host
+                ;;
+        esac
+
+        OUTDIR="${TMPDIR}/${n}"
+        mkdir -p "$OUTDIR"
+        scp $SSH_DEBUG $SSH_THROTTLE -o "StrictHostKeyChecking no" -o "ServerAliveInterval 5" -o "UserKnownHostsFile=/dev/null" $AWS_SSH_OPT "$1" "${host}:${2}" >"$OUTDIR/stdout"  2>"$OUTDIR/stderr" &
+        pids+=($!)
+        n=$(( $n + 1 ))
+    done
+    n=0
+    local -i anyfailed=0
+    for pid in "${pids[@]}"; do
+        OUTDIR="${TMPDIR}/${n}"
+        wait $pid
+        rc=$?
+        echo "$rc" > "$OUTDIR/rc"
+        t_end="$(date +%s)"
+        dt=$(( $t_end - $t_start ))
+        if [ $rc -eq 0 ]; then
+            echo "[$n] $(date --utc -d@$dt +'%H:%M:%S') [SUCCESS] $1 -> ${hosts_array[$n]}:$2"
+        else
+            echo "[$n] $(date --utc -d@$dt +'%H:%M:%S') [FAILURE] $1 -> ${hosts_array[$n]}:$2"
+            cat $OUTDIR/std* >&2
+            anyfailed=1
+        fi
+        n=$(( $n + 1 ))
+    done
+    return $anyfailed
+}
+
+get_installer_file() {
+    if [ -z "$GUI_INSTALL_CACHE" ]; then
+        rm -f ${TMPDIR}/${INSTALLER_FILE}
+    fi
+
+    if [ ! -d "$INSTALLER_SRC" ]; then
+        die 1 "The directory $INSTALLER_SRC does not exist"
+    fi
+
+    if [ ! -e "${TMPDIR}/${INSTALLER_FILE}" ]; then
+        task "Getting ${TMPDIR}/${INSTALLER_FILE}"
+        t_start="$(date +%s)"
+        case "$INSTALLER_SRC" in
+            http*)
+                (cd ${TMPDIR} &&
+                    curl -sO --url "${INSTALLER_SRC}/${INSTALLER_FILE}") >"$TMPDIR/stdout" 2>"$TMPDIR/stderr"
+                rc=$?
+                ;;
+            /*)
+                cp "${INSTALLER_SRC}/${INSTALLER_FILE}" "${TMPDIR}" >"$TMPDIR/stdout" 2>"$TMPDIR/stderr"
+                rc=$?
+                ;;
+        esac
+        t_end="$(date +%s)"
+        dt=$(( $t_end - $t_start ))
+
+        if [ $rc -eq 0 ]; then
+            echo "[0] $(date --utc -d@$dt +'%H:%M:%S') [SUCCESS] ${INSTALLER_FILE} successfully copied to ${TMPDIR}"
+        else
+            echo "[0] $(date --utc -d@$dt +'%H:%M:%S') [FAILURE] error during copy of ${INSTALLER_FILE} to ${TMPDIR}"
+            cat $TMPDIR/std* >&2
+            return $rc
+        fi
+
+        task "Changing ${TMPDIR}/${INSTALLER_FILE} permissions"
+        t_start="$(date +%s)"
+        chmod 750 "${TMPDIR}/${INSTALLER_FILE}" >"$TMPDIR/stdout" 2>"$TMPDIR/stderr"
+        rc=$?
+        t_end="$(date +%s)"
+        dt=$(( $t_end - $t_start ))
+
+        if [ $rc -eq 0 ]; then
+            echo "[0] $(date --utc -d@$dt +'%H:%M:%S') [SUCCESS] permissions on ${TMPDIR}/${INSTALLER_FILE} successfully changed to 750"
+        else
+            echo "[0] $(date --utc -d@$dt +'%H:%M:%S') [FAILURE] permissions change on ${TMPDIR}/${INSTALLER_FILE} to 750 failed"
+            cat $TMPDIR/std* >&2
+            return $rc
+        fi
+    fi
+}
+
+launch_installer() {
+    rc=0
+    task "Copying installer file to ${EXT_INSTALL_IP}"
+    scp_cmd ${TMPDIR}/${INSTALLER_FILE} "${EXT_INSTALL_IP}:"
+    rc=$(( $rc + $? ))
+    task "Starting installer on ${EXT_INSTALL_IP}"
+    bg_ssh_cmd $EXT_INSTALL_IP "bash -c '${remote_path} nohup ./${INSTALLER_FILE} > /tmp/$TEST_NAME-gui-install.log 2>&1 </dev/null &'"
+    rc=$(( $rc + $? ))
+    return $rc
+}
+
+installer_ready() {
+    log_fname="/tmp/$TEST_NAME-gui-install.log"
+    arch_log_fname="${TMPDIR}/$TEST_NAME-gui-install.$$.${RANDOM}.log"
+    task "Checking installer status"
+    t_start="$(date +%s)"
+    for i in `seq 1 50`; do
+       sleep 10
+       _ssh_cmd $EXT_INSTALL_IP "test -e $log_fname"
+       rc=$?
+       if [ $rc -eq 0 ]; then
+           installer_log_found="1"
+           _ssh_cmd $EXT_INSTALL_IP "grep -q 'All ready' $log_fname"
+           rc=$?
+           if [ $rc -eq 0 ]; then
+               break
+           fi
+           _ssh_cmd $EXT_INSTALL_IP "grep -q 'ERROR' $log_fname"
+           rc=$?
+           if [ $rc -eq 0 ]; then
+               echo "Error found in $log_fname on host $EXT_INSTALL_IP"
+               rc=1
+               break
+           fi
+       else
+           echo "File $log_fname not found."
+       fi
+     done
+     t_end="$(date +%s)"
+     dt=$(( $t_end - $t_start ))
+
+     if [ $rc -eq 0 ]; then
+        echo "[0] $(date --utc -d@$dt +'%H:%M:%S') [SUCCESS] Installer is ready"
+     else
+        echo "[0] $(date --utc -d@$dt +'%H:%M:%S') [FAILURE] Installer error or not ready after 5 minutes"
+        if [ "$installer_log_found" == "1" ]; then
+            scp_cmd "$EXT_INSTALL_IP:$log_fname" "$arch_log_fname"
+            cat "$arch_log_fname"
+            rm -f "$arch_log_fname"
+        fi
+        cat $TMPDIR/std* >&2
+        return $rc
+    fi
+}
+
+find_xce_path() {
+    ssh_cmd "$1" "grep Constants.XcalarRootCompletePath ${2}/etc/xcalar/default.cfg" || return $?
+
+    XCE_ROOT_PATH=$(grep '^Constants.XcalarRootCompletePath' "$TMPDIR/stdout")
+    XCE_ROOT_PATH=$(echo $XCE_ROOT_PATH | cut -d '=' -f2)
+    XCE_ROOT_PATH="${XCE_ROOT_PATH##*://}"
+    XCE_ROOT_PATH="${XCE_ROOT_PATH%/}"
+    XCE_ROOT_PATH=$(echo $XCE_ROOT_PATH | tr -d '\r')
+    XCE_ROOT_PATH=$(echo $XCE_ROOT_PATH | tr -d '\n')
+}
+
+cloud_cluster_create() {
+    CLUSTER_NAME="$3"
+
+    case "${CLOUD_PROVIDER}" in
+        aws)
+            "$XLRINFRADIR/aws/aws-cloudformation.sh" "$@"
+            local INSTANCE_IDS=$(aws ec2 describe-instances \
+                --filters "Name=tag:aws:cloudformation:stack-name,Values=${CLUSTER_NAME}" | \
+                jq -r ".Reservations[].Instances[].InstanceId")
+
+            aws ec2 wait instance-status-ok --instance-ids $INSTANCE_IDS
+            ;;
+        gce)
+            "$XLRINFRADIR/gce/gce-cluster.sh" "$@"
+            ;;
+    esac
+}
+
+cloud_cluster_list() {
+    CLUSTER_NAME="$1"
+
+    case "${CLOUD_PROVIDER}" in
+        aws)
+            aws ec2 describe-instances \
+                --filters "Name=tag:aws:cloudformation:stack-name,Values=${CLUSTER_NAME}" | \
+                jq -r ".Reservations[].Instances[].PublicDnsName"
+            ;;
+        gce)
+            gcloud compute instances list --filter "${CLUSTER_NAME}"
+            ;;
+    esac
+}
+
+cloud_cluster_reboot() {
+    CLUSTER_NAME="$1"
+
+    case "${CLOUD_PROVIDER}" in
+        aws)
+            local INSTANCE_IDS=$(aws ec2 describe-instances \
+                 --filters "Name=tag:aws:cloudformation:stack-name,Values=${CLUSTER_NAME}" | \
+                 jq -r ".Reservations[].Instances[].InstanceId")
+
+            aws ec2 reboot-instances --instance-ids $INSTANCE_IDS && \
+                aws ec2 wait instance-status-ok --instance-ids $INSTANCE_IDS
+            ;;
+        gce)
+            local INSTANCE_NAMES=$(gcloud compute instances list --filter "${CLUSTER_NAME}")
+            gcloud compute instances stop $INSTANCE_NAMES && \
+                gcloud compute instances start $INSTANCE_NAMES
+            ;;
+    esac
+}
+
+cloud_cluster_get_ips() {
+    case "${CLOUD_PROVIDER}" in
+        aws)
+            IP_TYPE="$1"
+            CLUSTER_NAME="$2"
+
+            if [ $IP_TYPE = "external" ]; then
+                IPADDR_TYPE=".PublicDnsName"
+            elif [ $IP_TYPE = "internal" ]; then
+                IPADDR_TYPE=".PrivateDnsName"
+            fi
+
+            aws ec2 describe-instances \
+                --filters "Name=tag:aws:cloudformation:stack-name,Values=${CLUSTER_NAME}" | \
+                jq -r ".Reservations[].Instances[] | $IPADDR_TYPE"
+            ;;
+        gce)
+            grep "#${IP_TYPE}" ${TMPDIR}/stdout | awk "{print $1}"
+            ;;
+    esac
+}
+
+cloud_cluster_delete() {
+    case "${CLOUD_PROVIDER}" in
+        aws)
+            "$XLRINFRADIR/aws/aws-cloudformation-delete.sh" "$@"
+            ;;
+        gce)
+            "$XLRINFRADIR/gce/gce-cluster-delete.sh" "$@"
+            ;;
+    esac
+}
+
+cloud_backup_disk_alloc () {
+    NAME="$1"
+    NODE_NAME_ZERO="$2"
+    local rc=0
+
+    case "${CLOUD_PROVIDER}" in
+        aws)
+            VOLUME_ID=$(aws ec2 create-volume --size 20 \
+                --region "${AWS_DEFAULT_REGION}" \
+                --availability-zone "${AWS_DEFAULT_AVAILABILITY_ZONE}" \
+                --volume-type gp2 | jq -r .VolumeId)
+            rc=$(( $rc + $? ))
+            aws ec2 wait volume-available --volume-ids "$VOLUME_ID"
+            rc=$(( $rc + $? ))
+            INSTANCE_ID=$(aws ec2 describe-instances \
+                --filters "Name=tag:aws:cloudformation:stack-name,Values=${NAME}" | \
+                jq -r ".Reservations[].Instances[] | .PublicDnsName, .InstanceId" | \
+                xargs -n2 | grep "${NODE_NAME_ZERO}" | cut -d " " -f 2)
+            rc=$(( $rc + $? ))
+
+            msg="aws compute disk create"
+            ;;
+        gce)
+            gcloud compute disks create --size=20GB --type pd-standard "${NAME}-backup-1" >${TMPDIR}/stdout 2>${TMPDIR}/stderr
+            rc=$(( $rc + $? ))
+            msg="gcloud compute disk create for disk ${NAME}-backup-1"
+            ;;
+    esac
+
+    rc=$(( $rc + $? ))
+    if [ $rc -eq 0 ]; then
+        echo "[SUCCESS] $msg succeeded"
+    else
+        echo "[FAILURE] $msg failed"
+        cat $TMPDIR/std* >&2
+    fi
+
+    return $rc
+}
+
+cloud_backup_disk_attach () {
+    NAME="$1"
+    NODE_NAME_ZERO="$2"
+    local rc=0
+
+    case "${CLOUD_PROVIDER}" in
+        aws)
+            aws ec2 attach-volume --volume-id "$VOLUME_ID" \
+                --instance-id "$INSTANCE_ID" \
+                --device /dev/sdh >${TMPDIR}/stdout 2>${TMPDIR}/stderr
+            ;;
+        gce)
+            gcloud compute instances attach-disk "$NODE_NAME_ZERO" --disk="${NAME}-backup-1" >${TMPDIR}/stdout 2>${TMPDIR}/stderr
+            ;;
+    esac
+
+    rc=$(( $rc + $? ))
+    if [ $rc -eq 0 ]; then
+        echo "[SUCCESS] ${CLOUD_PROVIDER} attach-disk succeeded for $NODE_NAME_ZERO"
+    else
+        echo "[FAILURE] ${CLOUD_PROVIDER} attach-disk failed for $NODE_NAME_ZERO"
+        cat $TMPDIR/std* >&2
+    fi
+
+    return $rc
+}
+
+cloud_backup_disk_set_autodelete () {
+    NAME="$1"
+    NODE_NAME_ZERO="$2"
+    local rc=0
+
+    case "${CLOUD_PROVIDER}" in
+        aws)
+            aws ec2 modify-instance-attribute --instance-id "$INSTANCE_ID" \
+                --block-device-mappings "[{\"DeviceName\": \"/dev/sdh\",\"Ebs\":{\"DeleteOnTermination\":true}}]" \
+                >${TMPDIR}/stdout 2>${TMPDIR}/stderr
+            ;;
+        gce)
+            gcloud compute instances set-disk-auto-delete "$NODE_NAME_ZERO" --disk="${NAME}-backup-1" >${TMPDIR}/stdout 2>${TMPDIR}/stderr
+            ;;
+    esac
+
+    rc=$(( $rc + $? ))
+    if [ $rc -eq 0 ]; then
+        echo "[SUCCESS] ${CLOUD_PROVIDER} set-disk-auto-delete succeeded for $NODE_NAME_ZERO"
+    else
+        echo "[FAILURE] ${CLOUD_PROVIDER} set-disk-auto-delete failed for $NODE_NAME_ZERO"
+        cat $TMPDIR/std* >&2
+    fi
+
+    return $rc
+}
+
+cloud_backup_disk_format() {
+    NODE_ZERO="$2"
+
+    case "${CLOUD_PROVIDER}" in
+        aws)
+            DISK=/dev/xvdh
+            ;;
+        gce)
+            DISK=/dev/sdc
+            ;;
+    esac
+
+    DISK_FOUND=0
+    for i in `seq 1 30`; do
+        sleep 1
+        _ssh_cmd $NODE_ZERO "test -e $DISK"
+        rc=$?
+        if [ $rc -eq 0 ]; then
+            DISK_FOUND=1
+            break
+        fi
+    done
+
+    if [ $DISK_FOUND -eq 0 ]; then
+        echo "[FAILURE] ${CLOUD_PROVIDER} unable to locate backup data disk on host $NODE_ZERO after 30 seconds"
+        cat $TMPDIR/std* >&2
+        return 1
+    fi
+
+    # pipefile should be set by the time this is called
+    [ $DISK_FOUND -eq 1 ] && \
+        ssh_cmd $NODE_ZERO "sudo mkfs.ext4 -F $DISK > /dev/null" && \
+        ssh_cmd $NODE_ZERO "echo $DISK /backup ext4 relatime 0 0 | sudo tee -a /etc/fstab >/dev/null" && \
+        ssh_cmd $NODE_ZERO "sudo mkdir -p /backup && sudo mount /backup"
+    rc=$?
+
+    if [ $rc -ne 0 ]; then
+        echo "[FAILURE] ${CLOUD_PROVIDER} backup disk format failed with status code $rc"
+        cat $TMPDIR/std* >&2
+    fi
+    return $rc
+}
+
+cloud_create_backup_disk() {
+    local rc=0
+    t_start="$(date +%s)"
+    CLUSTER_NAME="$1"
+    TEST_NAME="$1"
+    NODE_NAME_ZERO="$2"
+
+    task "Starting backup disk creation on ${NODE_NAME_ZERO}"
+
+    cloud_backup_disk_alloc "$@" && \
+        cloud_backup_disk_attach "$@" && \
+        cloud_backup_disk_set_autodelete "$@" && \
+        cloud_backup_disk_format "$@"
+    rc=$?
+
+    t_end="$(date +%s)"
+    dt=$(( $t_end - $t_start ))
+
+    if [ $rc -eq 0 ]; then
+        echo "[0] $(date --utc -d@$dt +'%H:%M:%S') [SUCCESS] Backup disk creation succeeded"
+    else
+        echo "[0] $(date --utc -d@$dt +'%H:%M:%S') [FAILURE] Backup disk creation failed"
+        return $rc
+    fi
+}
+
+
+
+
+#
+# $1 - token
+# $2 - ip
+# $3 - command
+#
+run_installer_post_cmd() {
+    [ $SILENT -eq 1 ] || task "[POST] Running installer command for https://${2}:${INSTALLER_PORT}/install/${3}"
+
+    FNAME="/tmp/runCurl.$$.${RANDOM}"
+    echo "${1}" > $FNAME
+
+    RETVAL=$(curl -k -s -X POST -H "Content-Type: application/json" --data-binary @$FNAME https://${2}:${INSTALLER_PORT}/install/${3} 2>&1)
+    status=$?
+
+    rm -f $FNAME
+    return $status
+}
+
+#
+# $1 - token
+# $2 - ip
+# $3 - command
+#
+run_installer_put_cmd() {
+    [ $SILENT -eq 1 ] || task "[PUT] Running installer command for https://${2}:${INSTALLER_PORT}/install/${3}"
+
+    FNAME="/tmp/runCurl.$$.${RANDOM}"
+    echo "${1}" > $FNAME
+
+    RETVAL=$(curl -k -s -X PUT -H "Content-Type: application/json" --data-binary @$FNAME https://${2}:${INSTALLER_PORT}/install/${3} 2>&1)
+    status=$?
+
+    rm -f $FNAME
+    return $status
+}
+
+
+#
+# $1 - ip
+# $2 - command
+#
+run_installer_get_cmd() {
+    [ $SILENT -eq 1 ] || task "[GET] Running installer command for https://${1}:${INSTALLER_PORT}/install/${2}"
+
+    RETVAL=$(curl -k -s -X GET  https://${1}:${INSTALLER_PORT}/install/${2} 2>&1)
+    status=$?
+
+    return $status
+}
+
+#
+# $1 - token
+# $2 - ip
+# $3 - command
+#
+run_installer_post_cmd() {
+    [ $SILENT -eq 1 ] || task "[POST] Running installer command for https://${2}:${INSTALLER_PORT}/install/${3}"
+
+    FNAME="/tmp/runCurl.$$.${RANDOM}"
+    echo "${1}" > $FNAME
+
+    RETVAL=$(curl -k -s -X POST -H "Content-Type: application/json" --data-binary @$FNAME https://${2}:${INSTALLER_PORT}/install/${3} 2>&1)
+    status=$?
+
+    rm -f $FNAME
+    return $status
+}
+
+#
+# $1 - token
+# $2 - ip
+# $3 - command
+#
+run_installer_put_cmd() {
+    [ $SILENT -eq 1 ] || task "[PUT] Running installer command for https://${2}:${INSTALLER_PORT}/install/${3}"
+
+    FNAME="/tmp/runCurl.$$.${RANDOM}"
+    echo "${1}" > $FNAME
+
+    RETVAL=$(curl -k -s -X PUT -H "Content-Type: application/json" --data-binary @$FNAME https://${2}:${INSTALLER_PORT}/install/${3} 2>&1)
+    status=$?
+
+    rm -f $FNAME
+    return $status
+}
+
+
+#
+# $1 - ip
+# $2 - command
+#
+run_installer_get_cmd() {
+    [ $SILENT -eq 1 ] || task "[GET] Running installer command for https://${1}:${INSTALLER_PORT}/install/${2}"
+
+    RETVAL=$(curl -k -s -X GET  https://${1}:${INSTALLER_PORT}/install/${2} 2>&1)
+    status=$?
+
+    return $status
+}
+
+check_status_1_0_0 () {
+    while :
+    do
+        sleep 5
+        echo -n "Checking status: "
+        SILENT=1 run_installer_post_cmd "$INSTALL_TOKEN" "$EXT_INSTALL_IP" "$STATUS_CMD" || die 1 "[0] [FAILURE] status error: $RETVAL"
+        #echo "$RETVAL"
+        STATUS_CODE=$(echo $RETVAL | jq -r ".status")
+        rc=$?
+
+        if [ $rc -ne 0 ]; then
+            echo "Status check return value: \"$RETVAL\""
+            STATUS_CODE="-1"
+        fi
+
+        case "$STATUS_CODE" in
+            -1)
+                echo "[0] [FAILURE] An error occurred: "
+                echo "Return Value:"
+                echo $(echo $RETVAL | jq -r ".retVal")
+                echo "Error Log:"
+                echo $(echo $RETVAL | jq -r ".errorLog")
+                echo
+                echo "###"
+                echo "### gui installer log ###"
+                echo "###"
+                scp_cmd "$EXT_INSTALL_IP:$log_fname" "$arch_log_fname"
+                cat "$arch_log_fname" >&2
+                rm -f "$arch_log_fname"
+                for host in "${hosts_array[@]}"; do
+                    arch_installer_log_fname="${TMPDIR}/installer.$$.${RANDOM}.log"
+                    echo "###"
+                    echo "### installer log for $host ###"
+                    echo "###"
+                    scp_cmd "$host:$install_log_fname" "$arch_installer_log_fname"
+                    cat "$arch_installer_log_fname" >&2
+                    rm -f "$arch_installer_log_fname"
+                done
+
+                exit 1
+                ;;
+            2)
+                echo "Install finished"
+                break
+                ;;
+            3)
+                echo "Running"
+                ;;
+            *)
+                echo "Something else: $STATUS_CODE"
+                ;;
+        esac
+    done
+}
+
+check_status_1_1_0 () {
+    local CMD_TOKEN="$1"
+
+    while :
+    do
+        sleep 5
+        echo -n "Checking status: "
+        case "$INSTALLER_PROTOCOL" in
+            1.2.0|1.1.0)
+                SILENT=1 run_installer_get_cmd "$EXT_INSTALL_IP" "$STATUS_CMD" || die 1 "[0] [FAILURE] status error: $RETVAL"
+                ;;
+            1.3.0|1.2.1)
+                SILENT=1 run_installer_post_cmd "$CMD_TOKEN" "$EXT_INSTALL_IP" "$STATUS_CMD" || die 1 "[0] [FAILURE] status error: $RETVAL"
+                ;;
+        esac
+        #echo "$RETVAL"
+        STATUS_CODE=$(echo $RETVAL | jq -r ".status")
+        rc=$?
+
+        if [ $rc -ne 0 ] || [ "$STATUS_CODE" != "200" ]; then
+            echo "Status check return value: \"$RETVAL\""
+            CUR_STEP_STATUS="-1"
+        else
+            CUR_STEP_STATUS=$(echo $RETVAL | jq -r ".curStepStatus")
+        fi
+
+        case "$CUR_STEP_STATUS" in
+            -1)
+                echo "[0] [FAILURE] An error occurred: "
+                echo "Return Value:"
+                echo $(echo $RETVAL | jq -r ".retVal")
+                echo "Error Log:"
+                echo $(echo $RETVAL | jq -r ".errorLog")
+                echo
+                echo "###"
+                echo "### gui installer log ###"
+                echo "###"
+                scp_cmd "$EXT_INSTALL_IP:$log_fname" "$arch_log_fname"
+                cat "$arch_log_fname" >&2
+                rm -f "$arch_log_fname"
+                for host in "${hosts_array[@]}"; do
+                    arch_installer_log_fname="${TMPDIR}/installer.$$.${RANDOM}.log"
+                    echo "###"
+                    echo "### installer log for $host ###"
+                    echo "###"
+                    scp_cmd "$host:$install_log_fname" "$arch_installer_log_fname"
+                    cat "$arch_installer_log_fname" >&2
+                    rm -f "$arch_installer_log_fname"
+                done
+
+                exit 1
+                ;;
+            2)
+                echo "Install finished"
+                break
+                ;;
+            null|1)
+                echo "Running"
+                ;;
+            *)
+                echo "Something else: $CUR_STEP_STATUS"
+                ;;
+        esac
+    done
+}
+
+create_cache_dir() {
+    task "Creating directory ${TMPDIR} -- defined in integration_lib.sh"
+    t_start="$(date +%s)"
+    mkdir -p "$TMPDIR"
+    rc=$?
+    t_end="$(date +%s)"
+    dt=$(( $t_end - $t_start ))
+    if [ $rc -eq 0 ]; then
+        echo "[0] $(date --utc -d@$dt +'%H:%M:%S') [SUCCESS] directory ${TMPDIR} created"
+    else
+        echo "[0] $(date --utc -d@$dt +'%H:%M:%S') [FAILURE] directory ${TMPDIR} creation failed"
+        return $rc
+    fi
+
+    if [ ! -e "$TMPDIR/docker.repo" ]; then
+        task "Creating EL7 docker.repo file"
+        t_start="$(date +%s)"
+        if [ -z "$DOCKER_REPO_FILE" ]; then
+            cat <<EOF > $TMPDIR/docker.repo 2>"$TMPDIR/stderr"
+[dockerrepo]
+name=Docker Repository
+baseurl=https://yum.dockerproject.org/repo/main/centos/7/
+enabled=1
+gpgcheck=1
+gpgkey=https://yum.dockerproject.org/gpg
+EOF
+            rc=$?
+        else
+            cat $DOCKER_REPO_FILE > $TMPDIR/docker.repo 2>"$TMPDIR/stderr"
+            rc=$?
+        fi
+        t_end="$(date +%s)"
+        dt=$(( $t_end - $t_start ))
+        if [ $rc -eq 0 ]; then
+            echo "[0] $(date --utc -d@$dt +'%H:%M:%S') [SUCCESS] docker.repo file created"
+        else
+            echo "[0] $(date --utc -d@$dt +'%H:%M:%S') [FAILURE] docker.repo file creation failed"
+            cat $TMPDIR/docker.repo >&2
+            cat $TMPDIR/stderr >&2
+            return $rc
+        fi
+    fi
+}
+

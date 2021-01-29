@@ -1,0 +1,167 @@
+---
+min_packer_version: '1.6.4'
+variables:
+  aws_access_key: '{{env `AWS_ACCESS_KEY_ID`}}'
+  aws_secret_key: '{{env `AWS_SECRET_ACCESS_KEY`}}'
+  baseos_owner: '559166403383'
+  baseos: 'xcalar-base-image-amzn2'
+  build_number: '{{env `BUILD_NUMBER`}}'
+  image_build_number: '{{env `IMAGE_BUILD_NUMBER`}}'
+  description: Xcalar Cloud Platform
+  destination_regions: '{{env `REGIONS`}}'
+  device_name: /dev/xvda
+  disk_size: '8'
+  home: '{{env `HOME`}}'
+  installer_build_number: '1'
+  installer_url: '{{env `INSTALLER_URL`}}'
+  bootstrap: '{{env `XLRINFRADIR`}}/aws/cfn/{{env `PROJECT`}}/scripts/user-data.sh'
+  installer_version: '1.0'
+  license: '{{env `LICENSE`}}'
+  product: '{{env `PRODUCT`}}'
+  project: '{{env `PROJECT`}}'
+  region: '{{env `AWS_DEFAULT_REGION`}}'
+  shared_with: '{{env `SHARED_WITH`}}'
+  ssh_username: ec2-user
+  today: '{{isotime "20060102"}}'
+  uid: '1000'
+  release: '{{env `RELEASE`}}'
+  manifest: '{{template_dir}}/packer-manifest.json'
+  environment: '{{env `ENVIRONMENT`}}'
+  rootfs: '{{template_dir}}/../xcalar/rootfs'
+builders:
+  - type: amazon-ebs
+    name: amazon-ebs-amzn2
+    access_key: '{{user `aws_access_key`}}'
+    secret_key: '{{user `aws_secret_key`}}'
+    #vault_aws_engine:
+    #  name: "packer"
+    #  engine_name: aws-xcalar
+    #  ttl: "3600s"
+    ssh_keypair_name: 'packer'
+    ssh_private_key_file: '{{template_dir}}/../ssh/id_packer.pem'
+    region: '{{user `region`}}'
+    ami_regions: '{{user `destination_regions`}}'
+    ami_users: '{{user `shared_with`}}'
+    source_ami_filter:
+      filters:
+        virtualization-type: hvm
+        architecture: 'x86_64'
+        root-device-type: ebs
+        block-device-mapping.volume-type: gp2
+        name: '{{user `baseos`}}*'
+      owners: '{{user `baseos_owner`}}'
+      most_recent: true
+    instance_type: c5d.xlarge
+    iam_instance_profile: ec2-default
+    ssh_username: '{{user `ssh_username`}}'
+    ssh_pty: true
+    ena_support: true
+    ebs_optimized: true
+    force_deregister: true
+    force_delete_snapshot: true
+    shutdown_behavior: terminate
+    ami_name: '{{user `project`}}-{{split build_name "-" 2}}-{{user `installer_version`}}-{{user `installer_build_number`}}-{{user `build_number`}}-{{user `today`}}'
+    ami_description: '{{user `description`}} {{split build_name "-" 2 | upper}} ({{user `installer_version`}}-{{user `installer_build_number`}} ({{user `build_number`}}-{{user `today`}}))'
+    run_tags:
+      Name: 'packer-{{user `project`}}-{{split build_name "-" 2}}-{{user `installer_version`}}-{{user `installer_build_number`}}-{{user `build_number`}}-{{user `today`}}'
+    snapshot_tags:
+      Name: '{{user `project`}}-{{split build_name "-" 2}}-{{user `installer_version`}}-{{user `installer_build_number`}}-{{user `build_number`}}-{{user `today`}}'
+      SourceAMI: '{{.SourceAMI}}'
+      SourceAMIName: '{{.SourceAMIName}}'
+      OSID: '{{split build_name "-" 2}}'
+      Version: '{{user `installer_version`}}'
+      Build: '{{user `installer_build_number`}}'
+      ImageBuild: '{{user `image_build_number`}}'
+      Release: '{{user `release`}}'
+      Product: '{{user `product`}}'
+      Project: '{{user `project`}}'
+    tags:
+      Name: '{{user `project`}}-{{split build_name "-" 2}}-{{user `installer_version`}}-{{user `installer_build_number`}}-{{user `build_number`}}-{{user `today`}}'
+      SourceAMI: '{{.SourceAMI}}'
+      SourceAMIName: '{{.SourceAMIName}}'
+      OSID: '{{split build_name "-" 2}}'
+      Version: '{{user `installer_version`}}'
+      Build: '{{user `installer_build_number`}}'
+      ImageBuild: '{{user `image_build_number`}}'
+      Release: '{{user `release`}}'
+      Product: '{{user `product`}}'
+      Project: '{{user `project`}}'
+    launch_block_device_mappings:
+      - device_name: '{{user `device_name`}}'
+        volume_size: '{{user `disk_size`}}'
+        volume_type: gp2
+        delete_on_termination: true
+    ami_block_device_mappings:
+      - device_name: /dev/sdb
+        virtual_name: ephemeral0
+      - device_name: /dev/sdc
+        virtual_name: ephemeral1
+provisioners:
+  - type: file
+    source: '{{user `bootstrap` }}'
+    destination: '/tmp/bootstrap.sh'
+  - type: shell-local
+    environment_vars:
+      - BOOTSTRAP={{user `bootstrap`}}
+      - TEMPLATEDIR={{ template_dir }}
+      - ROOTFS={{user `rootfs`}}
+    inline:
+      - set -e
+      - rm -f $TEMPLATEDIR/rootfs.tar
+      - mkdir -p $ROOTFS/opt/xcalar/scripts/
+      - rm -f $ROOTFS/opt/xcalar/scripts/bootstrap.sh
+      - cp -f $BOOTSTRAP $ROOTFS/opt/xcalar/scripts/bootstrap.sh
+      - tar czvf $TEMPLATEDIR/rootfs.tar --owner=root --group=root --dereference -C $ROOTFS .
+      - exit 0
+  - type: shell
+    environment_vars:
+      - OSID={{split build_name "-" 2}}
+      - CLOUD=aws
+      - INSTALLER_URL={{user `installer_url`}}
+      - LICENSE={{user `license`}}
+      - ENVIRONMENT={{user `environment`}}
+    execute_command: '{{.Vars}} /usr/bin/sudo -H -E bash ''{{.Path}}'''
+    scripts:
+      - '{{ template_dir }}/../scripts/install-xcalar.sh'
+      - '{{ template_dir }}/../scripts/fixup-jupyter.sh'
+  - type: file
+    source: '{{ template_dir }}/rootfs.tar'
+    destination: /tmp/rootfs.tar
+    generated: true
+  - type: shell
+    execute_command: '{{.Vars}} /usr/bin/sudo -H -E bash ''{{.Path}}'''
+    inline:
+      - sed -i -r 's/stunnel_check_cert_hostname.*/stunnel_check_cert_hostname = false/' /etc/amazon/efs/efs-utils.conf
+      - ln -sfn /usr/bin/python2.7 /usr/bin/python2
+      - tar zxvf /tmp/rootfs.tar -C /
+      - systemctl disable --now docker
+      - mkdir -p /opt/xcalar/scripts /var/lib/cloud/scripts/vendor/
+      - echo "Copying bootstrap into place"
+      - mv /tmp/bootstrap.sh /var/lib/cloud/scripts/vendor/
+      - chown root:root /var/lib/cloud/scripts/vendor/bootstrap.sh
+      - chmod 0750 /var/lib/cloud/scripts/vendor/bootstrap.sh
+      - exit 0
+  - type: shell
+    environment_vars:
+      - OSID={{split build_name "-" 2}}
+      - CLOUD=aws
+    execute_command: '{{.Vars}} /usr/bin/sudo -H -E bash ''{{.Path}}'''
+    scripts:
+      - '{{ template_dir }}/../scripts/finish.sh'
+post-processors:
+  - type: manifest
+    output: '{{user `manifest`}}'
+    strip_path: true
+    custom_data:
+      build_number: '{{user `build_number`}}'
+      destination_regions: '{{user `destination_regions`}}'
+      installer_build_number: '{{user `installer_build_number`}}'
+      installer_url: '{{user `installer_url`}}'
+      installer_version: '{{user `installer_version`}}'
+      license: '{{user `license`}}'
+      product: '{{user `product`}}'
+      project: '{{user `project`}}'
+      release: '{{user `release`}}'
+      region: '{{user `region`}}'
+      shared_with: '{{user `shared_with`}}'
+      today: '{{user `today`}}'

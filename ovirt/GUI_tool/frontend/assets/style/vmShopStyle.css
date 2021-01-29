@@ -1,0 +1,141 @@
+body {
+    background: rgba(9, 39, 86, 1);
+    color: #fff;
+}
+
+h1 {
+    font-size: 20px;
+    color: #fff;
+}
+
+fieldset {
+    border: 0px;
+}
+
+/**
+ * materialize adds margin on bottom for all 'row' class elements.
+ * sometimes don't want it
+ */
+.no-row-bottom {
+    margin-bottom: 0px;
+}
+
+.extra-bottom-padding {
+    margin-bottom: 20px;
+}
+
+.extra-bottom-padding-section {
+    margin-bottom: 50px;
+}
+
+/** user messages */
+.msg {
+    size: 12px;
+}
+
+.msg-error {
+    color: red;
+}
+.msg-good {
+    color: green;
+}
+#general-msg {
+    font-size: 20px;
+}
+
+/** LOGIN BLOCK */
+
+/** this class only on login for now. it's centering it on page.
+    todo: try to use materialize grid instead - but this allows it
+    a fixed width, i think materialize is responsive?*/
+#login-block {
+    width: 300px;
+}
+.action-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin: -150px 0 0 -150px;
+    /** width:300px; */
+    /** height:300px; */
+}
+.action-container h1 {
+    text-shadow: 0 0 10px rgba(0,0,0,0.3);
+    letter-spacing:1px;
+    text-align:center;
+}
+
+/** schedule block */
+#vm-schedule-block {
+    max-width: 550px;
+    margin-top: 50px;
+}
+
+/** input field/label/helper text modiciations */
+
+/** needs to be this specific to overwrite materialize */
+/** note: without, using materialize,
+  * both dropdown and textfield labels are same size.
+  * if you put this in, the dropdown and textfield labels have diff font size.
+  * (this ends up overwriting font size in .select-wrapper+label
+  * keeping in temporarily because I want to get these a bigger font
+  */
+.input-field>label {
+/**    font-size: 16px; */
+}
+label {
+/**  isn't working
+    font-size: 16px;
+*/
+}
+
+/** overwrite materialize input color to mesh w bg color scheme */
+input {
+    color: white;
+}
+
+/** overwrite Materialize's helper text color to fit our bg color scheme */
+.input-field .helper-text {
+    color: white;
+    font-size: 14px;
+}
+
+/** buttons! */
+
+.btn {
+    background-color: #4CAF50;
+    color: white;
+    margin: 8px 0;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+}
+
+.btn:hover {
+    background-color: #4CAF50;
+}
+
+button:hover {
+    opacity: 0.8;
+}
+
+/** link fun */
+a {
+    color: lightgoldenrodyellow;
+    /* First we need to help some browsers along for this to work.
+     Just because a vendor prefix is there, doesn't mean it will
+     work in a browser made by that vendor either, it's just for
+     future-proofing purposes I guess. */
+    -o-transition:color .2s ease-out, background 2s ease-in;
+    -ms-transition:color .2s ease-out, background 2s ease-in;
+    -moz-transition:color .2s ease-out, background 2s ease-in;
+    -webkit-transition:color .2s ease-out, background 2s ease-in;
+    /* ...and now for the proper property */
+    transition:color .2s ease-out, background 2s ease-in;
+}
+a:hover { color: cadetblue; }
+
+/** placeholder text looks like filled in, lighten opacity */
+::placeholder {
+    opacity: 0.4;
+}

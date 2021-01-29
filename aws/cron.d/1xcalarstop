@@ -1,0 +1,27 @@
+#!/bin/sh
+#
+# Shut down an instance after 4h of inactivity as seen by caddy
+# Copy into /etc/cron.d/hourly/ and chmod +x 1xcalarstop
+
+set -e
+
+VERB=${VERB:-GET}
+LOG=${LOG:-/var/log/xcalar/caddy.out}
+INACTIVE_THRESHOLD=${INACTIVE_THRESHOLD:-$((60 * 60 * 4))}
+
+# Parses caddy time format [03/Jan/2019:19:02:01  +0000]
+if ! THEN=$(date --date="$(grep $VERB $LOG | tail -n1 | awk '{print $4," ",$5}' | tr -d '[]' | tr '/' '-' | sed 's/:/ /')" +%s); then
+    echo >&2 "Failed to parse date from $LOG"
+    exit 1
+fi
+NOW=$(date +%s)
+
+if ! [[ $THEN =~ ^[1-4][0-9]{9} ]]; then
+    echo >&2 "Invalid date: $THEN"
+    exit 1
+fi
+
+if [[ $((NOW - THEN)) -gt $INACTIVE_THRESHOLD ]]; then
+    echo "Shutting down instance due to inactivity"
+    /sbin/shutdown -h now
+fi

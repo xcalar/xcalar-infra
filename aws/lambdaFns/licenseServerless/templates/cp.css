@@ -1,0 +1,9 @@
+.table {
+  font-family: "Helvetica Neue", Arial;
+}
+.table .row .key {
+  font-weight: 500;
+}
+.table .row .value {
+  color: red;
+}

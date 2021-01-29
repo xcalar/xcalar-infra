@@ -1,0 +1,6 @@
+[xcalar-deps]
+name=Xcalar Dependencies for EL7
+baseurl=http://repo.xcalar.net/rpm-deps/el7/$basearch/
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Xcalar
+enabled=0

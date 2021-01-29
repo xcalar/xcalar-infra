@@ -1,0 +1,8 @@
+{
+  "Comment": "Run DataApp flow example",
+  "ClusterSize": 1,
+  "ClusterName": "my-exoprt-cluster-1234",
+  "Input": "dataFlow.xlrwb.tar.gz",
+  "Output": "exportDemo/dataFlowOut.txt",
+  "KeepCluster": false
+}

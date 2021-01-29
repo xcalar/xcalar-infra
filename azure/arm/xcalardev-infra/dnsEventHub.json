@@ -1,0 +1,39 @@
+{
+	"name": "dns-updates-azure-xcalar-io",
+	"properties": {
+		"topic": "/subscriptions/861014e9-bb2e-40ff-b6f6-85a511035bfd/resourceGroups/xcalardev-rg",
+		"destination": {
+			"endpointType": "WebHook",
+			"properties": {
+				"endpointUrl": "https://dnscb.azure.xcalar.io"
+			}
+		},
+		"filter": {
+			"includedEventTypes": [
+				"Microsoft.Resources.ResourceWriteSuccess",
+				"Microsoft.Resources.ResourceWriteFailure",
+				"Microsoft.Resources.ResourceWriteCancel",
+				"Microsoft.Resources.ResourceDeleteSuccess",
+				"Microsoft.Resources.ResourceDeleteFailure",
+				"Microsoft.Resources.ResourceDeleteCancel",
+				"Microsoft.Resources.ResourceActionSuccess",
+				"Microsoft.Resources.ResourceActionFailure",
+				"Microsoft.Resources.ResourceActionCancel"
+			],
+			"advancedFilters": []
+		},
+		"labels": [],
+		"eventDeliverySchema": "CloudEventV01Schema",
+		"retryPolicy": {
+			"maxDeliveryAttempts": 10,
+			"eventTimeToLiveInMinutes": 120
+		},
+		"deadLetterDestination": {
+			"endpointType": "StorageBlob",
+			"properties": {
+				"resourceId": "/subscriptions/861014e9-bb2e-40ff-b6f6-85a511035bfd/resourceGroups/xcalar-infra-rg/providers/Microsoft.Storage/storageAccounts/xcinfrasa",
+				"blobContainerName": "deadletter"
+			}
+		}
+	}
+}

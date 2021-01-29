@@ -1,0 +1,76 @@
+#!/bin/bash
+
+# wrapper for ovirt/ovirttool.py;
+# Deploys it within a ub14 docker container which sets up all of its
+# required py dependencies.
+# Args: whichever args are required for ovirt/ovirttool.py
+# - Example:
+#  ovirttool --vmbasename=name --count=1 --noinstaller
+#    runs the following, in a new ub14 Docker container:
+#  $XLRINFRA/ovirt/ovirttool.py --vmbasename=name --count=1 --noinstaller
+# - See http://wiki.int.xcalar.com/mediawiki/index.php/Ovirttool#Setup for Setup to run this script
+
+set -e
+
+SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+if [ -z "$XLRINFRADIR" ]; then
+    XLRINFRADIR="$(cd $SCRIPTDIR/.. && pwd)"
+    export XLRINFRADIR
+fi
+cd $XLRINFRADIR
+
+# will create a ub14 Docker container and run ovirttool in it;
+# setup so ub14 Docker containers can be built
+if ! docker pull registry.int.xcalar.com/xcalar/ub14-build:ovirttool >/dev/null 2>&1; then
+    if [ -z "$XLRDIR" ]; then
+        echo "Must set XLRDIR to build ub14 containers (which script will run ovirttool in)" >&2
+        exit 1
+    fi
+    echo "Performing a one-time setup on your machine... please wait (could take up to 5 minutes)" >&2
+    cd "$XLRDIR/docker/ub14"
+    echo "export http_proxy:=${http_proxy:-http://cacher:3128}" > local.mk
+    make ub14-build
+else
+    docker tag registry.int.xcalar.com/xcalar/ub14-build:ovirttool ub14-build:latest
+fi
+
+# build the Docker container to run the tool in
+if ! docker image inspect ovirttool >/dev/null 2>&1; then
+    TMP="$(mktemp -d -t ovirtool.XXXXXX)"
+    docker build -t ovirttool -f "$XLRINFRADIR/docker/ovirttool.df" "$TMP"
+    rmdir "$TMP"
+fi
+cd $XLRINFRADIR
+
+VM_COMMENT="${VM_COMMENT:-""}"
+
+docker_run_args="-t -v /netstore:/netstore -v $XLRINFRADIR:$XLRINFRADIR -w $XLRINFRADIR -u $(id -u):$(id -g)"
+
+# env vars in current shell to expose in Docker env
+
+# - OVIRT_PASSWORD and OVIRT_UNAME allow ovirttool to be non-interactive; set in ovirttool_cli wrapper
+#  set in ovirttool_cli wrapper
+#  (note: --user in @$ takes precedence over OVIRT_UNAME if both supplied)
+# - VM_COMMENT overrides default comment that gets attached to created VMs
+# (way to keep track which VMs were created by ovirttool and ovirttool-gui)
+# - OVIRT_DATA_DIR set dir to write output file of job data ovirttool creates;
+#  set in ovirttool_cli wrapper to logdir
+declare -a docker_env_vars=(
+    "OVIRT_UNAME"
+    "OVIRT_PASSWORD"
+    "VM_COMMENT"
+    "OVIRT_DATA_FILE"
+)
+for i in "${docker_env_vars[@]}"
+do
+   docker_run_args="$docker_run_args -e $i"
+done
+
+# need write permissions on /var/run/docker.sock.
+# run Docker w sudo, if no write permissions on /var/run/docker.sock,
+# to avoid user having to add themselves to Docker group and log out/log of
+# their stormtrooper as part of ovirttool setup.
+# (Doing that would put them in Docker group which would automatically
+# grant write permissions to this file.)
+test -w /var/run/docker.sock || sudo=sudo
+$sudo docker run $docker_run_args --rm ovirttool ovirt/ovirttool.py "$@"

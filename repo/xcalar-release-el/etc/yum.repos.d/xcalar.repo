@@ -1,0 +1,6 @@
+[xcalar]
+name=Xcalar for EL$releasever
+baseurl=http://repo.xcalar.net/rpm/el$releasever/$basearch/
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Xcalar
+enabled=1

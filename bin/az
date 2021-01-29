@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+#
+# shellcheck disable=SC2086,SC2207,SC2206,SC2034,SC2015,SC2046
+
+set -e
+
+. os-compat.sh
+
+# Some directories may have been created as root via the
+# docker container
+safe_mkdir() {
+    if [ -w "$1" ]; then
+        return 0
+    fi
+    if ! [ -d "$1" ]; then
+        if ! mkdir -p "$1"; then
+            return 1
+        fi
+    fi
+    if ! [ -w "$1" ]; then
+        if ! sudo chown $(id -u):$(id -g) "$1"; then
+            return 1
+        fi
+    fi
+}
+
+
+
+#==== just customize this part to another tool, say aws cli
+PROG="$(basename "$0")"
+
+AZ_IMAGE_DEFAULT=${AZ_IMAGE_DEFAULT:-microsoft/azure-cli:latest}
+AZ_USE_DOCKER=${AZ_USE_DOCKER:-false}
+AZ_HOME=$HOME/.azure
+
+AWS_IMAGE_DEFAULT=${AWS_IMAGE_DEFAULT:-registry.int.xcalar.com/awscliv2:latest}
+AWS_USE_DOCKER=${AWS_USE_DOCKER:-false}
+AWS_HOME=$HOME/.aws
+#=====
+
+PROGU="$(tr 'a-z' 'A-Z'  <<< ${PROG})"
+WRAP_IMAGE=${PROGU}_IMAGE
+WRAP_IMAGE_DEFAULT=${PROGU}_IMAGE_DEFAULT
+WRAP_USE_DOCKER="${PROGU}_USE_DOCKER"
+WRAP_HOME=${PROGU}_HOME
+PIMAGE="${!WRAP_IMAGE:-${!WRAP_IMAGE_DEFAULT}}"
+PHOME="${!WRAP_HOME}"
+PLOG="$PHOME"/logs/"$PROG".log
+if [ "${!WRAP_USE_DOCKER}" != true ] && ALLPROG=("$(which $PROG | grep -v "$(readlink_f "${BASH_SOURCE[0]}")")"); then
+    exec "${ALLPROG[0]}" "$@"
+fi
+safe_mkdir "$PHOME"
+safe_mkdir "$(dirname "$PLOG")"
+test -e "$PLOG" && ( test -w "$PLOG" || sudo chown "$(id -u):$(id -g)" "$PLOG" )
+touch "$PLOG"
+
+
+[ -d ${PHOME} ] || { mkdir -p ${PHOME} && chmod 0700 ${PHOME}; }
+[ -d ${PHOME}/logs ] || {
+    mkdir -p ${PHOME}/logs 2>/dev/null || sudo mkdir -p ${PHOME}/logs
+}
+[ -w ${PHOME}/logs ] || {
+    sudo chown -R $(id -u):$(id -g) ${PHOME}/logs
+}
+touch ${PHOME}/logs/${PROG}.log
+
+
+ARGS=(-v ${PHOME}:/root/$(basename ${PHOME}))
+TLD="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+ARGS+=(-v $TLD:$TLD -w $PWD)
+if mountpoint -q /netstore; then
+    ARGS+=(-v /netstore:/netstore)
+fi
+ENVS=()
+ENVS+=(-e AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-west2} -e AWS_SECRET_ACESS_KEY -e AWS_ACCESS_KEY_ID -e AWS_SESSION_TOKEN -e AWS_PROFILE)
+ENVS+=(-e AZURE_CLIENT_ID -e AZURE_CLIENT_SECRET -e AZURE_STORAGE_ACCOUNT -e AZURE_STORAGE_KEY -e AZURE_SUBSCRIPTION_ID -e AZURE_TENANT_ID)
+ENVS+=(-e ARM_CLIENT_ID -e ARM_CLIENT_SECRET -e ARM_SUBSCRIPTION_ID -e ARM_TENANT_ID)
+
+# The source could be in a different directory/repo
+STLD="$(cd "$(dirname "${BASH_SOURCE[0]}")" && git rev-parse --show-toplevel || pwd)"
+if [ "$STLD" != "$TLD" ]; then
+    ARGS+=(-v $STLD:$STLD)
+fi
+
+if ! test -w /var/run/docker.sock; then
+    DOCKER='sudo docker'
+else
+    DOCKER=docker
+fi
+
+touch ${PHOME}/img-check.ts
+if [ ${PHOME}/img-check.ts -nt ${PHOME}/img-next.ts ]; then
+    echo >&2 "Updating $PIMAGE ..."
+    $DOCKER pull "$PIMAGE" >&2
+    touch --date='1 day' ${PHOME}/img-next.ts
+fi
+
+[ $# -gt 0 ] || set -- --help
+exec $DOCKER run --rm "${ARGS[@]}" -- "$PIMAGE" $PROG "$@"

@@ -1,0 +1,13 @@
+{
+  "allow_user_certificates": true,
+  "allowed_users": "azureuser,ec2-user,centos,ubuntu,gceuser",
+  "default_extensions": [
+    {
+      "permit-pty": ""
+    }
+  ],
+  "key_type": "ca",
+  "default_user": "azureuser",
+  "ttl": "12h",
+  "max_ttl": "24h"
+}

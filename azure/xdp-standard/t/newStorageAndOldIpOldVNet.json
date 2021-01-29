@@ -1,0 +1,80 @@
+{
+  "location": {
+    "value": "westus2"
+  },
+  "appName": {
+    "value": "xdp-standard"
+  },
+  "licenseKey": {
+    "value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASAAAAACAAAEA5YUBAESS8E7SB2CV5M9VUB9UVB4FWRXFV5GPQ49BBLFDYAP4VCQY3HVFU3ZW3VXTJQA9JPYWY5TP4BJAAAGZ6========"
+  },
+  "adminEmail": {
+    "value": "abakshi@xcalar.com"
+  },
+  "scaleNumber": {
+    "value": 3
+  },
+  "appUsername": {
+    "value": "xdadmin"
+  },
+  "appPassword": {
+    "value": "Welcome1"
+  },
+  "authenticationType": {
+    "value": "sshPublicKey"
+  },
+  "adminUsername": {
+    "value": "azureuser"
+  },
+  "adminSSHPublicKey": {
+    "value": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCkSfi00gfzVoaqLs/Col/kNNg2jGHNhP3LA6OykWt1ev04CbNCiGB01+wgPy6Jx0aKvA7Mx7a4cUCJs8NvgH0wfgzLo0HAcAdMoXHl7ZE6psOR5/w7WJEFZ4xd7v9WanAsONtgS5iLwuzHkMvrImO6aOz2YxzYoNRpVbsJ5PViD9EkRyaEPLRI0A9/DFY96o/xRT/EXxT2ekjJ9loIkeU2Cxs1k0R0TYxPORAvuaM2HHQ12fG51wSNkc3WQ7ehLlULjnxyanptLTDGlU6CwN0i7YEbqr8gpCw510KJg75TqxB8pBxBuN0RHacsf6Lgz/rSw97ryox/ynCzQT9hrE9b"
+  },
+  "vmDiskType": {
+    "value": "Premium_LRS"
+  },
+  "vnetNewOrExisting": {
+    "value": "existing"
+  },
+  "vnetName": {
+    "value": "abakshi-53-cluster-vnet"
+  },
+  "vnetSubnet1Name": {
+    "value": "abakshi-53-cluster-subnet-1"
+  },
+  "vnetSubnet1Prefix": {
+    "value": "10.0.0.0/24"
+  },
+  "vnetSubnet2Name": {
+    "value": "abakshi-53-cluster-subnet-2"
+  },
+  "vnetSubnet2Prefix": {
+    "value": "10.0.1.0/24"
+  },
+  "domainNameLabel": {
+    "value": "abakshi-my-ip"
+  },
+  "publicIpAddressName": {
+    "value": "abakshi-my-ip"
+  },
+  "publicIpAddressRG": {
+    "value": "abakshi-my-ip-rg"
+  },
+  "publicIpAddressNewOrExisting": {
+    "value": "existing"
+  },
+  "vmSize": {
+    "value": "Standard_DS13_v2"
+  },
+  "storageAccountName": {
+    "value": "mycoolnewstorageaccount"
+  },
+  "storageAccountRG": {
+    "value": "abakshi-71-rg"
+  },
+  "storageAccountType": {
+    "value": "Standard_LRS"
+  },
+  "storageAccountNewOrExisting": {
+    "value": "new"
+  }
+}

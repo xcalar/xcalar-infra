@@ -1,0 +1,11 @@
+awscli
+aws-sam-cli
+boto3
+cfn-flip
+cfn-lint
+ipython
+jinja2-cli
+pylint
+pytest
+sentry-sdk==0.14.1
+yapf

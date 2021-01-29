@@ -1,0 +1,62 @@
+{
+  "location": {
+    "value": "westus2"
+  },
+  "appName": {
+    "value": "xdp-standard"
+  },
+  "licenseKey": {
+    "value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASAAAAACAAAEA5YUBAESS8E7SB2CV5M9VUB9UVB4FWRXFV5GPQ49BBLFDYAP4VCQY3HVFU3ZW3VXTJQA9JPYWY5TP4BJAAAGZ6========"
+  },
+  "adminEmail": {
+    "value": "abakshi@xcalar.com"
+  },
+  "scaleNumber": {
+    "value": 2
+  },
+  "appUsername": {
+    "value": "xdpadmin"
+  },
+  "appPassword": {
+    "value": "Welcome1"
+  },
+  "authenticationType": {
+    "value": "sshPublicKey"
+  },
+  "adminUsername": {
+    "value": "azureuser"
+  },
+  "adminSSHPublicKey": {
+    "value": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCkSfi00gfzVoaqLs/Col/kNNg2jGHNhP3LA6OykWt1ev04CbNCiGB01+wgPy6Jx0aKvA7Mx7a4cUCJs8NvgH0wfgzLo0HAcAdMoXHl7ZE6psOR5/w7WJEFZ4xd7v9WanAsONtgS5iLwuzHkMvrImO6aOz2YxzYoNRpVbsJ5PViD9EkRyaEPLRI0A9/DFY96o/xRT/EXxT2ekjJ9loIkeU2Cxs1k0R0TYxPORAvuaM2HHQ12fG51wSNkc3WQ7ehLlULjnxyanptLTDGlU6CwN0i7YEbqr8gpCw510KJg75TqxB8pBxBuN0RHacsf6Lgz/rSw97ryox/ynCzQT9hrE9b"
+  },
+  "vmDiskType": {
+    "value": "Premium_LRS"
+  },
+  "domainNameLabel": {
+    "value": "abakshi-my-ip"
+  },
+  "publicIpAddressName": {
+    "value": "abakshi-my-ip"
+  },
+  "publicIpAddressRG": {
+    "value": "abakshi-my-ip-rg"
+  },
+  "publicIpAddressNewOrExisting": {
+    "value": "existing"
+  },
+  "vmSize": {
+    "value": "Standard_DS13_v2"
+  },
+  "storageAccountName": {
+    "value": "xcrepowestus2"
+  },
+  "storageAccountRG": {
+    "value": "xcrepo-rg"
+  },
+  "storageAccountType": {
+    "value": "Standard_LRS"
+  },
+  "storageAccountNewOrExisting": {
+    "value": "existing"
+  }
+}

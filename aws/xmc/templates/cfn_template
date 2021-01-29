@@ -1,0 +1,338 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: XCE AWS CloudFormation Template -  **WARNING** This template creates
+  a cluster of Amazon EC2 instances. You will be billed for the AWS resources used
+  if you create a stack from this template.
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VpcId of your existing Virtual Private Cloud (VPC)
+    ConstraintDescription: must be the VPC Id of an existing Virtual Private Cloud.
+    Default: vpc-22f26347
+  Subnet:
+    Type: AWS::EC2::Subnet::Id
+    Description: The SubnetId in your Virtual Private Cloud (VPC)
+    ConstraintDescription: must be a list of at least two existing subnets associated
+      with at least two different availability zones. They should be residing in the
+      selected Virtual Private Cloud.
+    Default: subnet-b9ed4ee0
+  AvZone:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Description: An Availability Zone, such as us-west-2a.
+    ConstraintDescription: Must be a valid availabiliy zone
+    Default: us-west-2c
+  SGList:
+    Type: List<AWS::EC2::SecurityGroup::GroupName>
+    Description: A list of existing security groups.
+    Default: "default,open-to-users-at-home,open-to-office"
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+    Default: xcalar-us-west-2
+  InstallerUrl:
+    Description: XCE Installer
+    Type: String
+    MinLength: '4'
+    MaxLength: '2047'
+    AllowedPattern: http[s]?://.*
+    ConstraintDescription: Must be a valid url.
+    Default: https://xcrepo.s3.amazonaws.com/builds/prod/xcalar-1.3.2-1758-installer?AWSAccessKeyId=AKIAJU4DLXF3P2I7WGCQ&Signature=UgGypQDt19PFGTB9QiZiWsRWpys%3D&Expires=1527527173
+  ImageId:
+    Description: ID of an existing Amazon Machine Image (AMI)
+    Type: AWS::EC2::Image::Id
+    ConstraintDescription: Must be the name of an existing AMI.
+    Default: ami-0054c6c4e445a0abe
+  BootstrapUrl:
+    Description: XCE Bootstrap Script
+    Type: String
+    MinLength: '8'
+    MaxLength: '2047'
+    AllowedPattern: http[s]?://.*
+    ConstraintDescription: Must be a valid url.
+    Default: http://repo.xcalar.net/scripts/aws-asg-bootstrap-v6.sh
+  LicenseKey:
+    Description: XCE License
+    Type: String
+    MinLength: '0'
+    MaxLength: '1024'
+  AdminUsername:
+    Description: XD Administrator name used to log into the GUI
+    Type: String
+    MinLength: '5'
+    MaxLength: '128'
+  AdminPassword:
+    Description: XD Administrator password
+    NoEcho: true
+    Type: String
+    MinLength: '5'
+    MaxLength: '128'
+  AdminEmail:
+    Description: Email of the administrator
+    Type: String
+  InstanceType:
+    Description: XCE EC2 instance type
+    Type: String
+    Default: m5.2xlarge
+    AllowedValues:
+      - m5.xlarge
+      - m5.2xlarge
+      - m5.4xlarge
+      - m5.12xlarge
+      - m5.24xlarge
+      - c5.2xlarge
+      - c5.4xlarge
+      - c5.9xlarge
+      - c5.18xlarge
+      - r4.2xlarge
+      - r4.4xlarge
+      - r4.8xlarge
+      - r4.16xlarge
+      - i3.large
+      - i3.xlarge
+      - i3.2xlarge
+      - i3.4xlarge
+      - i3.8xlarge
+      - i3.16xlarge
+      - x1.16xlarge
+      - x1.32xlarge
+    ConstraintDescription: must be a valid EC2 instance type.
+  ELRelease:
+    Description: 'Enterprise Linux Distro. RHEL7 is RedHat Enterprise Linux 7.4, EL7 is CentOS 7.4'
+    Type: String
+    Default: EL7
+    AllowedValues:
+      - RHEL7
+      - EL7
+      - AMAZON
+  SSHLocation:
+    Description: ' The IP address range that can be used to SSH to the EC2 instances'
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    Default: 0.0.0.0/0
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+  HTTPLocation:
+    Description: ' The IP address range to allow HTTP access from'
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    Default: 0.0.0.0/0
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+  InstanceCount:
+    Description: Number of EC2 instances to launch
+    Type: Number
+    Default: '1'
+  RootSize:
+    Description: Size of root disk
+    Type: Number
+    Default: '64'
+  SwapSize:
+    Description: 'Size of swap disk. NOTE: This should be at least 2x the amount of memory.'
+    Type: Number
+    Default: '64'
+Mappings:
+  RegionMap:
+      us-east-1:                                                                                                                                                                                  
+        RHEL7: ami-6871a115                                                                                                                                                                       
+        EL7: ami-0f80d62666b176446                                                                                                                                                                
+        AmazonLinux: ami-14c5486b                                                                                                                                                                 
+      us-west-2:                                                                                                                                                                                  
+        RHEL7: ami-28e07e50                                                                                                                                                                       
+        EL7: ami-02ff71c14348cdca4                                                                                                                                                                
+        AmazonLinux: ami-e251209a  
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Xcalar Configuration
+        Parameters:
+          - LicenseKey
+          - InstallerUrl
+          - AdminEmail
+          - AdminUsername
+          - AdminPassword
+          - BootstrapUrl
+      - Label:
+          default: Instance configuration
+        Parameters:
+          - InstanceType
+          - RootSize
+          - SwapSize
+          - ImageId
+          - ELRelease
+      - Label:
+          default: Security configuration
+        Parameters:
+          - KeyName
+          - SSHLocation
+          - HTTPLocation
+      - Label:
+          default: Network configuration
+        Parameters:
+          - VpcId
+          - Subnet
+          - AvZone
+          - SGList
+    ParameterLabels:
+      InstallerUrl:
+        default: 'XCE Installer Url:'
+      LicenseKey:
+        default: 'XCE License Key:'
+      InstanceType:
+        default: 'Server size:'
+      KeyName:
+        default: 'Key pair:'
+      SSHLocation:
+        default: 'SSH CIDR range:'
+      HTTPLocation:
+        default: 'HTTP CIDR range:'
+      AvZone:
+        default: 'Availability Zone:'
+      ImageId:
+        default: 'AMI Image:'
+      BootstrapUrl:
+        default: 'Bootstrap Url:'
+Resources:
+  SGDefault:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: SSH
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+      - CidrIp: !Ref 'SSHLocation'
+        IpProtocol: tcp
+        FromPort: '22'
+        ToPort: '22'
+      - CidrIp: !Ref HTTPLocation
+        IpProtocol: tcp
+        FromPort: '443'
+        ToPort: '443'
+      - CidrIp: !Ref HTTPLocation
+        IpProtocol: tcp
+        FromPort: '80'
+        ToPort: '80'
+  InstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Roles:
+      - !Ref 'Role'
+  Role:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: 'ec2.amazonaws.com'
+          Action: 'sts:AssumeRole'
+      Path: /
+      Policies:
+      - PolicyName: Ec2Describe
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - 'ec2:DescribeInstances'
+            - 'ec2:DescribeTags'
+            - 'autoscaling:DescribeAutoScalingGroups'
+            Resource: '*'
+  PlacementGroup:
+    Type: AWS::EC2::PlacementGroup
+    Properties:
+      Strategy: cluster
+  InstanceGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      PlacementGroup: !Ref 'PlacementGroup'
+      AvailabilityZones:
+        - !Ref 'AvZone'
+      LaunchConfigurationName: !Ref 'LaunchConfig'
+      MinSize: !Ref 'InstanceCount'
+      MaxSize: !Ref 'InstanceCount'
+      DesiredCapacity: !Ref 'InstanceCount'
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT15M
+        Count: !Ref 'InstanceCount'
+  LaunchConfig:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: !Ref 'ImageId'
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: !Ref 'RootSize'
+            VolumeType: gp2
+            DeleteOnTermination: true
+        - DeviceName: /dev/sdm
+          Ebs:
+            VolumeSize: !Ref 'SwapSize'
+            VolumeType: gp2
+            DeleteOnTermination: true
+        - DeviceName: /dev/sdb
+          VirtualName: ephemeral0
+        - DeviceName: /dev/sdc
+          VirtualName: ephemeral1
+        - DeviceName: /dev/sdd
+          VirtualName: ephemeral2
+        - DeviceName: /dev/sde
+          VirtualName: ephemeral3
+      IamInstanceProfile: !Ref 'InstanceProfile'
+      InstanceType: !Ref 'InstanceType'
+      SecurityGroups: !Ref 'SGList'
+      #        - Ref: "SecurityGroup"
+      #  - Ref: "SGroup1"
+      KeyName: !Ref 'KeyName'
+      EbsOptimized: true
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -x
+          set -x
+          set +e
+          safe_curl() { curl -4 --location --retry 20 --retry-delay 3 --retry-max-time 60 "$@"; }
+          yum install -y epel-release
+          yum install -y jq nfs-utils curl
+          RELEASE_RPM=$(rpm -qf /etc/redhat-release)
+          RELEASE=$(rpm -q --qf %{VERSION} $RELEASE_RPM)
+          ELVERSION="$(echo $RELEASE | sed -e 's/Server//g')"
+          if ! test -e /opt/aws/bin/cfn-init; then
+            yum install -y awscli
+            rpm -q aws-cfn-bootstrap || yum localinstall -y http://repo.xcalar.net/deps/aws-cfn-bootstrap-1.4-18.el$ELVERSION.noarch.rpm
+          fi
+          export PATH="$PATH:/opt/aws/bin"
+          # Install the files and packages from the metadata
+          /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource InstanceGroup --region ${AWS::Region}
+          try=20
+          safe_curl -L https://storage.googleapis.com/repo.xcalar.net/deps/discover-1.gz | gzip -dc > /usr/local/bin/discover
+          chmod +x /usr/local/bin/discover
+          for try in {0..20}; do
+            echo >&2 "Waiting to get IPs .."
+            sleep 10
+            IPS=($(set -o pipefail; discover addrs provider=aws addr_type=private_v4 "tag_key=aws:cloudformation:stack-id" "tag_value=${AWS::StackId}" | tee IPS.txt )) && break
+          done
+          mkdir -p /etc/xcalar
+          test -n "${LicenseKey}" && echo "${LicenseKey}" | base64 -d | gzip -dc > /etc/xcalar/XcalarLic.key
+          if [ $? -ne 0 ]; then
+              test -n "${LicenseKey}" && echo "${LicenseKey}" > /etc/xcalar/XcalarLic.key
+          fi
+          safe_curl -fL "${BootstrapUrl}" -o /usr/local/bin/aws-asg-bootstrap.sh && \
+          chmod +x /usr/local/bin/aws-asg-bootstrap.sh && \
+          /bin/bash -x /usr/local/bin/aws-asg-bootstrap.sh ${InstanceCount} "${InstallerUrl}" 2>&1 | tee /var/log/aws-asg-bootstrap.log
+          rc=$?
+          # Signal the status from cfn-init
+          /opt/aws/bin/cfn-signal -e $rc --stack ${AWS::StackName} --resource InstanceGroup --region ${AWS::Region}
+          if [ -n "${AdminUsername}" ]; then
+              XCE_HOME="$(cat /etc/xcalar/default.cfg | grep "^Constants.XcalarRootCompletePath" | cut -d'=' -f2)"
+              mkdir -p $XCE_HOME/config
+              chown -R xcalar:xcalar $XCE_HOME/config
+              jsonData='{ "defaultAdminEnabled": true, "username": "'${AdminUsername}'", "email": "'${AdminEmail}'", "password": "'${AdminPassword}'" }'
+              echo "Creating default admin user ${AdminUsername} (${AdminEmail})"
+              safe_curl -H "Content-Type: application/json" -X POST -d "$jsonData" "http://127.0.0.1:12124/login/defaultAdmin/set"
+          else
+              echo "\$AdminUsername is not specified"
+          fi
+          exit $rc

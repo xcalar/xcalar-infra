@@ -1,0 +1,6 @@
+{
+  "instance_name": "devstation",
+  "role": "devstation",
+  "cluster": "devstation",
+  "datacenter": "azure-westus2"
+}

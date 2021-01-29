@@ -1,0 +1,58 @@
+---
+#
+# This play generates a config file for the hosts in
+# group 'xcalar' in your inventory. An example hosts.ini:
+#
+# [xcalar]
+# nodeA
+# nodeB
+# nodeC
+# nodeD
+#
+# Will create a config from the template
+# (default xcalar_config.cfg.j2) containing those
+# nodes.
+#
+# Try it out locally:
+#
+# $ ansible-playbook -i hosts.ini xcalar_config.yml
+# $ cat default.cfg
+#
+#
+- hosts: localhost
+  connection: local
+  gather_facts: False
+  vars:
+    xcalar_template: xcalar_config.cfg.j2
+    xcalar_root: /mnt/xcalar
+    xcalar_config: default.cfg
+  tasks:
+    - name: Create Xcalar Config
+      template:
+        src: "{{ xcalar_template }}"
+        dest: "{{ xcalar_config }}"
+
+## Real one below
+#- hosts: xcalar
+#  gather_facts: False
+#  become: True
+#  vars:
+#    xcalar_template: xcalar_config.cfg.j2
+#    xcalar_config: /etc/xcalar/default.cfg
+#    xcalar_root: /mnt/xcalar
+#  tasks:
+#    - name: Create Xcalar Config
+#      template:
+#        src: "{{ xcalar_template }}"
+#        dest: "{{ xcalar_config }}"
+#        owner: xcalar
+#        group: xcalar
+#        mode: 0644
+#        backup: yes
+#
+#    - name: Stop Xcalar
+#      command: /sbin/service xcalar stop
+#
+#    - name: Start Xcalar
+#      command: /sbin/service xcalar start
+#

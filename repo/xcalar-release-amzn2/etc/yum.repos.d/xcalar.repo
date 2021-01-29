@@ -1,0 +1,7 @@
+[xcalar]
+name=Xcalar for AMZN2
+baseurl=http://repo.xcalar.net/rpm/amzn2/$basearch/
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Xcalar
+enabled=0
+priority=5

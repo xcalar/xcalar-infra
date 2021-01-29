@@ -1,0 +1,1 @@
+vsts_token: "{{ vault_vsts_token }}"

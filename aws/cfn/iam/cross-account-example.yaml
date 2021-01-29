@@ -1,0 +1,49 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This template creates a cross account role for listing s3 buckets in
+  an account.
+Outputs:
+  RoleARN:
+    Description: The ARN of the role that can be assumed by the other account.
+    Value: !GetAtt 's3Role.Arn'
+Parameters:
+  ExternalID:
+    Description: The External ID that will be required to assume the role.
+    MinLength: '1'
+    NoEcho: 'true'
+    Type: String
+  OtherAccountNumber:
+    AllowedPattern: '[0-9]+'
+    Description: The 12 digit AWS account number to grant access to.
+    MaxLength: '12'
+    MinLength: '12'
+    Type: String
+Resources:
+  s3Role:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                sts:ExternalId: !Ref 'ExternalID'
+            Effect: Allow
+            Principal:
+              AWS: !Join
+                - ''
+                - - 'arn:aws:iam::'
+                  - !Ref 'OtherAccountNumber'
+                  - :root
+            Sid: ''
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - s3:ListAllMyBuckets
+                Effect: Allow
+                Resource: '*'
+                Sid: Stmt1434989080227
+            Version: '2012-10-17'
+          PolicyName: s3List
+    Type: AWS::IAM::Role

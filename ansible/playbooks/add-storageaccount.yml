@@ -1,0 +1,26 @@
+---
+# One off playbook to add xcdatasetwestus2
+- hosts: all
+  become: yes
+  vars:
+    storageaccount: xcdatasetswestus2
+    sastoken: ?sv=2016-05-31&ss=bfqt&srt=sco&sp=rl&st=2017-10-22T21%3A10%3A00Z&se=2017-12-23T22%3A10%3A00Z&sig=zRzxQ%2F0gOWjkskpivkXXX4OsqmhmYY9NVoF2ZBPQs30%3D
+
+  tasks:
+    - name: Stop xcalar
+      become: yes
+      service:
+        name=xcalar
+        state=stopped
+
+    - name: Add AzBlob storage account {{ storageaccount }} to {{ xcalar_config }}
+      become: yes
+      lineinfile:
+        state=present
+        line=AzBlob.{{ storageaccount }}.sasToken={{ sastoken }}
+        regexp=^AzBlob.{{ storageaccount }}.sasToken=
+        path=/etc/xcalar/default.cfg
+
+    - name: Start xcalar
+      become: yes
+      service: name=xcalar state=started enabled=yes

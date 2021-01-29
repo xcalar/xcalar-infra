@@ -1,0 +1,30 @@
+---
+
+- hosts: all
+  vars:
+    hello: 80
+  tasks:
+    - name: Install packages
+      yum: name={{item}} state=latest
+      with_items:
+        - firewalld
+        - fail2ban
+
+    - name: Enable at boot and start firewallD
+      service: name=firewalld enabled=yes state=started
+
+    - name: Configure firewallD services
+      firewalld: service={{item.service}} permanent={{item.permanency}} state={{item.state}}
+      with_items:
+        - { service: ssh, permanency: true, state: enabled}
+        - { service: http, permanency: true, state: enabled}
+        - { service: https, permanency: true, state: enabled}
+      notify:
+        - reload firewalld
+
+    - name: Enable at boot and start fail2ban
+      service: name=fail2ban enabled=yes state=started
+
+  handlers:
+    - name: reload firewalld
+      service: name=firewalld state=reloaded

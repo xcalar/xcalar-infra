@@ -1,0 +1,129 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "newVMName": {
+      "type": "string",
+      "defaultValue": "xcalar-2"
+    },
+    "labName": {
+      "type": "string",
+      "defaultValue": "xcalarlab"
+    },
+    "size": {
+      "type": "string",
+      "defaultValue": "Standard_D8s_v3"
+    },
+    "userName": {
+      "type": "string",
+      "defaultValue": "azureuser"
+    },
+    "sshKey": {
+      "type": "securestring",
+      "defaultValue": "[[[azureuser-ssh-pubkey]]"
+    },
+    "Xcalar_Installer_installerUrl": {
+      "type": "string",
+      "defaultValue": "https://xcrepo.blob.core.windows.net/builds/prod/xcalar-1.4.1-2332-installer?st=2018-10-21T06%3A23%3A44Z&se=2018-11-22T06%3A23%3A00Z&sp=rl&sv=2018-03-28&sr=b&sig=H%2BxjMvMDMCkzz%2FQ9GTe3wxjS66NVBdNBu9k6AZnEXy8%3D"
+    },
+    "Xcalar_Installer_licenseKey": {
+      "type": "securestring",
+      "defaultValue": "[[[license]]"
+    },
+    "Xcalar_Installer_appUsername": {
+      "type": "string",
+      "defaultValue": "xdpadmin"
+    },
+    "Xcalar_Installer_appPassword": {
+      "type": "string",
+      "defaultValue": "Welcome1"
+    },
+    "Xcalar_Installer_emailAddress": {
+      "type": "string",
+      "defaultValue": "info@xcalar.com"
+    },
+    "Xcalar_Installer_storageAccount": {
+      "type": "string",
+      "defaultValue": "axcalarlab6775"
+    },
+    "Xcalar_Installer_storageSasToken": {
+      "type": "securestring",
+      "defaultValue": "[[[labkey]]"
+    }
+  },
+  "variables": {
+    "labSubnetName": "[concat(variables('labVirtualNetworkName'), 'Subnet')]",
+    "labVirtualNetworkId": "[resourceId('Microsoft.DevTestLab/labs/virtualnetworks', parameters('labName'), variables('labVirtualNetworkName'))]",
+    "labVirtualNetworkName": "[concat('Dtl', parameters('labName'))]",
+    "vmId": "[resourceId ('Microsoft.DevTestLab/labs/virtualmachines', parameters('labName'), parameters('newVMName'))]",
+    "vmName": "[concat(parameters('labName'), '/', parameters('newVMName'))]"
+  },
+  "resources": [
+    {
+      "apiVersion": "2018-10-15-preview",
+      "type": "Microsoft.DevTestLab/labs/virtualmachines",
+      "name": "[variables('vmName')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "labVirtualNetworkId": "[variables('labVirtualNetworkId')]",
+        "notes": "CentOS-based 7.5",
+        "galleryImageReference": {
+          "offer": "CentOS",
+          "publisher": "OpenLogic",
+          "sku": "7.5",
+          "osType": "Linux",
+          "version": "latest"
+        },
+        "size": "[parameters('size')]",
+        "userName": "[parameters('userName')]",
+        "sshKey": "[parameters('sshKey')]",
+        "isAuthenticationWithSshKey": true,
+        "artifacts": [
+          {
+            "artifactId": "[resourceId('Microsoft.DevTestLab/labs/artifactSources/artifacts', parameters('labName'), 'privaterepo610', 'linux-ampBootstrap')]",
+            "parameters": [
+              {
+                "name": "installerUrl",
+                "value": "[parameters('Xcalar_Installer_installerUrl')]"
+              },
+              {
+                "name": "licenseKey",
+                "value": "[parameters('Xcalar_Installer_licenseKey')]"
+              },
+              {
+                "name": "appUsername",
+                "value": "[parameters('Xcalar_Installer_appUsername')]"
+              },
+              {
+                "name": "appPassword",
+                "value": "[parameters('Xcalar_Installer_appPassword')]"
+              },
+              {
+                "name": "emailAddress",
+                "value": "[parameters('Xcalar_Installer_emailAddress')]"
+              },
+              {
+                "name": "storageAccount",
+                "value": "[parameters('Xcalar_Installer_storageAccount')]"
+              },
+              {
+                "name": "storageSasToken",
+                "value": "[parameters('Xcalar_Installer_storageSasToken')]"
+              }
+            ]
+          }
+        ],
+        "labSubnetName": "[variables('labSubnetName')]",
+        "disallowPublicIpAddress": false,
+        "storageType": "Premium",
+        "allowClaim": false
+      }
+    }
+  ],
+  "outputs": {
+    "labVMId": {
+      "type": "string",
+      "value": "[variables('vmId')]"
+    }
+  }
+}

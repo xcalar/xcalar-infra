@@ -1,0 +1,1238 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: Xcalar Cloud. This template deploys a Xcalar Cloud Cluster ({{ installer_tag }})
+Parameters:
+  InstanceType:
+    Type: String
+    Description: Xcalar node EC2 Instance type
+    ConstraintDescription: Choose an instance type.
+    Default: '{{ instance_default | default("r5d.xlarge") }}'
+    AllowedValues: {% if DEBUG is defined and DEBUG == 1 %}{{ instance_types }}{% else %}{{ ["r5d.xlarge","r5d.4xlarge","r5d.8xlarge"] }}{% endif %}
+    #AllowedValues: {{ instance_types }}
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: '{{ key_name | default("xcalar-us-west-2") }}'
+{%- if createVpc %}
+  VpcCidr:
+    Type: String
+    MinLength: 9
+    MaxLength: 18
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
+    ConstraintDescription: Must be a valid CIDR range in the form x.x.x.x/16
+    Default: 10.20.0.0/16
+  SharedACidr:
+    Type: String
+    MinLength: 9
+    MaxLength: 18
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
+    ConstraintDescription: Must be a valid CIDR range in the form x.x.x.x/22
+    Default: 10.20.0.0/22
+{%- else %}
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC to use for cluster placement (vpc-xxxxxx)
+  Subnet:
+    Type: AWS::EC2::Subnet::Id
+    Description: ID of the private subnet of your VPC (subnet-xxxxxxxx)
+{%- endif %}
+  AllowedCIDR:
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x.
+    Description: >-
+      Enter the CIDR Block that should have access to this cluster. If unsure, use 0.0.0.0/0 to allow
+      access from anywhere. You can also enter a specific IP address in the form of 72.22.33.44/32 (this could be your Work or Home IP).
+    Type: String
+    MinLength: 9
+    MaxLength: 18
+  AssociatePublicIpAddress:
+    Description: Associate a Public IP address with the cluster
+    Default: 'true'
+    AllowedValues:
+      - 'false'
+      - 'true'
+    Type: String
+  AdminUsername:
+    Description: Desired username of the Administrator
+    Type: String
+    MinLength: 5
+    MaxLength: 128
+  AdminPassword:
+    Description: Password for the Administrator
+    NoEcho: true
+    Type: String
+    MinLength: 5
+    MaxLength: 128
+  ClusterSize:
+    Description: Desired number of EC2 instances to launch in your cluster
+    Type: Number
+    Default: 1
+    AllowedValues:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+  RootSize:
+    Description: Size of Root Disk in GB
+    MinValue: 64
+    MaxValue: 4095
+    Default: 64
+    Type: Number
+{%- if enableExistingShare %}
+  ExistingShare:
+    Description: Existing EFS Share (fs-xxxxxxxx), or leave blank to create one
+    Type: String
+    Default: ''
+{%- endif %}
+  ExistingS3:
+    Description: Use an existing S3 bucket to load data from, or leave blank to create one. When specifying an existing bucket use only the bucket name. For example, if your bucket is s3://mybucket, specify mybucket.
+    Type: String
+    Default: ''
+  SSLCert:
+    Description: Your website's SSL certificate (.crt file). Paste contents of file here, or leave as None.
+    Type: String
+    MinLength: 4
+    Default: 'None'
+  SSLKey:
+    Description: Your website's SSL private key (.key file). Paste contents of file here, or leave as None.
+    Type: String
+    NoEcho: true
+    MinLength: 4
+    Default: 'None'
+  HostedZoneName:
+    Description: Route53 hosted-zone domain name in which to register your CNAME in. For example, if you wanted 'xcalar.example.com', you should enter 'example.com' here. Your account must already have a matching Route53 Hosted Zone.
+    Type: String
+    Default: ''
+  CNAME:
+    Description: Desired DNS name without domain name. For example, if you wanted 'xcalar.example.com', you'd put 'xcalar' here. Leave blank to skip assignment.
+    Type: String
+    Default: ''
+  SessionTable:
+    Description: Authenticaton Session Table Name
+    Type: String
+    Default: 'saas-auth-session-table'
+{%- if enableCloud %}
+  AuthStackName:
+    Description: Name of the cloud Auth stack being used for authentication
+    Type: String
+    Default: ''
+  MainStackName:
+    Description: Name of the cloud main stack being used for cluster, billing, s3, etc.
+    Type: String
+    Default: ''
+{%- endif %}
+{%- if enableLicense %}
+  LicenseKey:
+    Description: XDP License Key
+    Type: String
+    Default: ''
+{%- endif %}
+Metadata:
+{%- if ami %}
+  BuildInfo:
+{%- if ami.Version %}
+    Version: '{{ ami.Version }}'
+{%- endif %}
+{%- if ami.Build %}
+    Build: '{{ ami.Build }}'
+{%- endif %}
+{%- if ami.ImageBuild %}
+    ImageBuild: '{{ ami.ImageBuild }}'
+{%- endif %}
+{%- if ami.Product %}
+    Product: '{{ ami.Product }}'
+{%- endif %}
+{%- endif %}
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Xcalar Cloud Configuration
+        Parameters:
+          - AdminUsername
+          - AdminPassword
+{%- if enableLicense %}
+          - License
+{%- endif %}
+      - Label:
+          default: Security Configuration
+        Parameters:
+          - AllowedCIDR
+          - KeyName
+      - Label:
+          default: Cluster Configuration
+        Parameters:
+          - InstanceType
+          - ClusterSize
+          - RootSize
+          - ExistingS3
+      - Label:
+          default: VPC/Network
+        Parameters:
+{%- if createVpc %}
+          - VpcCidr
+          - SharedACidr
+{%- else %}
+          - VpcId
+          - Subnet
+{%- endif %}
+      - Label:
+          default: Advanced Network Options
+        Parameters:
+          - AssociatePublicIpAddress
+          - HostedZoneName
+          - CNAME
+          - SSLCert
+          - SSLKey
+{%- if enableExistingShare %}
+          - ExistingShare
+{%- endif %}
+    ParameterLabels:
+{%- if enableLicense %}
+      LicenseKey:
+        default: 'XCE License Key:'
+{%- endif %}
+      AdminUsername:
+        default: 'Administrator Username'
+      AdminPassword:
+        default: 'Administrator Password'
+      InstanceType:
+        default: 'EC2 Instance Type'
+      ClusterSize:
+        default: 'EC2 Instance Count'
+      KeyName:
+        default: 'SSH Key Pair'
+      AllowedCIDR:
+        default: 'Allow Access from CIDR Range'
+      ExistingS3:
+        default: 'Connect an existing S3 Bucket (Optional)'
+      AssociatePublicIpAddress:
+        default: 'Associate Public IP'
+      RootSize:
+        default: 'Disk Size (GB)'
+      SSLCert:
+        default: 'SSL Certificate (Optional)'
+      SSLKey:
+        default: 'SSL Private Key (Optional)'
+      HostedZoneName:
+        default: 'Hosted Zone Domain Name (Optional)'
+      CNAME:
+        default: 'Name to register in the specified Hosted Zone (Optional)'
+{%- if createVpc %}
+      VpcCidr:
+        default: 'VPC CIDR Range'
+      SharedACidr:
+        default: 'Subnet CIDR Range'
+{%- endif %}
+Conditions:
+  CreateNewS3: !Equals [!Ref ExistingS3, '']
+  NoInstances: !Equals [!Ref ClusterSize, '0']
+  KeepIp: !Not [!Equals [!Ref ClusterSize, '0']]
+  CreateInstances: !Not [!Equals [!Ref ClusterSize, '0']]
+  IsUsEast1: !Equals [!Ref 'AWS::Region', 'us-east-1']
+  CreateDNS: !Not [!Equals [!Ref CNAME, '' ]]
+{%- if enableExistingShare %}
+  CreateNewShare: !Equals [!Ref ExistingShare, '']
+{%- endif %}
+Mappings:
+  #  LookupTable:
+  #    'us-east-1':
+  #      Ec2Domain: 'compute-1.amazonaws.com'
+  #    'us-east-2':
+  #      Ec2Domain: 'us-east-2.compute.amazonaws.com'
+  #    'us-west-1':
+  #      Ec2Domain: 'us-west-1.compute.amazonaws.com'
+  #    'us-west-2':
+  #      Ec2Domain: 'us-west-2.compute.amazonaws.com'
+  #    Constants:
+  #      NullIp: '0.0.0.0'
+
+{%- if useLocalLut %}
+  AccountLUT:
+    '043829555035':
+      AccountName: 'xcalar-test'
+      HostedZoneId: 'ZOHHT2AHYTDDN'
+      HostedZoneName: 'test.xcalar.cloud'
+      Failover: 'redirector.test.xcalar.cloud'
+      Ip: '35.165.143.184'
+    '559166403383':
+      AccountName: 'xcalar'
+      HostedZoneId: 'ZM6YP51I9IZCW'
+      HostedZoneName: 'xcalar.rocks'
+      Failover: 'redirector.xcalar.rocks'
+      Ip: '35.165.143.184'
+    '876030232190':
+      AccountName: 'xcpegasus'
+      HostedZoneId: 'Z3OAJRCVE57A0G'
+      HostedZoneName: 'xcalar.cloud'
+      Failover: 'redirector.xcalar.cloud'
+      Ip: '35.165.143.184'
+    '692270398054':
+      AccountName: 'instamartqa'
+      HostedZoneId: 'Z0035187TUPG2IUZ5175'
+      HostedZoneName: 'qa.xcalar.io'
+      Failover: 'redirector.qa.xcalar.io'
+      Ip: '35.165.143.184'
+{%- endif %}
+  AWSAMIRegionMap:
+{%- for reg in ['us-east-1','us-west-2','us-east-2','us-west-1'] %}
+    {{ reg }}:
+      {%- if images %}
+      {%- if images[reg] and images[reg]['AMZN1HVM'] %}
+      AMI: {{ images[reg]['AMZN1HVM'] }}
+      {%- elif images[reg] and images[reg]['AMZN2HVM'] %}
+      AMI: {{ images[reg]['AMZN2HVM'] }}
+      {%- else %}
+      AMI: {{ ami_id }}
+      {%- endif %}
+      {%- else %}
+      AMI: {{ ami_id }}
+      {%- endif %}
+{%- endfor %}
+Resources:
+{%- if createVpc %}
+  VpcId:
+    Type: "AWS::EC2::VPC"
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-VPC'
+        - Key: StackName
+          Value: !Ref 'AWS::StackName'
+  IGW:
+    Type: "AWS::EC2::InternetGateway"
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-IGW'
+        - Key: StackName
+          Value: !Ref 'AWS::StackName'
+  Subnet:
+    Type: "AWS::EC2::Subnet"
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs ]
+      CidrBlock: !Ref SharedACidr
+      MapPublicIpOnLaunch: true
+      VpcId: !Ref VpcId
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-Subnet'
+        - Key: StackName
+          Value: !Ref 'AWS::StackName'
+  SubnetRouteTableAssociationPublic:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      SubnetId: !Ref Subnet
+  RouteDefaultPublic:
+    Type: "AWS::EC2::Route"
+    DependsOn: GatewayAttachment
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref IGW
+      RouteTableId: !Ref RouteTablePublic
+  RouteTablePublic:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref VpcId
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-RouteTablePublic'
+        - Key: StackName
+          Value: !Ref 'AWS::StackName'
+  GatewayAttachment:
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    Properties:
+      InternetGatewayId: !Ref IGW
+      VpcId: !Ref VpcId
+  S3Endpoint:
+    Type: "AWS::EC2::VPCEndpoint"
+    Properties:
+      PolicyDocument: |
+        {
+          "Version":"2012-10-17",
+          "Statement":[{
+            "Effect":"Allow",
+            "Principal": "*",
+            "Action":["s3:*"],
+            "Resource":["arn:aws:s3:::*"]
+          }]
+        }
+      RouteTableIds:
+        - !Ref RouteTablePublic
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
+      VpcId: !Ref VpcId
+{%- endif %}
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Condition: CreateNewS3
+    DeletionPolicy: {% if ENVIRONMENT == 'prod' %}Retain{% else %}Delete{% endif %}
+    UpdateReplacePolicy: {% if ENVIRONMENT == 'prod' %}Retain{% else %}Delete{% endif %}
+    Properties:
+      AccessControl: Private
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          -
+            ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-source'
+        - Key: StackName
+          Value: !Ref AWS::StackName
+        - Key: Purpose
+          Value: SourceData
+  ClusterSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access between nodes, and HTTPS/SSH from the given CIDR.
+      VpcId: !Ref 'VpcId'
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref 'AllowedCIDR'
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: !Ref 'AllowedCIDR'
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref 'AllowedCIDR'
+        - IpProtocol: tcp
+          FromPort: 10000
+          ToPort: 10000
+          CidrIp: !Ref 'AllowedCIDR'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-ClusterSG'
+  ClusterMonitorIngressTCP:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref 'ClusterSG'
+      IpProtocol: tcp
+      FromPort: 8000
+      ToPort: 8000
+      SourceSecurityGroupId: !Ref 'ClusterSG'
+  ClusterMonitorIngressUDP:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref 'ClusterSG'
+      IpProtocol: udp
+      FromPort: 8000
+      ToPort: 8000
+      SourceSecurityGroupId: !Ref 'ClusterSG'
+  ClusterIngressHTTP:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref 'ClusterSG'
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      SourceSecurityGroupId: !Ref 'ClusterSG'
+  ClusterIngressSSL:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref 'ClusterSG'
+      IpProtocol: tcp
+      FromPort: 443
+      ToPort: 443
+      SourceSecurityGroupId: !Ref 'ClusterSG'
+  ClusterIngressAPI:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref 'ClusterSG'
+      IpProtocol: tcp
+      FromPort: 18552
+      ToPort: 18552
+      SourceSecurityGroupId: !Ref 'ClusterSG'
+  ClusterIngressProto:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref 'ClusterSG'
+      IpProtocol: tcp
+      FromPort: 5000
+      ToPort: 5000
+      SourceSecurityGroupId: !Ref 'ClusterSG'
+  EfsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EFS Mount Access Security Group
+      VpcId: !Ref 'VpcId'
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 2049
+          ToPort: 2049
+          DestinationSecurityGroupId: !Ref 'ClusterSG'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 2049
+          ToPort: 2049
+          SourceSecurityGroupId: !Ref 'ClusterSG'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-EfsSecurityGroup'
+  EfsSharedRoot:
+    Type: AWS::EFS::FileSystem
+{%- if enableExistingShare %}
+    Condition: CreateNewShare
+{%- endif %}
+{%- if retainPolicy %}
+    DeletionPolicy: Retain
+{%- endif %}
+    Properties:
+      Encrypted: true
+      LifecyclePolicies:
+        - TransitionToIA: 'AFTER_14_DAYS'
+      FileSystemTags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-EFS'
+        - Key: StackName
+          Value: !Ref 'AWS::StackName'
+  EfsMountTarget:
+    Type: AWS::EFS::MountTarget
+    Properties:
+{%- if enableExistingShare %}
+      FileSystemId: !If [CreateNewShare, !Ref EfsSharedRoot, !Ref ExistingShare]
+{%- else %}
+      FileSystemId: !Ref EfsSharedRoot
+{%- endif %}
+      SubnetId: !Ref 'Subnet'
+      SecurityGroups:
+        - !Ref 'EfsSecurityGroup'
+  PlacementGroup:
+    Type: AWS::EC2::PlacementGroup
+    Properties:
+      Strategy: cluster
+  ClusterASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    DependsOn: EfsMountTarget
+    Properties:
+      PlacementGroup: !Ref 'PlacementGroup'
+      TerminationPolicies:
+        - NewestInstance
+      NotificationConfigurations:
+        - NotificationTypes:
+            - autoscaling:EC2_INSTANCE_LAUNCH
+            - autoscaling:EC2_INSTANCE_LAUNCH_ERROR
+            - autoscaling:EC2_INSTANCE_TERMINATE
+            - autoscaling:EC2_INSTANCE_TERMINATE_ERROR
+          TopicARN: !ImportValue sharedinf-asgtopic
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: !GetAtt LaunchTemplate.LatestVersionNumber
+      MinSize: !Ref ClusterSize
+      MaxSize: !Ref ClusterSize
+      DesiredCapacity: !Ref ClusterSize
+      VPCZoneIdentifier:
+        - !Ref 'Subnet'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-node'
+          PropagateAtLaunch: true
+        - Key: FileSystemId
+{%- if enableExistingShare %}
+          Value: !If [CreateNewShare, !Ref EfsSharedRoot, !Ref ExistingShare]
+{%- else %}
+          Value: !Ref EfsSharedRoot
+{%- endif %}
+          PropagateAtLaunch: true
+        - Key: MountTarget
+          Value: !Ref EfsMountTarget
+          PropagateAtLaunch: true
+{%- if ami %}
+{%- if ami.Version %}
+        - Key: Version
+          Value: '{{ ami.Version }}'
+          PropagateAtLaunch: true
+{%- endif %}
+{%- if ami.Build %}
+        - Key: Build
+          Value: '{{ ami.Build }}'
+          PropagateAtLaunch: true
+{%- endif %}
+{%- if ami.ImageBuild %}
+        - Key: ImageBuild
+          Value: '{{ ami.ImageBuild }}'
+          PropagateAtLaunch: true
+{%- endif %}
+{%- if ami.Product %}
+        - Key: Product
+          Value: '{{ ami.Product }}'
+          PropagateAtLaunch: true
+{%- endif %}
+{%- endif %}
+    CreationPolicy:
+      ResourceSignal:
+        Count: !Ref ClusterSize
+        Timeout: PT10M
+    # WillReplace: true, means a new ASG is stood up and the old one is replaced if the new stack comes up
+    UpdatePolicy:
+      AutoScalingReplacingUpdate:
+        WillReplace: false
+      AutoScalingScheduledAction:
+        IgnoreUnmodifiedGroupSizeProperties: true
+      AutoScalingRollingUpdate:
+        MaxBatchSize: !If [NoInstances ,!Ref 'AWS::NoValue', !Ref 'ClusterSize']
+        WaitOnResourceSignals: false
+  ClusterEIP:
+    Type: AWS::EC2::EIP
+    Condition: KeepIp
+{%- if createVpc %}
+    DependsOn: GatewayAttachment
+{%- endif %}
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-ClusterEIP'
+        - Key: StackName
+          Value: !Ref 'AWS::StackName'
+  ClusterDNSRecord:
+    Type: AWS::Route53::RecordSet
+    Condition: CreateDNS
+    Properties:
+      HostedZoneId: !FindInMap
+        - AccountLUT
+        - !Ref 'AWS::AccountId'
+        - HostedZoneId
+      Name: !Sub [ '${CNAME}.${HostedZoneName}.',{HostedZoneName: !FindInMap [AccountLUT, !Ref 'AWS::AccountId', 'HostedZoneName'] }]
+      Type: CNAME
+      TTL: 60
+      ResourceRecords:
+        - !If
+          - CreateInstances
+          - !Sub
+            - "ec2-${IpDash}.${Domain}."
+            - IpDash: !Join ['-', !Split [ '.', !Ref ClusterEIP ]]
+              Domain: !If [IsUsEast1, 'compute-1.amazonaws.com', !Sub '${AWS::Region}.compute.amazonaws.com']
+          - !FindInMap
+            - AccountLUT
+            - !Ref 'AWS::AccountId'
+            - Failover
+  AssociateEIP:
+    Type: AWS::EC2::EIPAssociation
+    Condition: KeepIp
+    Properties:
+      AllocationId: !GetAtt ClusterEIP.AllocationId
+      NetworkInterfaceId: !Ref ClusterNIC
+  ClusterNIC:
+    Type: AWS::EC2::NetworkInterface
+    DependsOn: GatewayAttachment
+    Condition: KeepIp
+    Properties:
+      SubnetId: !Ref Subnet
+      Description: Interface for traffic from the internet to the cluster head node
+      GroupSet:
+        - !Ref ClusterSG
+      SourceDestCheck: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-ClusterNIC'
+        - Key: StackName
+          Value: !Ref 'AWS::StackName'
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Metadata:
+      AWS::CloudFormation::Init:
+        configSets:
+          setup:
+            - configure_cfn
+            - configure_app
+          reload:
+            - reconfigure_app
+        configure_cfn:
+          files:
+{%- if enableLifecycle %}
+            /etc/sysconfig/lifecycled:
+              content: !Sub
+                - |
+                  AWS_DEFAULT_REGION=${AWS::Region}
+                  AWS_REGION=${AWS::Region}
+                  LIFECYCLED_HANDLER=/usr/bin/copylogs.sh
+                  LIFECYCLED_SNS_TOPIC=${LifecycleHookTopic}
+                  LIFECYCLE_HOOK_NAME=LifecycleTerminating
+                  SAMPLEBUCKET=${SampleBucket}
+                  APPBUCKET=${AppBucket}
+                  LOGBUCKET=${LogBucket}
+                  LOGPREFIX=/logs/${AWS::AccountId}/${AWS::StackName}/
+                - LogBucket: !ImportValue sharedinf-logbucket
+                  AppBucket: !ImportValue sharedinf-appbucket
+                  SampleBucket: !ImportValue sharedinf-samplebucket
+              mode: '000400'
+              owner: root
+              group: root
+{%- endif %}
+            /usr/bin/copylogs.sh:
+              content: !Sub |
+                #!/bin/bash
+                set -x
+                echo "$(date +%TF%T%z) Running copylogs.sh" | logger --id -p "local0.info" -t copy-logs -s
+                eval $(ec2-tags -s -i)
+                set -a
+                source /var/lib/cloud/instance/ec2.env
+{%- if enableLifecycle %}
+                source /etc/sysconfig/lifecycled
+{%- endif %}
+                set +a
+                InstanceId=$(curl -s http://169.254.169.254/2018-09-24/meta-data/instance-id)
+                S3Uri=${!LOGBUCKET}${!LOGPREFIX}${!InstanceId}
+                for dir in /var/log /var/opt/xcalar /home/xcalar; do
+                  aws s3 cp --recursive ${!dir}/ s3://${!S3Uri}${!dir}/ 2>&1 | logger --id -p "local0.info" -t copy-logs -s
+                done
+{%- if enableLifecycle %}
+                aws autoscaling complete-lifecycle-action --lifecycle-action-result CONTINUE --instance-id ${!InstanceId} --lifecycle-hook-name $LIFECYCLE_HOOK_NAME --auto-scaling-group-name "$AWS_AUTOSCALING_GROUPNAME"
+{%- endif %}
+                exit 0
+              mode: '000750'
+              owner: root
+              group: root
+{%- if ENVIRONMENT != 'prod' %}
+            /var/lib/cloud/scripts/vendor/bootstrap.sh:
+              source: '{{ bootstrapUrl }}'
+              mode: '000755'
+              owner: root
+              group: root
+{%- endif %}
+            /etc/cfn/hooks.d/cfn-asg-reloader.conf:
+              content: !Sub |
+                [cfn-asg-reloader-hook]
+                triggers=post.update
+                path=Resources.ClusterASG
+                action=/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchTemplate --configsets reload --region ${AWS::Region}
+                runas=root
+              mode: '000400'
+              owner: root
+              group: root
+            /etc/cfn/hooks.d/cfn-auto-reloader.conf:
+              content: !Sub |
+                [cfn-auto-reloader-hook]
+                triggers=post.update
+                path=Resources.LaunchTemplate.Metadata.AWS::CloudFormation::Init
+                action=/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchTemplate --configsets setup --region ${AWS::Region}
+                runas=root
+              mode: '000400'
+              owner: root
+              group: root
+            /etc/cfn/cfn-hup.conf:
+              content: !Sub |
+                [main]
+                stack=${AWS::StackId}
+                region=${AWS::Region}
+                verbose=true
+                interval=1
+              mode: '000400'
+              owner: root
+              group: root
+            /opt/xcalar/xcalar-gui/assets/js/env/cloudEnv.js:
+              content: |
+                const gCloud = true;
+              mode: '000644'
+              owner: xcalar
+              group: xcalar
+            /var/www/xcalar-gui/s3buckets.json:
+              content: !Sub
+                - |
+                  {
+                    "s3buckets": {
+                      "S3Bucket": {
+                        "bucket": "${Bucket}",
+                        "prefix": "",
+                        "event_prefix": "",
+                        "existing": ${Existing}
+                      },
+                      "SampleBucket": {
+                        "bucket": "${SampleBucket}",
+                        "prefix": "",
+                        "event_prefix": "",
+                        "existing": true
+                      }
+                    }
+                  }
+                - Bucket: !If [CreateNewS3, !Ref S3Bucket, !Ref ExistingS3]
+                  Existing: !If [CreateNewS3, 'false', 'true']
+                  SampleBucket: !ImportValue sharedinf-samplebucket
+              mode: '000644'
+              owner: xcalar
+              group: xcalar
+          services:
+            sysvinit:
+              cfn-hup:
+                enabled: true
+                ensureRunning: true
+                files:
+                  - /etc/cfn/cfn-hup.conf
+                  - /etc/cfn/hooks.d/cfn-auto-reloader.conf
+                  - /etc/cfn/hooks.d/cfn-asg-reloader.conf
+        configure_app:
+          files:
+            /etc/xcalar/host.crt:
+              content: !Ref SSLCert
+              mode: '000644'
+              owner: root
+              group: root
+            /etc/xcalar/host.key:
+              content: !Ref SSLKey
+              mode: '000640'
+              owner: root
+              group: xcalar
+            /var/lib/cloud/instance/ec2.env:
+              content: !Sub
+                - |
+                  AWS_DEFAULT_REGION=${AWS::Region}
+                  AWS_REGION=${AWS::Region}
+                  CLUSTER_NAME=${AWS::StackName}
+                  CLUSTERSIZE=${ClusterSize}
+                  BUCKET=${Bucket}
+                  EVENTPREFIX=.events/
+                  WORKPREFIX=${AWS::StackName}/
+                  NFSHOST=${SharedRoot}
+                  NFSIP=${NFSIp}
+                  SUBNET=${Subnet}
+                  SSLKEYFILE=/etc/xcalar/host.key
+                  SSLCRTFILE=/etc/xcalar/host.crt
+                  NIC=${NIC}
+                  HOSTEDZONEID=${HostedZoneId}
+                  HOSTEDZONENAME=${HostedZoneName}
+                  CERTSTORE=/xcalar/cloud/${HostedZoneName}
+                  CNAME=${CNAME}
+                  BASEURL={{ baseUrl }}/
+                  SAMPLEBUCKET=${SampleBucket}
+{%- if enableLifecycle %}
+                  LOGBUCKET=${LogBucket}
+                  LOGPREFIX=/logs/${AWS::AccountId}/${AWS::StackName}/
+{%- endif %}
+                - Bucket: !If [CreateNewS3, !Ref S3Bucket, !Ref ExistingS3]
+                  NIC: !If [KeepIp, !Ref ClusterNIC, '']
+                  NFSIp: !GetAtt 'EfsMountTarget.IpAddress'
+                  SampleBucket: !ImportValue sharedinf-samplebucket
+                  HostedZoneId: !FindInMap
+                    - AccountLUT
+                    - !Ref 'AWS::AccountId'
+                    - HostedZoneId
+                  HostedZoneName: !FindInMap
+                    - AccountLUT
+                    - !Ref 'AWS::AccountId'
+                    - HostedZoneName
+{%- if enableLifecycle %}
+                  LogBucket: !ImportValue sharedinf-logbucket
+{%- endif %}
+{%- if enableExistingShare %}
+                  SharedRoot: !If [CreateNewShare, !Ref EfsSharedRoot, !Ref ExistingShare]
+{%- else %}
+                  SharedRoot: !Ref EfsSharedRoot
+{%- endif %}
+              mode: '000644'
+              owner: root
+              group: root
+            /etc/profile.d/xcalar-env.sh:
+              content: |
+                set -a
+                source /var/lib/cloud/instance/ec2.env
+                set +a
+            /etc/systemd/system/xcalar-xcmgmtd.service.d/env.conf:
+              content: |
+                [Service]
+                EnvironmentFile=/var/lib/cloud/instance/ec2.env
+              mode: '000444'
+              owner: root
+              group: root
+            /etc/systemd/system/xcalar-caddy.service.d/env.conf:
+              content: |
+                [Service]
+                EnvironmentFile=/var/lib/cloud/instance/ec2.env
+              mode: '000444'
+              owner: root
+              group: root
+            /etc/systemd/system/xcalar-usrnode.service.d/env.conf:
+              content: |
+                [Service]
+                EnvironmentFile=/var/lib/cloud/instance/ec2.env
+              mode: '000444'
+              owner: root
+              group: root
+            /etc/systemd/system/xcalar.service.d/env.conf:
+              content: |
+                [Unit]
+                Wants=ephemeral-disk.service
+                After=ephemeral-disk.service
+                [Service]
+                EnvironmentFile=/var/lib/cloud/instance/ec2.env
+              mode: '000444'
+              owner: root
+              group: root
+{%- if enableCloud %}
+            /var/lib/cloud/instance/cloud.env:
+              content: !Sub
+                - |
+                  AUTH_STACK_NAME=${AuthStack}
+                  MAIN_STACK_NAME=${MainStack}
+                  CLUSTER_SIZE=${CSize}
+                - AuthStack: !Ref AuthStackName
+                  MainStack: !Ref MainStackName
+                  CSize: !Ref ClusterSize
+              mode: '000400'
+              owner: root
+              group: root
+{%- endif %}
+            /var/lib/cloud/instance/bootstrap-wrapper.sh:
+              content: !Sub
+                - |-
+                  #!/bin/bash
+                  log()  {
+                    logger --id -p "$1" -t user-data -s <<< "$2"
+                  }
+                  start=$(date +%s)
+                  export PATH=/opt/aws/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/sbin:/bin
+                  export AWS_DEFAULT_REGION=${AWS::Region}
+                  # shellcheck disable=SC2046
+                  set -a
+                  ENV_FILE=/var/lib/cloud/instance/ec2.env
+                  CLOUD_ENV_FILE=/var/lib/cloud/instance/cloud.env
+                  if [ -e "$ENV_FILE" ]; then
+                      . $ENV_FILE
+                  fi
+
+                  if [ -e "$CLOUD_ENV_FILE" ]; then
+                      . $CLOUD_ENV_FILE
+                  fi
+                  set +a
+
+                  # The ec2-tags utility prints instance tags as key=value pairs suitable for parsing from bash
+                  eval $(ec2-tags -s -i)
+                  systemctl daemon-reload
+{%- if enableLifecycle %}
+                  systemctl enable --now lifecycled
+{%- else %}
+                  systemctl disable --now lifecycled || true
+{%- endif %}
+                  AWS_AUTOSCALING_GROUPNAME="$(ec2-tags -s -i | tr -d "'" | awk -F'=' '/^AWS_AUTOSCALING_GROUPNAME/{print $2}')"
+                  DESIREDCAP=$(aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names "$AWS_AUTOSCALING_GROUPNAME" --query 'AutoScalingGroups[][DesiredCapacity]'  --output text)
+                  bash /var/lib/cloud/scripts/vendor/bootstrap.sh --admin-username "${AdminUsername}" --admin-password "${AdminPassword}" \
+                            --cluster-size "$DESIREDCAP" --tag-key "aws:autoscaling:groupName" --tag-value "$AWS_AUTOSCALING_GROUPNAME" --cluster-name "$CLUSTER_NAME" \
+                            --bucket "${Bucket}" --nfs-mount "${SharedRoot}" --subnet "${Subnet}" --nic "${NIC}"
+                  rc=$?
+                  dt=$(( $(date +%s) - start ))
+                  log local0.info "bootstrap.sh returned $rc in $dt seconds"
+                  exit $rc
+                - Bucket: !If [CreateNewS3, !Ref S3Bucket, !Ref ExistingS3]
+                  NIC: !If [KeepIp, !Ref ClusterNIC, '']
+{%- if enableExistingShare %}
+                  SharedRoot: !If [CreateNewShare, !Ref EfsSharedRoot, !Ref ExistingShare]
+{%- else %}
+                  SharedRoot: !Ref EfsSharedRoot
+{%- endif %}
+              mode: '000700'
+              owner: root
+              group: root
+          commands:
+            01_runbootstrap:
+              cwd: /var/lib/cloud/instance
+              command: /bin/bash /var/lib/cloud/instance/bootstrap-wrapper.sh setup
+        reconfigure_app:
+          commands:
+            01_reconfig:
+              cwd: /var/lib/cloud/instance
+              command: /bin/bash /var/lib/cloud/instance/bootstrap-wrapper.sh reconfigure
+    Properties:
+      LaunchTemplateName: !Sub '${AWS::StackName}-LaunchTemplate'
+      LaunchTemplateData:
+        InstanceType: !Ref 'InstanceType'
+        IamInstanceProfile:
+          Arn: !GetAtt 'IamInstanceProfile.Arn'
+        NetworkInterfaces:
+          - Description: Primary interface
+            AssociatePublicIpAddress: !Ref 'AssociatePublicIpAddress'
+            DeleteOnTermination: true
+            DeviceIndex: 0
+            SubnetId: !Ref 'Subnet'
+            Groups:
+              - !Ref 'ClusterSG'
+        KeyName: !Ref 'KeyName'
+        ImageId: !FindInMap
+          - AWSAMIRegionMap
+          - !Ref 'AWS::Region'
+          - AMI
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              VolumeSize: !Ref 'RootSize'
+              VolumeType: gp2
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            set +e
+            log()  {
+              logger --id -p "$1" -t user-data -s <<< "$2"
+            }
+            start=$(date +%s)
+            log local0.info "Bootstrap started at $(date --utc +'%FT%T%z')"
+            /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource LaunchTemplate --region ${AWS::Region} -c setup
+            rc=$?
+            dt=$(( $(date +%s) - start ))
+            log local0.info "Bootstrap returned $rc in dt=$dt seconds at $(date --utc +'%FT%T%z')"
+            /opt/aws/bin/cfn-signal -e $rc --stack ${AWS::StackName} --resource ClusterASG --region ${AWS::Region}
+            exit $rc
+{%- if enableLifecycle %}
+  LifecycleHookTopic:
+    Type: AWS::SNS::Topic
+  LifecycleHook:
+    Type: AWS::AutoScaling::LifecycleHook
+    Properties:
+      AutoScalingGroupName: !Ref ClusterASG
+      HeartbeatTimeout: 60
+      DefaultResult: 'CONTINUE'
+      LifecycleHookName: 'LifecycleTerminating'
+      LifecycleTransition: "autoscaling:EC2_INSTANCE_TERMINATING"
+      NotificationTargetARN: !Ref LifecycleHookTopic
+      RoleARN: !GetAtt LifecycleHookRole.Arn
+  LifecycleHookRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+                - autoscaling.amazonaws.com
+      Path: /
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AutoScalingNotificationAccessRole'
+{%- endif %}
+  IamInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+      Path: /
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore'
+        - 'arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess'
+      Policies:
+        - PolicyName: ClusterPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Deny
+                Action:
+                  - s3:ListAllMyBuckets
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - iam:List*
+                  - iam:Get*
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeRegions
+                  - ec2:DescribeInstances
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:AttachNetworkInterface
+                  - ec2:DetachNetworkInterface
+                  - autoscaling:DescribeAutoScalingGroups
+                  - elasticfilesystem:DescribeMountTargets
+                Resource:
+                  - '*'
+              - Effect: Allow
+                Action:
+                  - cloudformation:DescribeStacks
+                Resource:
+                  - !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*'
+              - Effect: Allow
+                Action:
+                  - cloudformation:DescribeStack
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackResource
+                  - cloudformation:DescribeStackResources
+                  - cloudformation:SignalResource
+                Resource:
+                  - '*'
+              - Effect: Allow
+                Action:
+                  - cloudformation:SignalResource
+                Resource:
+                  - !Sub 'arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}'
+
+              - Effect: Allow
+                Action:
+                  - ec2:CreateTags
+                  - ec2:DeleteTags
+                Resource:
+                  - !Sub 'arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/*'
+                Condition:
+                  StringEquals:
+                    ec2:ResourceTag/aws:cloudformation:stack-name: !Ref 'AWS::StackName'
+              - Effect: Allow
+                Action:
+                  - autoscaling:CompleteLifecycleAction
+                  - autoscaling:UpdateAutoScalingGroup
+                  - autoscaling:SetInstanceProtection
+                  - autoscaling:TerminateInstanceInAutoScalingGroup
+                Resource:
+                  - !Sub 'arn:aws:autoscaling:${AWS::Region}:${AWS::AccountId}:autoScalingGroup:*:autoScalingGroupName/*'
+                Condition:
+                  StringEquals:
+                    autoscaling:ResourceTag/aws:cloudformation:stack-name: !Ref 'AWS::StackName'
+              - Sid: S3ListAccess
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource:
+                  - !Sub
+                    - 'arn:aws:s3:::${Bucket}'
+                    - Bucket: !ImportValue sharedinf-samplebucket
+                  - !Sub
+                    - 'arn:aws:s3:::${Bucket}'
+                    - Bucket: !If [CreateNewS3, !Ref S3Bucket, !Ref ExistingS3]
+              - Sid: S3ReadOnlyAccess
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub
+                    - 'arn:aws:s3:::${Bucket}/*'
+                    - Bucket: !ImportValue sharedinf-samplebucket
+              - Sid: S3ReadWriteAccess
+                Effect: Allow
+                Action:
+                  - s3:*Object
+                Resource:
+                  - !Sub
+                    - 'arn:aws:s3:::${Bucket}/*'
+                    - Bucket: !If [CreateNewS3, !Ref S3Bucket, !Ref ExistingS3]
+              - Effect: Allow
+                Action:
+                  - s3:ListMultipartUploads
+                  - s3:AbortMultipartUpload
+                  - s3:CreateMultipartUpload
+                  - s3:CompleteMultipartUpload
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource:
+                  - !Sub
+                    - 'arn:aws:s3:::${Bucket}/*'
+                    - Bucket: !If [CreateNewS3, !Ref S3Bucket, !Ref ExistingS3]
+{%- if enableLifecycle %}
+                  - !Sub
+                    - 'arn:aws:s3:::${LogBucket}/logs/${AccountId}/${StackName}/*'
+                    - LogBucket: !ImportValue sharedinf-logbucket
+                      AccountId: !Ref AWS::AccountId
+                      StackName: !Ref AWS::StackName
+{%- endif %}
+              - Effect: Allow
+                Action:
+                  - route53:GetChange
+                  - route53:ListHostedZonesByName
+                Resource:
+                  - '*'
+              - Effect: Allow
+                Action:
+                  - route53:ChangeResourceRecordSets
+                Resource: !Sub
+                  - 'arn:aws:route53:::hostedzone/${HostedZoneId}'
+                  - HostedZoneId: !FindInMap
+                    - AccountLUT
+                    - !Ref 'AWS::AccountId'
+                    - HostedZoneId
+              - Effect: Allow
+                Action:
+                  - ssm:GetParametersByPath
+                  - ssm:GetParameters
+                  - ssm:GetParameter
+                Resource:
+                  - 'arn:aws:ssm:*:*:parameter/xcalar/cloud/*'
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                  - kms:DescribeKey
+                Resource:
+                  - 'arn:aws:kms:*:*:alias/aws/ssm'
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DescribeTable
+                Resource:
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${SessionTable}'
+
+{%- if enableLifecycle %}
+              - Effect: Allow
+                Action:
+                  - sns:Subscribe
+                  - sns:Unsubscribe
+                Resource:
+                  - !Ref 'LifecycleHookTopic'
+              - Effect: Allow
+                Action:
+                  - 'sqs:*'
+                Resource:
+                  - !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:lifecycled-*'
+{%- endif %}
+  IamInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref 'IamInstanceRole'
+Outputs:
+  URL:
+    Description: URL of your new Xcalar Cluster
+    Condition: CreateInstances
+    Value: !If
+      - CreateDNS
+      - !Join ["", ["https://",!Ref CNAME,".",!Ref HostedZoneName]]
+      - !Join ["", ["https://", !If [KeepIp, !Ref ClusterEIP, '0.0.0.0']]]
+  EIP:
+    Condition: KeepIp
+    Description: Cluster ElasticIP
+    Value: !Ref 'ClusterEIP'
+{%- if createVpc %}
+  VpcId:
+    Description: VPC
+    Value: !Ref 'VpcId'
+  Subnet:
+    Description: Subnet
+    Value: !Ref 'Subnet'
+{%- endif %}
+  S3Bucket:
+    Description: User S3 Bucket
+    Value: !If [CreateNewS3, !Ref S3Bucket, !Ref ExistingS3]
+{%- if enableExistingShare %}
+    Condition: CreateNewShare
+{%- endif %}
+  EfsSharedRoot:
+    Description: Xcalar Shared Root EFS
+    Value: !Ref EfsSharedRoot
+  EfsMountTarget:
+    Description: Xcalar Shared Root Mount Target
+    Value: !Ref EfsMountTarget
+  ClusterASG:
+    Description: Cluster Autoscaling Group
+    Value: !Ref ClusterASG
+  ClusterSG:
+    Description: Cluster Security Group
+    Value: !Ref ClusterSG
+  LaunchTemplate:
+    Description: Launch template for cluster
+    Value: !Ref LaunchTemplate
+
+# vim: ft=yaml

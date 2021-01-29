@@ -1,0 +1,10 @@
+{
+    "_comment": "'name' field should be app's name.  Do not change the placeholder value - build process seds these occurances and replaces with app's name",
+    "name": "@PLACEHOLDER_APPNAME@",
+    "main": "starter.js",
+    "window": {
+        "show": true
+    },
+    "node-remote" : "<all_urls>",
+    "chromium-args": "--allow-running-insecure-content --ignore-certificate-errors"
+}

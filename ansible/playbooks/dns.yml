@@ -1,0 +1,22 @@
+---
+- hosts: all
+  connection: local
+  become: false
+  gather: false
+  vars:
+    zone: xcalar.cloud
+    resource_type: 'A'
+    resource_value: '{{ hostvars[inventory_hostname].ansible_host }}'
+    resource_record: '{{ inventory_hostname }}'
+  tasks:
+    - name: Add route53 {{ resource_type }} entry for {{ resource_record }} pointing to {{ resource_value }}
+      route53:
+        state: present
+        zone: "{{ zone }}"
+        record: "{{ resource_record }}"
+        type: "{{ resource_type }}"
+        ttl: 60
+        value: "{{ resource_value }}"
+        wait: yes
+
+

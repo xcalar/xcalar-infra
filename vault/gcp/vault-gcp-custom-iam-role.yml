@@ -1,0 +1,21 @@
+title: VaultSP
+description: Vault GCP secret backend custom IAM role
+etag: BwVkBX0sQD0=
+includedPermissions:
+- iam.serviceAccountAdmin
+- iam.serviceAccountKeyAdmin
+- iam.serviceAccounts.create
+- iam.serviceAccounts.delete
+- iam.serviceAccounts.get
+- iam.serviceAccounts.list
+- iam.serviceAccounts.update
+- iam.serviceAccountKeys.create
+- iam.serviceAccountKeys.delete
+- iam.serviceAccountKeys.get
+- iam.serviceAccountKeys.list
+- resourcemanager.projects.getIamPolicy
+- resourcemanager.projects.setIamPolicy
+- compute.*.getIamPolicy
+- compute.*.setIamPolicy
+name: projects/angular-expanse-99923/roles/vaultsp
+stage: ALPHA

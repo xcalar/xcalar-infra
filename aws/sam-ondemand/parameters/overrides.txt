@@ -1,0 +1,1 @@
+VpcId=vpc-30100e55 KeyName=xcalar-us-east-1 Subnet=subnet-6a7d1641 InstanceType=m5d.2xlarge AdminEmail=info@xcalar.com AdminUsername=xdpadmin AdminPassword=Welcome1 BootstrapUrl=https://s3.amazonaws.com/xcrepoe1/cfn/prod/xdp-standard/v9/scripts/user-data.sh ClusterAccessSGId=sg-01c9dd12946e730bc

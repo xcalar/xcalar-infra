@@ -1,0 +1,17 @@
+---
+- name: Fetch Docker installer
+  get_url:
+    url: https://get.docker.io
+    dest: /tmp/docker.sh
+    mode: 0644
+
+- name: Run Docker installer
+  shell: bash get-docker.sh >> /tmp/docker.log 2>&1
+  args:
+    creates: /var/lib/docker
+
+- name: Add {{ ansible_user }} to docker group
+  user: append=yes groups=docker name={{ ansible_user }}
+
+- name: Run Docker
+  service: name=docker  state=started enabled=yes

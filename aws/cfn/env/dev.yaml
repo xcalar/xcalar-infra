@@ -1,0 +1,10 @@
+retainPolicy: False
+s3RetainPolicy: Delete
+efsRetainPolicy: Delete
+workBucketRetainPolicy: Delete
+licenseArg: True
+logCopy: True
+samAsg: False
+enableSsh: True
+enableSpareBucket: False
+enableLifecycle: False

@@ -1,0 +1,11 @@
+FuncTestTrigger.sh builds the latest XCE trunk and starts XCE. It also executes startFuncTests.py once XCE is up.
+
+startFuncTests.py is the trigger for running functest(s). It always runs functests cross all usrnodes (--allNodes options in xccli).
+
+Sample:
+python /path/to/startFuncTests.py --testCase childfun::fun --cliPath /path/to/xccli --cfgPath /path/to/xcalar-config.cfg
+
+By default the test(s) will run in a infinite loop with email notification when test fails. However, there're additional options:
+--single: runs test(s) only once
+--silent: runs test(s) without email notification
+--target: defines the location for all test results and data

@@ -1,0 +1,142 @@
+HOME                    = .
+RANDFILE                = $ENV::HOME/.rnd
+
+[ ca ]
+default_ca      = CA_default
+
+[ CA_default ]
+dir             = .
+new_certs_dir   = $dir/newcerts
+crl_dir         = $dir/crl
+database        = $dir/index
+
+certificate     = $dir/ca-cert.pem
+serial          = $dir/serial
+crl             = $dir/ca-crl.pem
+private_key     = $dir/private/ca-key.pem
+RANDFILE        = $dir/private/.rand
+
+x509_extensions = usr_cert
+copy_extensions = copy
+
+# Allow two certificates to have the same subject
+unique_subject  = no
+
+# Comment out the following two lines for the "traditional"
+# format.
+name_opt        = ca_default
+cert_opt        = ca_default
+
+default_crl_days= 30
+default_days    = 730
+default_md      = sha1
+preserve        = no
+
+policy          = policy_match
+
+# For the CA policy
+[ policy_match ]
+countryName             = match
+stateOrProvinceName     = match
+organizationName        = match
+organizationalUnitName  = optional
+commonName              = supplied
+emailAddress            = optional
+
+# For the 'anything' policy
+[ policy_anything ]
+countryName             = optional
+stateOrProvinceName     = optional
+localityName            = optional
+organizationName        = optional
+organizationalUnitName  = optional
+commonName              = supplied
+emailAddress            = optional
+
+####################################################################
+[ req ]
+default_bits            = 2048
+default_keyfile         = ./private/ca-key.pem
+default_md              = sha1
+
+prompt                  = no
+distinguished_name      = root_ca_distinguished_name
+
+x509_extensions = v3_ca
+
+# If passwords for private keys are not present, the user running the
+# installer will be prompted for them
+# input_password = secret
+# output_password = secret
+
+# This sets a mask for permitted string types. There are several options.
+# default: PrintableString, T61String, BMPString.
+# pkix   : PrintableString, BMPString.
+# utf8only: only UTF8Strings.
+# nombstr : PrintableString, T61String (no BMPStrings or UTF8Strings).
+# MASK:XXXX a literal mask value.
+string_mask = nombstr
+
+req_extensions = v3_req
+
+[ root_ca_distinguished_name ]
+commonName = *.int.xcalar.com
+countryName = US
+stateOrProvinceName = Washington
+localityName = Seattle
+0.organizationName = sial.org
+emailAddress = ca_owner@int.xcalar.com
+
+[ usr_cert ]
+
+# These extensions are added when 'ca' signs a request.
+basicConstraints=CA:FALSE
+
+# PKIX recommendations harmless if included in all certificates.
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid,issuer:always
+
+nsCaRevocationUrl               = https://jenkins.int.xcalar.com/ca-crl.pem
+#nsBaseUrl
+#nsRevocationUrl
+#nsRenewalUrl
+#nsCaPolicyUrl
+#nsSslServerName
+
+[ v3_req ]
+
+# Extensions to add to a certificate request
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation, digitalSignature,keyEncipherment
+extendedKeyUsage = serverAuth,clientAuth
+subjectAltName = @alt_names
+
+[alt_names]
+IP.0=127.0.0.1
+
+[ v3_sign ]
+
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid:always,issuer:always
+
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation,digitalSignature
+
+[ v3_ca ]
+
+# Extensions for a typical CA
+
+# PKIX recommendation.
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid:always,issuer:always
+
+basicConstraints = CA:true
+
+[ crl_ext ]
+
+# CRL extensions.
+# Only issuerAltName and authorityKeyIdentifier
+# make any sense in a CRL.
+
+# issuerAltName=issuer:copy
+authorityKeyIdentifier=keyid:always,issuer:always

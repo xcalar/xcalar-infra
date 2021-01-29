@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  sls-event-monitor
+
+  SAM Template for XCE Stack Serverless Event Monitor
+
+Globals:
+  Function:
+    Timeout: 30
+
+Resources:
+  EventMonitorFunc:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: app.lambda_handler
+      Description: Event Monitor Function (add and list events)
+      Runtime: python3.6
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref DynamoEventsTable
+      Events:
+        EventMonitorEvents:
+          Type: Api
+          Properties:
+            Path: /events
+            Method: any
+      Policies:
+        DynamoDBCrudPolicy:
+          TableName: !Ref DynamoEventsTable
+
+  DynamoEventsTable:
+    Type: AWS::Serverless::SimpleTable
+    PrimaryKey:
+        Name: EventId
+        Type: String
+    ProvisionedThroughput:
+        ReadCapacityUnit: 5
+        WriteCapacityUnits: 5
+    Tags:
+        AppType: Serverless
+        AppName: EventMonitor
+
+Outputs:
+  EventMonitorEventsApi:
+    Description: "API Gateway endpoint URL for Event Monitor Events function"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/events"
+  EventMonitorFunc:
+    Description: "Event Monitor Events Lambda Function ARN"
+    Value: !GetAtt EventMonitorFunc.Arn

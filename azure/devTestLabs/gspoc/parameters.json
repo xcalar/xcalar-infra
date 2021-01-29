@@ -1,0 +1,95 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "installerUrl": {
+            "value": "https://xcrepo.blob.core.windows.net/builds/prod/xcalar-2.0.1-3198-installer-el7"
+        },
+        "installerUrlSasToken": {
+            "value": "?st=2019-06-19T21%3A09%3A19Z&se=2020-06-20T21%3A09%3A00Z&sp=rl&sv=2018-03-28&sr=c&sig=dg7RKTcDKuFSKQy2llQJ%2FIiLXGRec2rTcQ%2BS1p%2FHpUQ%3D"
+        },
+        "location": {
+            "value": "westus2"
+        },
+        "appName": {
+            "value": "xdp-standard"
+        },
+        "licenseKey": {
+            "value": "H4sIAPA5CV0AA22OwXKCMABE7/kK71YbQOl4yIGCVBEURBS9dEIIThSChsSiX1916q3H3X07uz4jlDc0X9UoJbjE4q0z5QRMJRVYspojvQ9BWGJZ1KJC/nSepN+pOQBrKppHrPUHdyDA7ZQ/KkSyC3WwxDG7UaStPoGXZ2TMcVbSHEmhKAhFnSsi/+Y6D7jzGgALPm5PTFzRBgv+Ql1csfL6f+GJP5/efYp0qMOep3hP18G8zqldKy6RBvUhSBoqXhKChu05lkpQBKOJHIYfrPpwIxePtv45mJ8NsqOx7+wX1s6eaIVjZQMz5rCwZlphBF4SiVkrqWvW3lJ51nZM7OxU2VnXeD/msVmcYBOopDI0TkZdd2FfkvBQBWn1s4YJaYPoVimT749fGhFiOGjj2S72FWTiuDG9HOehFZikGy9jm+1LtVo7tSEO9nYMfgFGZrDhrgEAAA=="
+        },
+        "scaleNumber": {
+            "value": 1
+        },
+        "appUsername": {
+            "value": "xdpadmin"
+        },
+        "appPassword": {
+            "value": "Welcome1"
+        },
+        "authenticationType": {
+            "value": "sshPublicKey"
+        },
+        "adminUsername": {
+            "value": "azureuser"
+        },
+        "adminSSHPublicKey": {
+            "value": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCkSfi00gfzVoaqLs/Col/kNNg2jGHNhP3LA6OykWt1ev04CbNCiGB01+wgPy6Jx0aKvA7Mx7a4cUCJs8NvgH0wfgzLo0HAcAdMoXHl7ZE6psOR5/w7WJEFZ4xd7v9WanAsONtgS5iLwuzHkMvrImO6aOz2YxzYoNRpVbsJ5PViD9EkRyaEPLRI0A9/DFY96o/xRT/EXxT2ekjJ9loIkeU2Cxs1k0R0TYxPORAvuaM2HHQ12fG51wSNkc3WQ7ehLlULjnxyanptLTDGlU6CwN0i7YEbqr8gpCw510KJg75TqxB8pBxBuN0RHacsf6Lgz/rSw97ryox/ynCzQT9hrE9b"
+        },
+        "vmDiskType": {
+            "value": "StandardSSD_LRS"
+        },
+        "publicIpAddressNewOrExisting": {
+            "value": "new"
+        },
+        "vmSize": {
+            "value": "Standard_D8s_v3"
+        },
+        "storageAccountNewOrExisting": {
+            "value": "existing"
+        },
+        "storageAccountRG": {
+            "value": "xcalarLab-rg"
+        },
+        "storageAccountName": {
+            "value": "axcalarlab6775"
+        },
+        "storageAccountType": {
+            "value": "Standard_LRS"
+        },
+        "shareName": {
+          "value" : "10.0.0.33:/data/nfs"
+        },
+        "virtualNetworkNewOrExisting": {
+          "value": "existing"
+        },
+        "virtualNetworkResourceGroupName": {
+          "value": "xcalarLab-rg"
+        },
+        "virtualNetworkName": {
+          "value": "DtlXcalarLab"
+        },
+        "subnetName": {
+          "value": "DtlXcalarLabSubnet"
+        },
+        "addressPrefixes": {
+          "value": [
+            "10.0.0.0/16"
+          ]
+        },
+        "subnetPrefixCIDR": {
+          "value": "10.0.0.0/20"
+        },
+        "subnetPrefix": {
+          "value": "10.0.0."
+        },
+        "osDiskEphemeral" : {
+          "value" : true
+        },
+        "osDiskSize": {
+          "value": 127
+        },
+        "swapDiskSize": {
+          "value": 127
+        }
+    }
+}

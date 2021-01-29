@@ -1,0 +1,4 @@
+# This file is required to exist for the docker build.
+# It's allowed to be empty.
+
+pymongo==3.8.0

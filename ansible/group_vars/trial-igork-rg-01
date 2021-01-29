@@ -1,0 +1,5 @@
+ansible_user: igork
+ansible_become_pass: dhM6jMpF
+ansible_ssh_pass: dhM6jMpF
+given_name: trial-igork-01.westus2.cloudapp.azure.com
+desired_name: xdp-preview-107.xcalar.io.

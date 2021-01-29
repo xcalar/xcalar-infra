@@ -1,0 +1,134 @@
+# vim: set ft=sh:
+
+_gce_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+. "$_gce_dir/../bin/infra-sh-lib"
+
+gce_config () {
+    gcloud config get-value "$1" 2>/dev/null
+}
+
+gce_instance_ram () {
+    local INSTANCE_TYPE="$1"
+    shift
+
+    local -i RAM_SIZE
+    case "$INSTANCE_TYPE" in
+        f1-micro) RAM_SIZE=1;;
+        g1-small) RAM_SIZE=2;;
+        n1-highmem-2) RAM_SIZE=13;;
+        n1-highmem-4) RAM_SIZE=26;;
+        n1-highmem-8) RAM_SIZE=52;;
+        n1-highmem-16) RAM_SIZE=104;;
+        n1-highmem-32) RAM_SIZE=208;;
+        n1-standard-1) RAM_SIZE=3;;
+        n1-standard-2) RAM_SIZE=7;;
+        n1-standard-4) RAM_SIZE=15;;
+        n1-standard-8) RAM_SIZE=30;;
+        n1-standard-16) RAM_SIZE=60;;
+        n1-standard-32) RAM_SIZE=120;;
+        *) say "Unsupported instance-type ($INSTANCE_TYPE)"; return 1;;
+    esac
+    echo "$RAM_SIZE"
+}
+
+gce_boot_disk_size () {
+    local INSTANCE_TYPE="$1"
+    local -i RAM_SIZE="$(gce_instance_ram "$INSTANCE_TYPE")"
+    local -i DISK_SIZE
+    case "$INSTANCE_TYPE" in
+        f1-micro) DISK_SIZE=10;;
+        g1-small) DISK_SIZE=10;;
+        *) DISK_SIZE=$(( $RAM_SIZE + 10 ));;
+    esac
+    echo $DISK_SIZE
+}
+
+
+gce_check_gcloud_sdk () {
+    local GCLOUD_SDK_URL="https://sdk.cloud.google.com"
+    if ! command -v gcloud &>/dev/null; then
+        if test -e "$XLRDIR/bin/gcloud-sdk.sh"; then
+            say "gcloud command not found, attemping to install via $XLRDIR/bin/gcloud-sdk.sh ..."
+            bash "$XLRDIR/bin/gcloud-sdk.sh"
+            if [ $? -ne 0 ]; then
+                say "Failed to install gcloud sdk..."
+                exit 1
+            fi
+        else
+            echo "\$XLRDIR/bin/gcloud-sdk.sh not found, attempting to install from $GCLOUD_SDK_URL ..."
+            export CLOUDSDK_CORE_DISABLE_PROMPTS=1
+            set -o pipefail
+            curl -sSL $GCLOUD_SDK_URL | bash -e -
+            if [ $? -ne 0 ]; then
+                say "Failed to install gcloud sdk..."
+                exit 1
+            fi
+            set +o pipefail
+        fi
+    fi
+}
+
+gcs_dontcache () {
+    local cache_control="${CACHE_CONTROL:-no-cache, no-store, must-revalidate, max-age=0, no-transform}"
+    (set -x
+    gsutil -m setmeta -h "Cache-Control: $cache_control" "$@")
+}
+
+
+gce_list_instances () {
+    gcloud compute instances list --sort-by=creationTimestamp,machineType "$@" 2>/dev/null | grep -v '^Listed 0 items' | tail -n+2
+    return ${PIPESTATUS[0]}
+}
+
+gce_list_running () {
+    if [ -n "$1" ]; then
+        gce_list_instances --filter=status:RUNNING --regexp="$1"
+    else
+        gce_list_instances --filter=status:RUNNING
+    fi
+}
+
+gce_set_scopes () {
+    local scopes=(https://www.googleapis.com/auth/devstorage.read_only
+                  https://www.googleapis.com/auth/logging.write
+                  https://www.googleapis.com/auth/monitoring.write
+                  https://www.googleapis.com/auth/servicecontrol
+                  https://www.googleapis.com/auth/service.management.readonly
+                  https://www.googleapis.com/auth/trace.append
+                  https://www.googleapis.com/auth/pubsub)
+    gcloud beta compute instances set-scopes "$1" --scopes="$(strjoin , "${scopes[@]}")"
+}
+
+gce_list_unused_disks () {
+    gcloud compute disks list --format json | jq '.[] | select (has("users") | not) | .name' -r
+}
+
+gce_list_instance_tags () {
+    gcloud compute instances list --format json | jq -r '.[]|[.name,"\(if .tags and .tags.items then .tags.items[] else "-" end)"]|@tsv'
+}
+
+gce_list_instance_networks () {
+    #jq -r '.[] | select(.status=="RUNNING")|[.networkInterfaces[0].network,.name]|@tsv'
+    gcloud compute instances list --format json | jq -r '.[] | [.name,.status,.networkInterfaces[0].network]|@tsv'
+}
+
+gce_remove_instance_tags () {
+    gcloud compute instances remove-tags $1 --tags $2
+}
+
+gce_sh_setup () {
+    if test -z "$CLOUDSDK_COMPUTE_ZONE"; then
+        CLOUDSDK_COMPUTE_ZONE="$(gce_config compute/zone)"
+    fi
+    export CLOUDSDK_COMPUTE_ZONE=${CLOUDSDK_COMPUTE_ZONE:-us-central1-f}
+    export CLOUDSDK_COMPUTE_REGION="${CLOUDSDK_COMPUTE_ZONE%-*}"
+
+    gce_check_gcloud_sdk
+
+    export PATH="$HOME/google-cloud-sdk/bin:${XLRINFRA}/gce:${XLRINFRA}/bin:$PATH"
+    export TMPDIR="${TMPDIR:-/tmp/$(id -u)}/$(basename $0 .sh)/$$"
+    rm -rf "$TMPDIR"
+    mkdir -p "$TMPDIR"
+
+}

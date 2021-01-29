@@ -1,0 +1,8 @@
+[style]
+based_on_style = facebook
+##spaces_before_comment = 4
+##indent_dictionary_value = True
+##arithmetic_precedence_indication = True
+coalesce_brackets = True
+column_limit = 130
+# dedent_closing_brackets = True

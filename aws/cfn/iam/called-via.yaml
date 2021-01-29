@@ -1,0 +1,15 @@
+Version: '2012-10-17'
+Statement:
+  - Sid: KmsActionsIfCalledViaChain
+    Effect: Allow
+    Action:
+      - kms:Encrypt
+      - kms:Decrypt
+      - kms:ReEncrypt*
+      - kms:GenerateDataKey
+      - kms:DescribeKey
+    Resource: arn:aws:kms:region:111122223333:key/my-example-key
+    Condition:
+      StringEquals:
+        aws:CalledViaFirst: cloudformation.amazonaws.com
+        aws:CalledViaLast: dynamodb.amazonaws.com

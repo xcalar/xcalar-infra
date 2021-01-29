@@ -1,0 +1,115 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "vmName": {
+      "type": "string",
+      "metadata": {
+        "description": "Base vm name (eg, xdp-standard-vm)"
+      },
+      "defaultValue": "xdp-standard-vm"
+    },
+    "scaleNumber": {
+      "type": "int",
+      "metadata": {
+        "description": "Number of VMs"
+      },
+      "defaultValue": 1
+    },
+    "time": {
+      "type": "string",
+      "metadata": {
+        "description": "Shutdown time in 24h format (eg, 1900)"
+      },
+      "defaultValue": "2300"
+    },
+    "startupTime": {
+      "type": "string",
+      "metadata": {
+        "description": "Startup time in 24h format (eg, 0600)"
+      },
+      "defaultValue": ""
+    },
+    "timeZoneId": {
+      "type": "string",
+      "metadata": {
+        "description": "Time-zone of startup/shutdown"
+      },
+      "defaultValue": "Pacific Standard Time"
+    },
+    "enabled": {
+      "type": "bool",
+      "metadata": {
+        "description": "Enable scheduled shutdown"
+      },
+      "defaultValue": true
+    },
+    "startupEnabled": {
+      "type": "bool",
+      "metadata": {
+        "description": "Enable scheduled startup"
+      },
+      "defaultValue": false
+    }
+  },
+  "variables": {
+    "vmNameId": "[concat(resourceGroup().id,'/providers/Microsoft.Compute/virtualMachines/',concat(parameters('vmName')))]"
+  },
+  "resources": [
+    {
+      "apiVersion": "2018-09-15",
+      "type": "Microsoft.DevTestLab/schedules",
+      "copy": {
+        "name": "vmCount",
+        "count": "[parameters('scaleNumber')]"
+      },
+      "condition": "[not(empty(parameters('time')))]",
+      "name": "[concat('shutdown-computevm-',parameters('vmName'),copyIndex())]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "status": "[if(parameters('enabled'),'Enabled','Disabled')]",
+        "taskType": "ComputeVmShutdownTask",
+        "dailyRecurrence": {
+          "time": "[replace(parameters('time'),':','')]"
+        },
+        "timeZoneId": "[parameters('timeZoneId')]",
+        "notificationSettings": {
+          "status": "Disabled",
+          "timeInMinutes": 30
+        },
+        "targetResourceId": "[concat(variables('vmNameId'), copyIndex())]"
+      }
+    }
+   , {
+      "apiVersion": "2018-09-15",
+      "name": "[concat('weekday-startup-computevm-',parameters('vmName'),copyIndex())]",
+      "type": "Microsoft.DevTestLab/schedules",
+      "condition": "[not(empty(parameters('startupTime')))]",
+      "copy": {
+        "name": "vmCount",
+        "count": "[parameters('scaleNumber')]"
+      },
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "status": "[if(parameters('startupEnabled'),'Enabled','Disabled')]",
+        "timeZoneId": "[parameters('timeZoneId')]",
+        "weeklyRecurrence": {
+          "time": "[replace(parameters('startupTime'),':','')]",
+          "weekdays": [
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday"
+          ]
+        },
+        "taskType": "LabVmsStartupTask",
+        "notificationSettings": {
+          "status": "Disabled",
+          "timeInMinutes": 30
+        },
+        "targetResourceId": "[concat(variables('vmNameId'), copyIndex())]"
+      }
+    }
+  ]
+}

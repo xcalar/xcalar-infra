@@ -1,0 +1,457 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+Description: Xcalar Management Console
+Parameters:
+  Environment:
+    Type: String
+  LambdaRole:
+    Type: String  
+    Default: XMCRole
+  BucketName:
+    Type: String   
+    Default: PLEASE_INSERT_A_BUCKET_NAME  
+  CodeKeyCreateCluster: 
+    Type: String  
+    Default: xmc/createCluster.zip 
+  CodeKeyDeleteCluster:
+    Type: String  
+    Default: xmc/deleteCluster.zip  
+  CodeKeyGetFromDB:
+    Type: String  
+    Default: xmc/getFromDB.zip 
+  CodeKeyListClusters:
+    Type: String  
+    Default: xmc/listClusters.zip   
+  CodeKeyPostToDB:  
+    Type: String   
+    Default: xmc/postToDB.zip   
+Resources:
+  clusterAPI:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Sub ${Environment}
+      DefinitionBody:
+            swagger: "2.0"
+            info:
+              version: "2018-05-15T20:55:33Z"
+              title: "xcmClusters"
+            host: !Sub "our1wn9nja.execute-api.${AWS::Region}.amazonaws.com"
+            basePath: "/stage0"
+            schemes:
+            - "https"
+            paths:
+              /getFromDB:
+                post:
+                  produces:
+                  - "application/json"
+                  responses:
+                    "200":
+                      description: "200 response"
+                      schema:
+                        $ref: "#/definitions/Empty"
+                      headers:
+                        Access-Control-Allow-Origin:
+                          type: "string"
+                  x-amazon-apigateway-integration:
+                    uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${getFromDBLambda.Arn}/invocations"
+                    responses:
+                      default:
+                        statusCode: "200"
+                        responseParameters:
+                          method.response.header.Access-Control-Allow-Origin: "'*'"
+                    passthroughBehavior: "when_no_match"
+                    httpMethod: "POST"
+                    contentHandling: "CONVERT_TO_TEXT"
+                    type: "aws"
+                options:
+                  consumes:
+                  - "application/json"
+                  produces:
+                  - "application/json"
+                  responses:
+                    "200":
+                      description: "200 response"
+                      schema:
+                        $ref: "#/definitions/Empty"
+                      headers:
+                        Access-Control-Allow-Origin:
+                          type: "string"
+                        Access-Control-Allow-Methods:
+                          type: "string"
+                        Access-Control-Allow-Headers:
+                          type: "string"
+                  x-amazon-apigateway-integration:
+                    responses:
+                      default:
+                        statusCode: "200"
+                        responseParameters:
+                          method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+                          method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                          method.response.header.Access-Control-Allow-Origin: "'*'"
+                    passthroughBehavior: "when_no_match"
+                    requestTemplates:
+                      application/json: "{\"statusCode\": 200}"
+                    type: "mock"
+              /postToDB:
+                post:
+                  produces:
+                  - "application/json"
+                  responses:
+                    "200":
+                      description: "200 response"
+                      schema:
+                        $ref: "#/definitions/Empty"
+                      headers:
+                        Access-Control-Allow-Origin:
+                          type: "string"
+                  x-amazon-apigateway-integration:
+                    uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${postToDBLambda.Arn}/invocations"
+                    responses:
+                      default:
+                        statusCode: "200"
+                        responseParameters:
+                          method.response.header.Access-Control-Allow-Origin: "'*'"
+                    passthroughBehavior: "when_no_match"
+                    httpMethod: "POST"
+                    contentHandling: "CONVERT_TO_TEXT"
+                    type: "aws"
+                options:
+                  consumes:
+                  - "application/json"
+                  produces:
+                  - "application/json"
+                  responses:
+                    "200":
+                      description: "200 response"
+                      schema:
+                        $ref: "#/definitions/Empty"
+                      headers:
+                        Access-Control-Allow-Origin:
+                          type: "string"
+                        Access-Control-Allow-Methods:
+                          type: "string"
+                        Access-Control-Allow-Headers:
+                          type: "string"
+                  x-amazon-apigateway-integration:
+                    responses:
+                      default:
+                        statusCode: "200"
+                        responseParameters:
+                          method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+                          method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                          method.response.header.Access-Control-Allow-Origin: "'*'"
+                    passthroughBehavior: "when_no_match"
+                    requestTemplates:
+                      application/json: "{\"statusCode\": 200}"
+                    type: "mock"                                
+              /createCluster:
+                post:
+                  produces:
+                  - "application/json"
+                  responses:
+                    "200":
+                      description: "200 response"
+                      schema:
+                        $ref: "#/definitions/Empty"
+                      headers:
+                        Access-Control-Allow-Origin:
+                          type: "string"
+                  x-amazon-apigateway-integration:
+                    uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${createLambda.Arn}/invocations"
+                    responses:
+                      default:
+                        statusCode: "200"
+                        responseParameters:
+                          method.response.header.Access-Control-Allow-Origin: "'*'"
+                    passthroughBehavior: "when_no_match"
+                    httpMethod: "POST"
+                    contentHandling: "CONVERT_TO_TEXT"
+                    type: "aws"
+                options:
+                  consumes:
+                  - "application/json"
+                  produces:
+                  - "application/json"
+                  responses:
+                    "200":
+                      description: "200 response"
+                      schema:
+                        $ref: "#/definitions/Empty"
+                      headers:
+                        Access-Control-Allow-Origin:
+                          type: "string"
+                        Access-Control-Allow-Methods:
+                          type: "string"
+                        Access-Control-Allow-Headers:
+                          type: "string"
+                  x-amazon-apigateway-integration:
+                    responses:
+                      default:
+                        statusCode: "200"
+                        responseParameters:
+                          method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+                          method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                          method.response.header.Access-Control-Allow-Origin: "'*'"
+                    passthroughBehavior: "when_no_match"
+                    requestTemplates:
+                      application/json: "{\"statusCode\": 200}"
+                    type: "mock"
+              /deleteCluster:
+                post:
+                  produces:
+                  - "application/json"
+                  responses:
+                    "200":
+                      description: "200 response"
+                      schema:
+                        $ref: "#/definitions/Empty"
+                      headers:
+                        Access-Control-Allow-Origin:
+                          type: "string"
+                  x-amazon-apigateway-integration:
+                    uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${deleteLambda.Arn}/invocations"
+                    responses:
+                      default:
+                        statusCode: "200"
+                        responseParameters:
+                          method.response.header.Access-Control-Allow-Origin: "'*'"
+                    passthroughBehavior: "when_no_match"
+                    httpMethod: "POST"
+                    contentHandling: "CONVERT_TO_TEXT"
+                    type: "aws"
+                options:
+                  consumes:
+                  - "application/json"
+                  produces:
+                  - "application/json"
+                  responses:
+                    "200":
+                      description: "200 response"
+                      schema:
+                        $ref: "#/definitions/Empty"
+                      headers:
+                        Access-Control-Allow-Origin:
+                          type: "string"
+                        Access-Control-Allow-Methods:
+                          type: "string"
+                        Access-Control-Allow-Headers:
+                          type: "string"
+                  x-amazon-apigateway-integration:
+                    responses:
+                      default:
+                        statusCode: "200"
+                        responseParameters:
+                          method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+                          method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                          method.response.header.Access-Control-Allow-Origin: "'*'"
+                    passthroughBehavior: "when_no_match"
+                    requestTemplates:
+                      application/json: "{\"statusCode\": 200}"
+                    type: "mock"
+              /listClusters:
+                post:
+                  produces:
+                  - "application/json"
+                  responses:
+                    "200":
+                      description: "200 response"
+                      schema:
+                        $ref: "#/definitions/Empty"
+                      headers:
+                        Access-Control-Allow-Origin:
+                          type: "string"
+                  x-amazon-apigateway-integration:
+                    uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${listLambda.Arn}/invocations"
+                    responses:
+                      default:
+                        statusCode: "200"
+                        responseParameters:
+                          method.response.header.Access-Control-Allow-Origin: "'*'"
+                    passthroughBehavior: "when_no_match"
+                    httpMethod: "POST"
+                    contentHandling: "CONVERT_TO_TEXT"
+                    type: "aws"
+                options:
+                  consumes:
+                  - "application/json"
+                  produces:
+                  - "application/json"
+                  responses:
+                    "200":
+                      description: "200 response"
+                      schema:
+                        $ref: "#/definitions/Empty"
+                      headers:
+                        Access-Control-Allow-Origin:
+                          type: "string"
+                        Access-Control-Allow-Methods:
+                          type: "string"
+                        Access-Control-Allow-Headers:
+                          type: "string"
+                  x-amazon-apigateway-integration:
+                    responses:
+                      default:
+                        statusCode: "200"
+                        responseParameters:
+                          method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+                          method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                          method.response.header.Access-Control-Allow-Origin: "'*'"
+                    passthroughBehavior: "when_no_match"
+                    requestTemplates:
+                      application/json: "{\"statusCode\": 200}"
+                    type: "mock"
+            definitions:
+              Empty:
+                type: "object"
+                title: "Empty Schema"
+  getFromDBLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub getFromDB-${Environment}
+      Handler: getFromDB.handler
+      Runtime: nodejs6.10
+      CodeUri:
+        Bucket: !Ref BucketName
+        Key: !Ref CodeKeyGetFromDB  
+      MemorySize: 128 
+      Timeout: 30
+      Role: !Sub ${LambdaRole}
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AmazonDynamoDBFullAccess  
+      Events:
+        MyEndpoint:
+          Type: Api 
+          Properties:
+            Path: /getFromDB
+            Method: post
+            RestApiId:
+              Ref: clusterAPI
+      Environment:
+        Variables:
+          MyTableName: !Ref xcmTable
+  postToDBLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub postToDB-${Environment}
+      Handler: postToDB.handler
+      Runtime: nodejs6.10
+      CodeUri:
+        Bucket: !Ref BucketName
+        Key: !Ref CodeKeyPostToDB 
+      MemorySize: 128 
+      Timeout: 30
+      Role: !Sub ${LambdaRole}
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AmazonDynamoDBFullAccess  
+      Events:
+        MyEndpoint:
+          Type: Api 
+          Properties:
+            Path: /postToDB
+            Method: post
+            RestApiId:
+              Ref: clusterAPI
+      Environment:
+        Variables:
+          MyTableName: !Ref xcmTable
+  listLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub listClusters-${Environment}
+      Handler: listClusters.handler
+      Runtime: nodejs6.10
+      CodeUri:
+        Bucket: !Ref BucketName
+        Key: !Ref CodeKeyListClusters
+      MemorySize: 128 
+      Timeout: 30
+      Role: !Sub ${LambdaRole}
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AmazonDynamoDBFullAccess  
+      Events:
+        MyEndpoint:
+          Type: Api 
+          Properties:
+            Path: /listClusters
+            Method: post
+            RestApiId:
+              Ref: clusterAPI
+      Environment:
+        Variables:
+          MyTableName: !Ref xcmTable
+  createLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub createCluster-${Environment}
+      Handler: createCluster.handler
+      Runtime: nodejs6.10
+      CodeUri:
+        Bucket: !Ref BucketName
+        Key: !Ref CodeKeyCreateCluster
+      MemorySize: 128 
+      Timeout: 30
+      Role: !Sub ${LambdaRole}
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AmazonDynamoDBFullAccess  
+      Events:
+        MyEndpoint:
+          Type: Api 
+          Properties:
+            Path: /createCluster
+            Method: post
+            RestApiId:
+              Ref: clusterAPI
+      Environment:
+        Variables:
+          MyTableName: !Ref xcmTable
+  deleteLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub deleteCluster-${Environment}
+      Handler: deleteCluster.handler
+      Runtime: nodejs6.10
+      CodeUri:
+        Bucket: !Ref BucketName
+        Key: !Ref CodeKeyDeleteCluster 
+      MemorySize: 128 
+      Timeout: 30
+      Role: !Sub ${LambdaRole}
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AmazonDynamoDBFullAccess  
+        - cloudformation:Describe*
+      Events:
+        MyEndpoint:
+          Type: Api 
+          Properties:
+            Path: /deleteCluster
+            Method: post
+            RestApiId:
+              Ref: clusterAPI
+      Environment:
+        Variables:
+          MyTableName: !Ref xcmTable
+          
+  xcmTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      TableName: "XMC_TABLE_NAME" 
+      PrimaryKey:
+        Name: ID
+        Type: String
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+           
+Outputs:
+  listClustersURL:
+    Value: !Sub https://${clusterAPI}.execute-api.${AWS::Region}.amazonaws.com/${Environment}
+    Description: API end point
+    Export:
+      Name: !Sub "${AWS::StackName}-APIEndPoint"
+
+

@@ -1,0 +1,67 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "newVMName": {
+      "type": "string",
+      "defaultValue": "xcalar-deps-001"
+    },
+    "labName": {
+      "type": "string",
+      "defaultValue": "XcalarLab"
+    },
+    "size": {
+      "type": "string",
+      "defaultValue": "Standard_D8s_v3"
+    },
+    "userName": {
+      "type": "string",
+      "defaultValue": "azureuser"
+    },
+    "sshKey": {
+      "type": "securestring"
+    }
+  },
+  "variables": {
+    "labSubnetName": "[concat(variables('labVirtualNetworkName'), 'Subnet')]",
+    "labVirtualNetworkId": "[resourceId('Microsoft.DevTestLab/labs/virtualnetworks', parameters('labName'), variables('labVirtualNetworkName'))]",
+    "labVirtualNetworkName": "[concat('Dtl', parameters('labName'))]",
+    "vmId": "[resourceId ('Microsoft.DevTestLab/labs/virtualmachines', parameters('labName'), parameters('newVMName'))]",
+    "vmName": "[concat(parameters('labName'), '/', parameters('newVMName'))]"
+  },
+  "resources": [
+    {
+      "apiVersion": "2018-10-15-preview",
+      "type": "Microsoft.DevTestLab/labs/virtualmachines",
+      "name": "[concat(variables('vmName'), padLeft(copyIndex(), 2, '0'))]",
+      "location": "[resourceGroup().location]",
+      "copy": {
+        "name": "[parameters('newVMName')]",
+        "count": 10
+      },
+      "properties": {
+        "labVirtualNetworkId": "[variables('labVirtualNetworkId')]",
+        "notes": "xcalar-001ci",
+        "customImageId": "/subscriptions/861014e9-bb2e-40ff-b6f6-85a511035bfd/resourcegroups/xcalarlab-rg/providers/microsoft.devtestlab/labs/xcalarlab/customimages/xcalar-001ci",
+        "size": "[parameters('size')]",
+        "userName": "[parameters('userName')]",
+        "sshKey": "[parameters('sshKey')]",
+        "isAuthenticationWithSshKey": true,
+        "labSubnetName": "[variables('labSubnetName')]",
+        "disallowPublicIpAddress": true,
+        "storageType": "Standard",
+        "allowClaim": true,
+        "networkInterface": {
+          "sharedPublicIpAddressConfiguration": {
+            "inboundNatRules": [
+              {
+                "transportProtocol": "tcp",
+                "backendPort": 22
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

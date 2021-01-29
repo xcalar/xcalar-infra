@@ -1,0 +1,356 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "licenseKey": {
+      "type": "securestring",
+      "minLength": 40,
+      "defaultValue": ""
+    },
+    "scaleNumber": {
+      "type": "int",
+      "defaultValue": 1,
+      "metadata": {
+        "description": "Number of XCE nodes to provision. (Max: 16)"
+      }
+    },
+    "adminUsername": {
+      "type": "string",
+      "minLength": 5,
+      "metadata": {
+        "description": "Administrator's username for the Xcalar cluster"
+      }
+    },
+    "authenticationType": {
+      "type": "string",
+      "defaultValue": "sshPublicKey",
+      "allowedValues": [
+        "password",
+        "sshPublicKey"
+      ],
+      "metadata": {
+        "description": "Authentication to use (password or sshkey)"
+      }
+    },
+    "adminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Administrator's password for the Xcalar cluster"
+      }
+    },
+    "adminSSHPublicKey": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "VM Administrator's SSH Key"
+      }
+    },
+    "adminEmail": {
+      "type": "string",
+      "minLength": 12,
+      "metadata": {
+        "description": "Administrator's email address"
+      }
+    },
+    "dnsLabelPrefix": {
+      "type": "string",
+      "metadata": {
+        "description": "Administrator's password for the Xcalar cluster"
+      }
+    },
+    "vmSize": {
+      "type": "string",
+      "defaultValue": "Standard_E8_v3",
+      "metadata": {
+        "description": "Size of the VM"
+      }
+    },
+    "dataDiskSize": {
+      "type": "int",
+      "defaultValue": 1023,
+      "metadata": {
+        "description": "Number of XCE nodes to provision. (Max: 16)"
+      }
+    },
+    "zone": {
+      "type": "string",
+      "defaultValue": "azure.xcalar.io",
+      "metadata": {
+        "description": "DNS zone"
+      }
+    },
+    "zone_id": {
+      "type": "string",
+      "defaultValue": "Z1B5U8RYSOLN6J",
+      "metadata": {
+        "description": "Route53 ZoneID of the DNS zone"
+      }
+    },
+    "bootstrapUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "Bootstrap Url"
+      }
+    },
+    "installerUrl": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Installer Url"
+      }
+    },
+    "customScriptName": {
+      "type": "string",
+      "defaultValue": "ampBootstrap.sh"
+    }
+  },
+  "variables": {
+    "sq": "'",
+    "appName": "xdp-standard-",
+    "vmName": "[concat(variables('appName'), 'xce-vm')]",
+    "vmSize": "[parameters('vmSize')]",
+    "dnsLabelPrefix": "[concat(variables('appName'), uniquestring(subscription().subscriptionId, resourceGroup().id, parameters('licenseKey')))]",
+    "storageAccountType": "Standard_LRS",
+    "storageAccountName": "[concat('xdpstorage', uniquestring(subscription().subscriptionId, resourceGroup().id, variables('appName')))]",
+    "virtualNetworkName": "[concat(variables('appName'), 'vnet')]",
+    "vnetAddressPrefix": "10.0.0.0/16",
+    "publicIPAddressType": "Dynamic",
+    "vnetID": "[resourceId('Microsoft.Network/virtualNetworks', variables('virtualNetworkName'))]",
+    "subnet1Name": "[concat(variables('appName'),'subnet-1')]",
+    "subnet1Prefix": "10.0.0.0/24",
+    "subnet1Ref": "[concat(variables('vnetID'),'/subnets/', variables('subnet1Name'))]",
+    "scriptsUri": "http://pub.xcalar.net/azure/dev",
+    "customScriptFilePath": "[parameters('bootstrapUrl')]",
+    "customScriptCommandToExecute": "[concat('/bin/bash -x ', parameters('customScriptName'))]",
+    "imagePublisher": "OpenLogic",
+    "imageOffer": "CentOS",
+    "imageSKU": "7.4",
+    "vmExtensionName": "xcalarBootstrapExtension",
+    "dataDiskSize": "[parameters('dataDiskSize')]",
+    "nicName": "[concat(variables('appName'),'nic-')]",
+    "dataDiskName": "[concat(variables('appName'),'datadisk-')]",
+    "linuxConfiguration": {
+      "sshPublicKey": {
+        "disablePasswordAuthentication": "true",
+        "ssh": {
+          "publicKeys": [
+            {
+              "path": "[concat('/home/', parameters('adminUsername'), '/.ssh/authorized_keys')]",
+              "keyData": "[parameters('adminSSHPublicKey')]"
+            }
+          ]
+        }
+      },
+      "password": {}
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Compute/disks",
+      "name": "[concat(variables('dataDiskName'),copyIndex())]",
+      "apiVersion": "2017-03-30",
+      "location": "[resourceGroup().location]",
+      "sku": {
+        "name": "Premium_LRS"
+      },
+      "copy": {
+          "name": "num",
+          "count": "[parameters('scaleNumber')]"
+      },
+      "properties": {
+          "creationData": {
+              "createOption": "Empty"
+          },
+          "diskSizeGB": "[variables('dataDiskSize')]"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[variables('storageAccountName')]",
+      "apiVersion": "2017-06-01",
+      "location": "[resourceGroup().location]",
+      "kind": "BlobStorage",
+      "identity": {
+          "type": "SystemAssigned"
+      },
+      "sku": {
+          "name": "[variables('storageAccountType')]"
+      },
+      "properties": {
+          "accessTier": "Hot"
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "[concat(variables('appName'), 'publicIP', copyIndex())]",
+      "location": "[resourceGroup().location]",
+      "copy": {
+        "name": "foo",
+        "count": "[parameters('scaleNumber')]"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "[variables('publicIPAddressType')]",
+        "dnsSettings": {
+          "domainNameLabel": "[concat(variables('dnsLabelPrefix'),'-',copyIndex())]"
+        }
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/virtualNetworks",
+      "name": "[variables('virtualNetworkName')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[variables('vnetAddressPrefix')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[variables('subnet1Name')]",
+            "properties": {
+              "addressPrefix": "[variables('subnet1Prefix')]"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[concat(variables('nicName'), copyIndex())]",
+      "location": "[resourceGroup().location]",
+      "copy": {
+        "name": "foo",
+        "count": "[parameters('scaleNumber')]"
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Network/publicIPAddresses/', variables('appName'), 'publicIP', copyIndex())]",
+        "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Static",
+              "privateIPAddress": "[concat('10.0.0.', copyIndex(4))]",
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', concat(variables('appName'), 'publicIP', copyIndex()))]"
+              },
+              "subnet": {
+                "id": "[variables('subnet1Ref')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+        "apiVersion": "2017-03-30",
+        "type": "Microsoft.Compute/virtualMachines",
+        "name": "[concat(variables('vmName'), copyIndex())]",
+        "location": "[resourceGroup().location]",
+        "copy": {
+            "name": "nodeId",
+            "count": "[parameters('scaleNumber')]"
+        },
+        "dependsOn": [
+            "[concat('Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]",
+            "[concat('Microsoft.Network/networkInterfaces/', variables('nicName'), copyIndex())]",
+            "[concat('Microsoft.Compute/disks/', concat(variables('dataDiskName'), copyIndex()))]"
+        ],
+        "properties": {
+            "hardwareProfile": {
+                "vmSize": "[variables('vmSize')]"
+            },
+            "osProfile": {
+                "computername": "[concat(variables('vmName'), copyIndex())]",
+                "adminUsername": "[parameters('adminUsername')]",
+                "adminPassword": "[if(equals(parameters('authenticationType'), 'password'), parameters('adminPassword'), json('null'))]",
+                "linuxConfiguration": "[variables('linuxConfiguration')[parameters('authenticationType')]]"
+            },
+            "storageProfile": {
+                "imageReference": {
+                    "publisher": "[variables('imagePublisher')]",
+                    "offer": "[variables('imageOffer')]",
+                    "sku": "[variables('imageSKU')]",
+                    "version": "latest"
+                },
+                "osDisk": {
+                    "createOption": "FromImage"
+                },
+                "dataDisks": [
+                  {
+                    "lun": 0,
+                    "name": "[concat(variables('dataDiskName'), copyIndex())]",
+                    "createOption": "attach",
+                    "managedDisk": {
+                      "id": "[resourceId('Microsoft.Compute/disks/', concat(variables('dataDiskName'), copyIndex()))]"
+                    }
+                  }
+                ]
+            },
+            "networkProfile": {
+                "networkInterfaces": [
+                    {
+                        "id": "[resourceId('Microsoft.Network/networkInterfaces', concat(variables('nicName'), copyIndex()))]"
+                    }
+                ]
+            }
+        }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(variables('vmName'), copyIndex(), '/', variables('vmExtensionName'))]",
+      "apiVersion": "2017-03-30",
+      "location": "[resourceGroup().location]",
+      "copy": {
+        "name": "foo",
+        "count": "[parameters('scaleNumber')]"
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/', variables('vmName'), copyIndex())]",
+        "[concat('Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]"
+      ],
+      "properties": {
+        "publisher": "Microsoft.Azure.Extensions",
+        "type": "CustomScript",
+        "typeHandlerVersion": "2.0",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+          "fileUris": [
+            "[variables('customScriptFilePath')]"
+          ]
+        },
+        "protectedSettings": {
+          "commandToExecute": "[concat(variables('customScriptCommandToExecute'), ' -a ', parameters('zone'),' -b ', parameters('zone_id'), ' -d ', variables('dnsLabelPrefix'),' -e AKIAIH53R2K2L7RO2M4A -f \"uo4t5mnADoXzGkwxGXAWPVWKvAes0+bjO4HDfA4L\" -g \"m8QFonzFegKu\" -p s3://xccerts/certs/azure.xcalar.io/bysha1/844180c587f111fd5cd29f81284758421091cc92/wildcard.azure.xcalar.io.tar.gz.gpg -i ', copyIndex(), ' -n ', parameters('scaleNumber'), ' -l ', variables('sq'), parameters('licenseKey'), variables('sq'), ' -v ', parameters('adminEmail'), ' -w ', parameters('adminUsername'), ' -x ', variables('sq'), parameters('adminPassword'), variables('sq'), ' -y ', variables('sq'), variables('storageAccountName'), variables('sq'), ' -z ', variables('sq'), listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value, variables('sq'),' -u ', variables('sq'), parameters('installerUrl'), variables('sq'), ' >> startup.log 2>&1')]"
+        }
+      }
+    }
+  ],
+  "outputs": {
+      "url": {
+          "type":"string",
+          "value":"[concat(variables('dnsLabelPrefix'),'.',parameters('zone'))]"
+      },
+      "dnsLabelPrefix": {
+          "type": "string",
+          "value": "[variables('dnsLabelPrefix')]"
+      },
+      "scaleNumber": {
+          "type": "int",
+          "value": "[parameters('scaleNumber')]"
+      },
+      "location": {
+          "type": "string",
+          "value": "[resourceGroup().location]"
+      },
+      "azuredns": {
+          "type": "string",
+          "value": "[reference(concat(variables('appName'),'publicIP0')).dnsSettings.fqdn]"
+      }
+  }
+}

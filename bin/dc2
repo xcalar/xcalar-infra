@@ -1,0 +1,777 @@
+#!/bin/bash
+#
+# dc2 is a tool to deploy our software to the cloud.
+#
+#  $ dc2 upload --project xdp-awsmp --version 2.0.0 --release 100
+#
+# Will package and upload the cloudformation template to s3 and optionally
+# invoke the template.
+#
+#  $ dc2 installer -d s3 --upload /netstore/builds/ReleaseCandidates/xcalar-latest/prod
+#
+# shellcheck disable=SC1091,SC2086,SC2046,SC2155,SC2015,SC2034
+
+. infra-sh-lib
+. aws-sh-lib
+
+DC=$(basename $0)
+
+set -eo pipefail
+
+dc2_help() {
+    cat << EOF
+    usage: dc2 [dc2-flags...] cmd [cmd-arguments ...]
+
+    $DC can upload and deploy cluster resources locally or to cloud
+
+    Deploy to container cluster:
+
+    run                 - Run a cluster
+    stop                - Stop
+    start               - Start
+    exec                - Run a command in a container
+    rm                  - Remove
+    ssh                 - SSH
+    load                - Load image
+
+    Deploy to cloud cluster:
+
+    deploy              - CloudFormation Stacks
+    upload              - CloudFormation Templates
+
+EOF
+}
+
+dc2_upload_help() {
+    cat << EOF
+    usage: dc2 upload --project PROJECT [--osid OSID] [--version VERSION] [--release|-r RELEASE]
+              [--environment|-e ENVIRONMENT]
+              [--flavors FLAVORS What flavors to build (eg, default,withvpc)]
+              [--dry-run] [--force] [--debug] [--render]
+              [--find-ami Look for newest AMI in each supported region]
+
+    $0 takes CloudFormation stack templates, applies some preprocessing on it then
+    publish the templates/scripts to the appropriate directories in S3. The S3 URLs
+    can then be used by customers for their own deployment.
+
+EOF
+}
+
+dc2_deploy_help() {
+    cat << EOF
+    usage: dc2 deploy --name STACK_NAME --mode MODE
+                    [--template-url URL] [--params params.yaml]
+                    [--no-wait] [--project PROJECT] [--version VERSION] [--release|-r RELEASE]
+                    [--environment|-e ENVIRONMENT] [--dry-run]  [--force] [--debug]
+
+    $0 deploys or updates the CloudFormation provided and creates/updates the
+    given stack.
+
+    --name NAME           The CloudFormation stack name
+    --mode MODE           Create or update
+    --no-wait             Don't wait for stack to finish
+EOF
+}
+
+s3_cmd() {
+    (
+        local quiet='--quiet --only-show-errors'
+        local cmd="$1"
+        shift
+        if ((DEBUG)); then
+            quiet=''
+            set -x
+        fi
+        local content
+        aws s3 $cmd $quiet \
+            --acl public-read \
+            --metadata-directive REPLACE \
+            --content-disposition inline \
+            --content-type application/json \
+            --cache-control 'private, no-cache, no-store, must-revalidate, max-age=0, no-transform' "$@" >&2
+    )
+}
+
+s3_sync() {
+    s3_cmd sync "$@"
+}
+
+s3_cp() {
+    s3_cmd cp "$@"
+}
+
+ec2_find_ami() {
+    aws ec2 describe-images \
+        --query 'Images[].[CreationDate, Name, ImageId]' \
+        --output text "$@" | sort -rn | head -1 | awk '{print $(NF)}'
+}
+
+ec2_image_tags() {
+    aws ec2 describe-images --image-ids "${1}" --query 'Images[].Tags[]' | jq -r 'map({(.Key): .Value}) | add | {Image: { Id: "'$1'", Tags: .} }'
+}
+
+xcalar_latest() {
+    AMZN1HVM_US_EAST_1=$(ec2_find_ami --filters "Name=tag:Version,Values=${VERSION}" 'Name=name,Values='${PROJECT}'*' --owner self --region us-east-1)
+    AMZN1HVM_US_WEST_2=$(ec2_find_ami --filters "Name=tag:Version,Values=${VERSION}" 'Name=name,Values='${PROJECT}'*' --owner self --region us-west-2)
+    case "$AWS_DEFAULT_REGION" in
+        us-west-2)
+            IMAGE_ID=$AMZN1HVM_US_WEST_2
+            ami_id=$IMAGE_ID
+            ;;
+        us-east-1)
+            IMAGE_ID=$AMZN1HVM_US_EAST_1
+            ami_id=$IMAGE_ID
+            ;;
+    esac
+}
+
+jq_get_userata_from_lc() {
+    jq -r '.Resources.LaunchConfiguration.Properties.UserData."Fn::Base64"."Fn::Sub"'
+}
+
+jq_get_userata_from_lt() {
+    jq -r '.Resources.LaunchTemplate.Properties.LaunchTemplateData.UserData."Fn::Base64"."Fn::Sub"'
+}
+
+jq_put_userata_in_lc() {
+    # STDIN = template $1 = Resource path to UserData $2 = shell script to inject
+    # Eg, jq_put_userata_in_lc ClusterLC.Properties.UserData deploy.sh < xdp-standard.json
+    jq -r ".Resources.ClusterLC.Properties.UserData.\"Fn::Base64\".\"Fn::Sub\" = $(cat "$@" | jq -R -s .)"
+}
+
+jq_put_userata_in_lt() {
+    #jq -r ".Resources.LaunchTemplate.Properties.LaunchTemplateData.UserData.\"Fn::Base64\".\"Fn::Sub\" = $(cat "$@" | jq -R -s .)"
+    jq -r 'del(.Resources.LaunchTemplate.Properties.LaunchTemplateData.UserData."Fn::Base64"."Fn::Sub"), .Resources.LaunchTemplate.Properties.LaunchTemplateData.UserData."Fn::Base64" = "'$(jq -R -s . < "$1")'"'
+}
+
+# Turn [ { "ParameterKey": "Foo", "ParameterValue":"Bar"}, .. ]
+# into { "Foo": "Bar", .. }
+# and pipe to |to_entries to get it back
+jq_kv_to_object() {
+    local key="${1:-ParameterKey}" value="${2:-ParameterValue}"
+    jq -r '.Parameters| map_values({(.'${key}'): (.'${value}')}) | add'
+}
+
+# Convert stdin, a raw text file into a JS object
+jq_from_text() {
+    jq -R -s -c '{'${1:-user_data}': split("\n")}'
+}
+
+save_tmpdir() {
+    local saveDir
+    saveDir="$(dirname $TMPDIR)/save"
+    rm -r "$saveDir"
+    mv "${TMPDIR}" "$saveDir"
+    echo >&2 "Results will be saved in $saveDir"
+}
+
+j2transform() {
+    if ! cat "$PROJDIR"/vars/*.yaml | jinja2 "${J2DEFS[@]}" "$@"; then
+        return 1
+    fi
+    return 0
+}
+
+dc2_parse_common() {
+    local cmd="$1" key='' val=''
+    shift
+    valid_parse_common_keys=(debug publishing product project release cloud osid image_id prefix
+	installer installer_url installer_version installer_build_number installer_build_type installer_rc installer_xce_branch installer_xce_sha1
+    installer_xd_branch installer_xd_sha1 image_build_number installer_byjob docker_image release product license license_type installer_tag)
+    case "$cmd" in
+        --*=*)
+            key="${cmd%%=*}"
+            key="${key#--}"
+            key="${key//-/_}"
+            val="${cmd#*=}"
+            if grep -q "$key" <<< "${valid_parse_common_keys[@]}"; then
+                eval "declare -rxg ${key^^}=${val}"
+            else
+                echo 0
+                return 1
+            fi
+            ;;
+        --debug | -d)
+            DEBUG=1
+            KEEP=1
+            ;;
+        --publishing) PUBLISHING=true ;;
+        --product)
+            PRODUCT="$1"
+            echo 2
+            ;;
+        --prefix)
+            PREFIX="${1#/}"
+            PREFIX="${PREFIX%/}/"
+            echo 2
+            ;;
+        --project | -p)
+            PROJECT="$1"
+            echo 2
+            ;;
+        --release | -r)
+            RELEASE="$1"
+            echo 2
+            ;;
+        --cloud)
+            CLOUD="$1"
+            echo 2
+            ;;
+        --osid)
+            OSID="$1"
+            echo 2
+            ;;
+        --installer)
+            INSTALLER="$1"
+            ;;
+        --installer_version)
+            INSTALLER_VERSION="$1"
+            VERSION="$1"
+            echo 2
+            ;;
+        --installer_build_number)
+            INSTALLER_BUILD_NUMBER="$1"
+            echo 2
+            ;;
+        --installer_rc)
+            INSTALLER_RC="$1"
+            echo 2
+            ;;
+        --installer_tag)
+            TAG="$1"
+            INSTALLER_TAG="$1"
+            echo 2
+            ;;
+        --image_build_number)
+            IMAGE_BUILD_NUMBER="$1"
+            echo 2
+            ;;
+        --var-file)
+            case "$1" in
+                *.yaml|*.yml)
+                    USER_VARS_FILES+=("$1")
+                    ;;
+                *)
+                    die "Filetype of $1 not yet supported"
+                    ;;
+            esac
+            echo 2
+            ;;
+        --version | -V)
+            INSTALLER_VERSION="$1"
+            VERSION="$1"
+            echo 2
+            ;;
+        --environment | --env | -e)
+            declare -g -r ENVIRONMENT="$1"
+            echo 2
+            ;;
+        --template)
+            TEMPLATE="$1"
+            echo 2
+            ;;
+        --keep | -k) KEEP=1 ;;
+        --dryrun | --dry-run | -n)
+            DRY=1
+            KEEP=1
+            ;;
+        --name)
+            NAME="$1"
+            echo 2
+            ;;
+        --image-id | --image_id)
+            IMAGE_ID="$1"
+            echo 2
+            ;;
+        --force) FORCE=1 ;;
+        --quiet | -q) QUIET=1 ;;
+        --create) MODE=create ;;
+        --update) MODE=update ;;
+        --verbose | -v) VERBOSE=1 ;;
+        --url-file)
+            URL_FILE="$1"
+            echo 2
+            ;;
+        *)
+            echo "0"
+            return 1
+            ;;
+    esac
+    return 0
+}
+
+dc2_deploy() {
+    local cmd shift_amount
+    PARAMS="$TEMPLATEDIR"/params/$AWS_DEFAULT_REGION.yaml
+    WAIT=1
+    while [[ $# -gt 0 ]]; do
+        cmd="$1"
+        if dc2_parse_common "$@" > $TMPDIR/shift.txt; then
+            shift_amount=$(cat $TMPDIR/shift.txt)
+            shift "${shift_amount:-1}"
+            continue
+        fi
+        shift
+        case "$cmd" in
+            --help | -h)
+                dc2_deploy_help
+                exit 0
+                ;;
+            --mode)
+                MODE="$1"
+                shift
+                ;;
+            --params)
+                PARAMS="$1"
+                shift
+                ;;
+            --no-wait) WAIT=0 ;;
+            --template-url)
+                templateUrl="$1"
+                shift
+                ;;
+            --) break ;;
+            -*)
+                echo >&2 "ERROR: Unknown argument $cmd"
+                dc2_deploy_help >&2
+                exit 1
+                ;;
+            *) break ;;
+        esac
+    done
+    if [ -n "${INSTALLER_TAG:-}" ] && [ -z "${TAG:-}" ]; then
+        TAG="$INSTALLER_TAG"
+    fi
+
+    case "$MODE" in
+        create)
+            if ! aws cloudformation create-stack --stack-name "$NAME" --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND --template-url "${templateUrl}" --parameters "$(cfn-flip < "$PARAMS" | jq -r '.Parameters')"; then
+                die "Failed to create stack $NAME"
+            fi
+            if ((WAIT)); then
+                say "Waiting for $NAME to come up ..."
+                if ! aws cloudformation wait stack-create-complete --stack-name $NAME; then
+                    die "Failed waiting for $NAME to come up ..."
+                fi
+            fi
+            ;;
+        update)
+            local changeSet changeSetID
+            changeSet="${NAME}-$(date +%Y%m%d%H%M%S)"
+            if changeSetID="$(aws cloudformation \
+                create-change-set \
+                --stack-name "$NAME" \
+                --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+                --template-url "${templateUrl}" \
+                --parameters "$(cfn-flip < "$PARAMS" | jq -r '.Parameters')" \
+                --change-set-name $changeSet \
+                --query 'Id' \
+                --output text)"; then
+                until aws cloudformation describe-change-set --change-set-name "$changeSetID"; do
+                    sleep 3
+                done
+                aws cloudformation execute-change-set --change-set-name "$changeSetID"
+            else
+                die "Failed to create change set"
+            fi
+            ;;
+        *)
+            die "No deployment mode specified. Use --create or --update"
+            ;;
+    esac
+
+}
+
+dc2conf() {
+    if ! test -e "$PROJDIR"/.dc2.yml; then
+        return 1
+    fi
+    PROJDC2="${PROJDC2:-$TMPDIR/dc2.json}"
+    if ! test -e "$PROJDC2"; then
+        cfn-flip < "$PROJDIR"/.dc2.yml > "$PROJDC2"
+    fi
+
+    jq -r "$1" < "$PROJDC2"
+}
+
+dc2_upload() {
+    local cmd shift_amount
+    FLAVORS="${FLAVORS:-default}"
+    USER_VARS_FILES=()
+    while [[ $# -gt 0 ]]; do
+        cmd="$1"
+        if dc2_parse_common "$@" > $TMPDIR/shift.txt; then
+            shift_amount=$(cat $TMPDIR/shift.txt)
+            shift "${shift_amount:-1}"
+            continue
+        fi
+        shift
+        case "$cmd" in
+            --help | -h)
+                dc2_upload_help
+                exit 0
+                ;;
+            --find-ami) FIND_AMI=1 ;;
+            --flavors)
+                FLAVORS="$1"
+                shift
+                ;;
+            --inline-script)
+                INLINE_SCRIPT="$1"
+                shift
+                ;;
+            -D)
+                J2DEFS+=("-D" "$1")
+                shift
+                ;;
+            --license)
+                LICENSE="$1"
+                shift
+                ;;
+            --manifest)
+                MANIFEST="$1"
+                shift
+                ;;
+            --) break ;;
+            *)
+                say "ERROR: Unknown argument $cmd"
+                dc2_upload_help >&2
+                exit 1
+                ;;
+        esac
+    done
+    if [ -n "${INSTALLER_TAG:-}" ] && [ -z "${TAG:-}" ]; then
+        TAG="$INSTALLER_TAG"
+    fi
+    if [ -n "$INSTALLER_VERSION" ] && [ -z "${VERSION:-}" ]; then
+        VERSION="$INSTALLER_VERSION"
+    fi
+
+    if [ -z "$ENVIRONMENT" ]; then
+        declare -r -g ENVIRONMENT=dev
+    fi
+    declare -g -r ENVYAML="${TEMPLATEDIR}/env/${ENVIRONMENT}.yaml"
+
+    J2DEFS+=(-D "DEBUG=${DEBUG}")
+    J2DEFS+=(-D "PUBLISHING=${PUBLISHING^}")
+
+    test -n "${PROJECT:-}" || die "Need to set --project"
+    test -n "${VERSION:-}" || VERSION=$(cat $PROJECT/VERSION) || die "Need to set --version"
+    PROJDIR="${TEMPLATEDIR}/${PROJECT}"
+    CONTEXT="${ENVIRONMENT}/${PROJECT}/${TAG}${RELEASE}"
+    test -e "$PROJDIR" || die "$PROJDIR doesn't exist. You need to set $XLRINFRADIR/${CLOUD}/cfn as your working directory"
+    declare -g -r GENDIR="$TMPDIR"/gen
+    mkdir -p "$GENDIR"
+
+    case "$AWS_DEFAULT_REGION" in
+        us-west-2) BUCKET=xcrepo ;;
+        us-east-1) BUCKET=xcrepoe1 ;;
+        *)
+            export AWS_DEFAULT_REGION=us-west-2
+            BUCKET=xcrepo
+            ;;
+    esac
+
+    BUCKET_ENDPOINT="$(aws_s3_url s3://$BUCKET)"
+    NOW=$(date +%s)
+    if [ "$IS_AUTOMATED" = true ]; then
+        PREFIX="${PREFIX}cfn/"
+    else
+        PREFIX="${PREFIX}cfn-user/"
+    fi
+    TARGET=${PREFIX}${CONTEXT}
+    BASE_URL="${BUCKET_ENDPOINT}/${TARGET}"
+    bootstrapUrl="${BASE_URL}/scripts/user-data.sh"
+    bucketLocation=$(aws s3api get-bucket-location --bucket $BUCKET --query LocationConstraint --output text)
+
+    rm -f "$PROJDIR"/vars/deploy.yaml
+
+    mkdir -p "$TMPDIR"/vars
+    rm -fv "$TMPDIR"/vars/* "$TMPDIR"/allvars.*
+
+    cat > "$TMPDIR"/vars/deploy.yaml <<- EOF
+	ENVIRONMENT: ${ENVIRONMENT}
+	VERSION: '$VERSION'
+	PROJECT: '$PROJECT'
+	${RELEASE:+RELEASE: "'$RELEASE'"}
+	TAG: '$TAG'
+	installer_tag: '$INSTALLER_TAG'
+	installer_version: '$INSTALLER_VERSION'
+	installer_build_number: '$INSTALLER_BUILD_NUMBER'
+	${IMAGE_BUILD_NUMBER:+image_build_number: "$IMAGE_BUILD_NUMBER"}
+	${INSTALLER_RC:+installer_rc: "$INSTALLER_RC"}
+	baseUrl: '$BASE_URL'
+	baseBucket: '${BUCKET}'
+	basePrefix: '${TARGET}/'
+	baseLocation: '${bucketLocation}'
+	baseUrlPath: 'https://s3.${bucketLocation}.amazonaws.com/${BUCKET}/${TARGET}/'
+	baseUrlVirtual: 'https://${BUCKET}.s3-${bucketLocation}.amazonaws.com/${TARGET}/'
+	Bucket: '$BUCKET'
+	Prefix: '$TARGET'
+	bootstrapUrl: '$bootstrapUrl'
+	PUBLISHING: ${PUBLISHING^}
+	DEBUG: "$DEBUG"
+	NOW: "$NOW"
+	localtime: "$(date +'%Y/%m/%d %H:%M:%S %z')"
+	isotime: "$(date +'%FT%T%z')"
+	EOF
+    # jq_from_text user_data < "$PROJDIR"/scripts/user-data.sh | cfn-flip >> "$PROJDIR"/vars/deploy.yaml
+    J2DEFS+=(-D "PUBLISHING=${PUBLISHING^}" -D "DEBUG=$DEBUG" -D "bootstrapUrl=$bootstrapUrl" -D "region=${AWS_DEFAULT_REGION}")
+
+    local -a urls=() quick_urls=()
+    test -n "${URL_FILE:-}" && rm -f "${URL_FILE}" || true
+    local ami_id
+    if [ -n "${IMAGE_ID:-}" ]; then
+        ami_id="$IMAGE_ID"
+        eval ami_${AWS_DEFAULT_REGION//-/_}=$IMAGE_ID
+    else
+        ami_id=$(cat "$TMPDIR"/vars/*.yaml "$PROJDIR"/vars/*.yaml | cfn-flip | jq -r '.ami_'"${AWS_DEFAULT_REGION//-/_}")
+        debug "Found AMI: $ami_id"
+        if [ "$ami_id" = null ] || test -z "$ami_id"; then
+            xcalar_latest
+            if ! ami_id=$(aws ec2 describe-images --owners self --filters \
+                Name=tag:Version,Values=${VERSION} \
+                Name=tag:BaseOS,Values="*${OSID}*" \
+                "Name=name,Values=${PROJECT}*" | aws_format_images | head -1 | awk '{print $2}'); then
+                die "Failed to find valid AMI"
+            fi
+            debug "Found New AMI: $ami_id"
+        fi
+    fi
+    if [ -n "${MANIFEST:-}" ]; then
+        local UUID
+        if [ -n "$IMAGE_ID" ]; then
+            UUID="$(jq -r ".builds[]|select(.artifact_id | contains(\"$IMAGE_ID\"))|.packer_run_uuid" $MANIFEST)"
+        fi
+        packer_manifest_all $MANIFEST $UUID > $TMPDIR/vars/images.yaml
+    fi
+    mkdir -p "$GENDIR"/scripts/
+    for ii in "$PROJDIR"/scripts/*; do
+        if [[ $ii =~ .j2$ ]]; then
+            cat "$PROJDIR"/vars/*.yaml "${USER_VARS_FILES[@]}" | jinja2 "${J2DEFS[@]}" "$ii" > $GENDIR/scripts/$(basename $ii .j2)
+        else
+            cp $ii $GENDIR/scripts/
+        fi
+    done
+    if test -e "$PROJDIR"/lambda; then
+        LAMBDASUM=$(cd "$PROJDIR/lambda" && sha256sum $(ls -- *.py requirements.txt 2>/dev/null | /usr/bin/env LANG=C sort || true) | tee "$GENDIR/lambda.sha256" | sha256sum - | cut -d' ' -f1 | tee $GENDIR/lambdasum.sha256)
+        LAMBDAKEY="${PREFIX}lambda/${LAMBDASUM:0:2}/${LAMBDASUM:2:2}/${LAMBDASUM}.zip"
+        if aws s3api head-object --bucket ${BUCKET} --key ${LAMBDAKEY} >/dev/null 2>&1; then
+            :
+        else
+            mkdir -p "$GENDIR"/lambda
+            cp "$PROJDIR"/lambda/*.py $GENDIR/lambda/
+            if test -e "$PROJDIR"/lambda/requirements.txt; then
+                cp "$PROJDIR"/lambda/requirements.txt "$GENDIR"/lambda/
+                cd "$GENDIR"
+                #docker run -it --rm -e container=docker -v  $GENDIR:$GENDIR -w /var/task -e PIP_TRUSTED_HOST=10.10.2.136 -e HOME=/var/task -- lambci/lambda:build-${LRUNTIME} /bin/bash -l -x -e -c "mkdir -p lambda; ${LPIP} install -r $GENDIR/lambda/requirements.txt -t lambda/ && cd lambda && zip -9r $GENDIR/lambda.zip ."
+            fi
+            (cd "$GENDIR"/lambda && zip -q -9r $GENDIR/lambda.zip .)
+            rm -rf "$GENDIR"/lambda
+            aws s3 cp --acl public-read $GENDIR/lambda.zip s3://${BUCKET}/${LAMBDAKEY}
+        fi
+    fi
+
+    J2DEFS+=(-D ami_id="${ami_id}")
+    J2DEFS+=(-D deploy_email="$(git config user.email || id -un)")
+    J2DEFS+=(-D deploy_host="$(hostname -s)")
+    J2DEFS+=(-D is_automated="${IS_AUTOMATED}")
+    aws ec2 describe-images --image-ids $ami_id --query 'Images[].Tags[]' | jq '{ami: map_values({(.Key): .Value})|add}' | cfn-flip > "$TMPDIR"/vars/image.yaml
+
+    declare -A templatUrlFlavors=()
+    local j2Template templateFile flavor
+    local envYaml="${TEMPLATEDIR}/env/${ENVIRONMENT}.yaml"
+    test -r "$envYaml" || die "$envYaml doesn't exist. You need to specify a valid environment or create an environment file"
+    for j2Template in $(find "$PROJDIR" -name '*.template.j2' -type f); do
+        if ! test -f "$j2Template"; then
+            continue
+        fi
+        templateFile=$(basename $j2Template)
+        templateFile="${templateFile%%.*}"
+        if [[ $templateFile =~ quickcreate ]]; then
+            continue
+        fi
+        for flavor in ${FLAVORS//,/ }; do
+            local flavorYaml="$TEMPLATEDIR"/flavor/${flavor}.yaml
+            if ! test -e "$flavorYaml"; then
+                echo >&2 "*** WARNING: Specified flavor: $flavor is missing $flavorYaml. Skipping. ***"
+                continue
+            fi
+            case "$flavor" in
+                default)
+                    flavor_suffix=''
+                    ;;
+                *)  flavor_suffix="-${flavor}"
+                    ;;
+            esac
+
+            templateOut=${templateFile}${flavor_suffix}
+            templateUrl="${BASE_URL}/${templateOut}.json"
+            local j2Locals=(-D "templateUrl=$templateUrl" -D flavor="$flavor" -D flavor_suffix="$flavor_suffix")
+            local allVars=$TMPDIR/allvars.yaml
+
+
+            cat "$PROJDIR"/vars/*.yaml "$flavorYaml" "$envYaml" "$TMPDIR"/vars/*.yaml | cfn-flip > ${allVars%.yaml}.json
+            cat "$PROJDIR"/vars/*.yaml "$flavorYaml" "$envYaml" "$TMPDIR"/vars/*.yaml > $allVars
+
+            local templateJson=${GENDIR}/${templateOut}.json
+            # shellcheck disable=SC2002
+            set -o pipefail
+            if ! jinja2 "${J2DEFS[@]}" "${j2Locals[@]}" "$j2Template" "$allVars" > "${TMPDIR}/${templateOut}.yaml"; then
+                #| jq_put_userata_in_lt $PROJDIR/scripts/user-data.sh > "$templateJson"; then
+                error "***** ERROR ****"
+                error "CmdLine:"
+                error ""
+                error "jinja2 ${J2DEFS[*]} ${j2Locals[*]} $j2Template $allVars"
+                die "Failed to apply Jinja template ${TMPDIR}/${templateOut}.yaml"
+            fi
+            if ! cfn-flip "${TMPDIR}/${templateOut}.yaml" > "$templateJson"; then
+                error "***** ERROR ****"
+                error "CmdLine:"
+                error ""
+                die "Failed to convert: cfn-flip ${TMPDIR}/${templateOut}.yaml"
+            fi
+            if [ -s "${INLINE_SCRIPT:-}" ]; then
+                if cfn_replace_userdata "${INLINE_SCRIPT}" < "$templateJson" > "${templateJson}.tmp"; then
+                    mv "${templateJson}.tmp" "$templateJson"
+                else
+                    warn "Failed to inject user-data $INLINE_SCRIPT into $templateJson"
+                fi
+            fi
+
+            set +o pipefail
+            if test -x $TEMPLATEDIR/verify.sh; then
+                echo >&2 "Running verify script"
+                if ! $TEMPLATEDIR/verify.sh --template "$templateJson" --bootstrap-url "$bootstrapUrl" --ami-id "$ami_id" --region "$AWS_DEFAULT_REGION"; then
+                    die "Failed to verify $templateJson"
+                fi
+            fi
+            local templateMd5
+            if ! templateMd5=$(md5sum "${templateJson}" | awk '{print $1}') || [ -z "$templateMd5" ]; then
+                die "Failed to generate md5 for input"
+            fi
+            validateS3="s3://${BUCKET}/.tmp/validation/${templateMd5}/${templateOut}.json"
+            if ! s3_cp "${GENDIR}/${templateOut}.json" "$validateS3"; then
+                die "Failed to upload template for validation to $validateS3"
+            fi
+            echo >&2
+            aws cloudformation validate-template --template-url "$(aws_s3_url "$validateS3")" --region "$AWS_DEFAULT_REGION" | tee "$TMPDIR/${templateOut}.parameters.json" > /dev/null
+            if [ ${PIPESTATUS[0]} -ne 0 ]; then
+                die "Failed to validate ${GENDIR}/${templateOut}.json"
+            fi
+
+
+            local quickUrl
+            quickUrl="$(aws_quickcreate "$templateUrl" my-${PROJECT})"
+            if [[ $templateFile =~ ^x[cd]p- ]]; then
+                templatUrlFlavors[${flavor}]="$templateUrl"
+                quickUrls[$flavor]="$quickUrl"
+                if [ -n "${URL_FILE:-}" ]; then
+                    echo "$templateUrl" >> "${URL_FILE}.$$"
+                fi
+            fi
+            urls+=("$templateUrl")
+
+            if [ "$flavor" != default ]; then
+                echo "templateUrl_${flavor}: $templateUrl"
+                echo "quickUrl_${flavor}: $quickUrl"
+            else
+                echo "templateUrl: $templateUrl"
+                echo "quickUrl: $quickUrl"
+            fi
+        done
+    done
+    mv "${URL_FILE}.$$" "${URL_FILE}"
+
+    if ((DRY)); then
+        s3_sync --dryrun "${GENDIR}/" "s3://${BUCKET}/${TARGET}/" >&2
+    else
+        local -i would_delete
+        if would_delete=$(s3_sync --dryrun ${GENDIR}/ "s3://${BUCKET}/${TARGET}/" | grep -c "upload:") \
+            && [ $would_delete -gt 10 ]; then
+            warn "You would delete $would_delete objects from s3://${BUCKET}/${TARGET}/!!"
+            die "Manually remove the destination first, aws s3 rm --recursive s3://${BUCKET}/${TARGET}/ if you're sure"
+        fi
+        s3_sync ${GENDIR}/ "s3://${BUCKET}/${TARGET}/" >&2
+    fi
+    echo "${templatUrlFlavors[@]}"
+
+    #cd - > /dev/null
+}
+
+dc2_cleanup() {
+    local rc=$1
+    if [ $rc -eq 0 ]; then
+        if ! [[ $TMPDIR =~ ^/tmp/ ]]; then
+            warn "Leaving suspicious looking TMPDIR=$TMPDIR !!"
+        elif ((KEEP)); then
+            local keepDir="$(dirname "$TMPDIR")"/keep
+            rm -rf $keepDir
+            mv "$TMPDIR" "$keepDir"
+            TMPDIR="$keepDir"
+            say "Keeping $TMPDIR due to KEEP setting"
+        else
+            rm -rf $TMPDIR
+        fi
+        exit 0
+    fi
+    warn "Keeping $TMPDIR due to error exit: $rc"
+    exit $rc
+}
+
+dc2_defaults() {
+    declare -g FIND_AMI=0 DRY=0 KEEP=0 DEBUG=${DEBUG:-0} CLOUD=aws MODE='create'
+    declare -g ENVIRONMENT=${ENVIRONMENT:-dev}
+    declare -r -g PUBLISHING=${PUBLISHING:-false}
+    declare -g INSTALLER_RC="${INSTALLER_RC:-''}"
+    declare -r -g TMPBASE="${TMPDIR:-/tmp}/$(basename $0 .sh)-$(id -u)" # EG /tmp/dc2-1000/
+    declare -g LRUNTIME="python3.6"
+    declare -g LPIP="pip3"
+    declare -g PREFIX=''
+    declare -r -g IS_AUTOMATED="${IS_AUTOMATED:-false}"
+
+    export DEBUG PUBLISHING
+
+    declare -g -a J2DEFS=()
+    case "$CLOUD" in
+        aws) declare -r -g TEMPLATEDIR="$XLRINFRADIR"/aws/cfn ;;
+        azure) declare -r -g TEMPLATEDIR="$XLRINFRADIR"/azure/arm ;;
+        *) die "Unsupported cloud $CLOUD" ;;
+    esac
+    mkdir -p "$TMPBASE" || die "Failed to create $TMPBASE"
+    export TMPDIR="$(mktemp -d "$TMPBASE"/dc2.XXXXXX)" || die "Failed to create $TMPDIR"
+    trap 'dc2_cleanup $?' EXIT INT TERM HUP
+}
+
+dc2_main() {
+    if ! test -z "$VIRTUAL_ENV"; then
+        source "$XLRINFRADIR"/.venv/bin/activate
+    fi
+    dc2_defaults
+    [ $# -eq 0 ] && set -- --help
+
+    local cmd="${1:-}"
+    shift
+    case "$cmd" in
+        --help)
+            dc2_help
+            exit 0
+            ;;
+        run | start | stop | rm | ssh | exec | enter | load)
+            exec -a dc2 /usr/bin/env DC=dc2 dcc "$cmd" "$@"
+            ;;
+        deploy)
+            dc2_deploy "$@"
+            ;;
+        upload)
+            dc2_upload "$@"
+            ;;
+        *)
+            say "Unknown command $cmd"
+            dc2_help >&2
+            exit 1
+            ;;
+    esac
+}
+
+dc2_main "$@"
